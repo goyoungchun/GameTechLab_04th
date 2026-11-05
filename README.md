@@ -54,3 +54,8 @@
 
 * **담당 부분:** BVH 기반 형상 충돌 검사·충돌 응답·Hit/Overlap 이벤트·이동 Sweep 통합과 중력·가속도·마찰·반발 설정 구현. 시퀀스 데이터·재생기·시간 제어를 설계하고, Hit Stop·Slomo 및 카메라 효과의 시퀀서 연동·에디터 미리보기, 차량 Hit Squash와 주행 밸런스 개선.
 
+
+### [Week10 — HitoriEngine](./week10)
+
+* **주요 구현:** FBX 스태틱·스켈레탈 메시 임포트와 CPU 스키닝, 본 편집을 지원하는 스켈레탈 메시 뷰어, Deferred Decal을 구현
+* **담당 부분:** 스켈레탈 메시 데이터·정점 구조 설계와 Skinned/Skeletal Mesh Component 구현. CPU 스키닝과 본 변환 갱신 최적화, 머티리얼·Scene Proxy 연동 및 UV 보정, 스켈레탈 메시의 에디터 배치·속성 편집·정밀 피킹 지원.
