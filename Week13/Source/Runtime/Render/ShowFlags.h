@@ -20,7 +20,8 @@ enum class EShowFlagCategory : uint8
 	Physics,
 	PostProcess,
 	Developer,
-	Hidden,     // Show 메뉴에 나오지 않는다
+	Render,     // Show 메뉴 대신 Render 메뉴에 나온다. 저장한다.
+	Hidden,     // 뷰 모드·코드가 매 프레임 정한다. 메뉴에 나오지 않고 저장하지 않는다.
 };
 
 struct FEngineShowFlags;

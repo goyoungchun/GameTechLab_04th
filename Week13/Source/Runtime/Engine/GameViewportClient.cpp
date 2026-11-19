@@ -189,7 +189,10 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 			}
 			OutView.LetterboxAmount = PCM->LetterboxAmount;
 			OutView.LetterboxAspect = PCM->LetterboxAspect;
-			OutView.VignetteIntensity = PCM->VignetteIntensity;
+			OutView.FinalPostProcessSettings.OverrideBlend(POV.PostProcessSettings, POV.PostProcessBlendWeight);
+			// 카메라 매니저가 직접 지정한 비네트(피격 연출 등)는 카메라 값보다 우선한다.
+			if (PCM->VignetteIntensity > 0.0f)
+				OutView.FinalPostProcessSettings.VignetteIntensity = PCM->VignetteIntensity;
 
 			return OutView;
 		}
@@ -211,6 +214,7 @@ FSceneView FGameViewportClient::CalcSceneView(const FRect& InViewRect)
 		OutView.FarClip = CameraComponent->GetFarZ();
 		OutView.OrthoWidth = CameraComponent->GetOrthoWidth();
 		OutView.bIsPerspective = !CameraComponent->GetIsOrthogonal();
+		OutView.FinalPostProcessSettings.OverrideBlend(CameraComponent->PostProcessSettings, CameraComponent->PostProcessBlendWeight);
 		OutView.bIsWireframe = false;
 	}
 	else

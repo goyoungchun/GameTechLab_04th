@@ -2,6 +2,7 @@
 #include "GameFramework/Actor.h"
 
 #include "CameraModifier_CameraShake.h"
+#include "Engine/PostProcessSettings.h"
 
 #include "PlayerCameraManager.generated.h"
 
@@ -15,6 +16,10 @@ struct FMinimalViewInfo
 	float NearClip = 0.1f;
 	float FarClip = 10000.0f;
 	bool bIsOrthogonal = false;
+
+	// 카메라 컴포넌트가 넘기는 후처리 값과 섞는 비율
+	FPostProcessSettings PostProcessSettings;
+	float PostProcessBlendWeight = 0.0f;
 
 	void BlendViewInfo(const FMinimalViewInfo& Other, float Alpha);
 	FMatrix CalculateViewMatrix() const;

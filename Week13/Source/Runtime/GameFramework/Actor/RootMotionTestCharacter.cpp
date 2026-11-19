@@ -6,6 +6,8 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include <cmath>
 
 ARootMotionTestCharacter::ARootMotionTestCharacter()
@@ -37,11 +39,13 @@ void ARootMotionTestCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	UpdateModeLabel();
 
-	// "root" 라벨: Settings > Debug Draw (PIE) > Show Root일 때만 보이고, root 본 위치(조금 위)를 따라간다
+	// "root" 라벨: 이 월드를 그리는 게임 뷰포트의 RootBone 표시 플래그가 켜졌을 때만 보이고, root 본 위치(조금 위)를 따라간다
 	const int32 RootIndex = SkeletalMeshComponent->GetRootMotionBoneIndex();
 	if (RootLabelComponent)
 	{
-		RootLabelComponent->SetVisibility(GShowSkeletalRootDebug && RootIndex >= 0);
+		const FWorldContext* Context = GEngine ? GEngine->GetWorldContextFromWorld(GetWorld()) : nullptr;
+		const bool bShowRoot = Context && Context->GameViewport && Context->GameViewport->EngineShowFlags.RootBone;
+		RootLabelComponent->SetVisibility(bShowRoot && RootIndex >= 0);
 	}
 	if (RootLabelComponent && RootIndex >= 0)
 	{

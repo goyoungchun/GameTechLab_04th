@@ -4,6 +4,7 @@
 #include "../Components/SceneComponent.h"
 #include "../Math/EngineMath.h"
 #include "../Math/Rotator.h"
+#include "Engine/PostProcessSettings.h"
 #include "CameraComponent.generated.h"
 
 struct FMinimalViewInfo;
@@ -88,6 +89,14 @@ public:
 	// UE와 같이 소유 Pawn의 Controller ControlRotation을 뷰 회전으로 쓴다 (부모/스프링 암 회전보다 우선)
 	UPROPERTY(EditAnywhere)
 	bool bUsePawnControlRotation = false;
+
+	// 이 카메라로 볼 때 쓰는 후처리 값. bOverride_가 켜진 값만 기본값 위에 덮어쓴다.
+	UPROPERTY(EditAnywhere)
+	FPostProcessSettings PostProcessSettings;
+
+	// PostProcessSettings를 얼마나 섞을지(0이면 쓰지 않음, 1이면 그대로)
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
+	float PostProcessBlendWeight = 1.0f;
 
 };
 

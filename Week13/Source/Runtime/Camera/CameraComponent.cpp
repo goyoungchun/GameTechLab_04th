@@ -198,4 +198,7 @@ void UCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& OutPOV) 
     OutPOV.NearClip = NearClipPlane;
     OutPOV.FarClip = FarClipPlane;
     OutPOV.bIsOrthogonal = bIsOrthogonal;
+    // 3. 후처리
+    OutPOV.PostProcessSettings = PostProcessSettings;
+    OutPOV.PostProcessBlendWeight = PostProcessBlendWeight;
 }

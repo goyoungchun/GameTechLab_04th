@@ -434,8 +434,6 @@ void USkeletalMeshComponent::DrawRootDebug(FLineBatcher* LineBatcher) const
 		LineBatcher->AddSphere(Base, 0.03f, Color);
 	}
 }
-bool GShowSkeletalRootDebug = false;
-
 void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher)
 {
 	if (!World || !LineBatcher) return;

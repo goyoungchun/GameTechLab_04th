@@ -36,6 +36,16 @@ namespace
 					KRS_LOG(Warning, "Cannot move editor settings to Config: {} ({})", FPaths::ToUtf8(Source), Error.message());
 				break;
 			}
+
+			// 저장소에서 받은 프로젝트처럼 설정 파일이 없으면 엔진 기본 설정으로 시작한다.
+			// 새 프로젝트 생성(ProjectBrowser)과 같은 EngineResources/Config 파일을 쓴다.
+			if (!std::filesystem::exists(Target, Error))
+			{
+				const auto Default = FPaths::EngineFile(L"EngineResources/Config") / Filename;
+				std::filesystem::copy_file(Default, Target, std::filesystem::copy_options::none, Error);
+				if (Error)
+					KRS_LOG(Warning, "Cannot copy default editor settings: {} ({})", FPaths::ToUtf8(Default), Error.message());
+			}
 		}
 	}
 	// FWindow가 ImGui를 직접 알지 않도록 메시지 처리기를 훅으로 등록한다.

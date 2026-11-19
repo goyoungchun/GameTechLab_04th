@@ -74,7 +74,8 @@ bool FEditorSettingsManager::SaveSettings() const
 
 	File << "[ShowFlags]\n";
 	for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
-		File << ShowFlagKeyPrefix << Info.Name << "=" << Settings.ShowFlags.Get(Info) << "\n";
+		if (Info.Category != EShowFlagCategory::Hidden)
+			File << ShowFlagKeyPrefix << Info.Name << "=" << Settings.ShowFlags.Get(Info) << "\n";
 	File << "\n";
 
 	File << "[Editor]\n";
@@ -201,7 +202,12 @@ bool FEditorSettingsManager::LoadSettings()
                     }
                 }
 				if (Key.rfind(ShowFlagKeyPrefix, 0) == 0)
-					Settings.ShowFlags.SetByName(std::string_view(Key).substr(std::char_traits<char>::length(ShowFlagKeyPrefix)), std::stoi(ValueStr) != 0);
+				{
+					// 예전에 저장된 Hidden 플래그 줄은 무시한다. 뷰 모드가 매 프레임 정한다.
+					const FShowFlagInfo* Info = FEngineShowFlags::Find(std::string_view(Key).substr(std::char_traits<char>::length(ShowFlagKeyPrefix)));
+					if (Info && Info->Category != EShowFlagCategory::Hidden)
+						Settings.ShowFlags.Set(*Info, std::stoi(ValueStr) != 0);
+				}
 				else if (const char* LegacyFlag = FindLegacyShowFlagKey(Key))
 					Settings.ShowFlags.SetByName(LegacyFlag, std::stoi(ValueStr) != 0);
 				else if (Key == "CacheShadows") Settings.bCacheShadows = std::stoi(ValueStr);

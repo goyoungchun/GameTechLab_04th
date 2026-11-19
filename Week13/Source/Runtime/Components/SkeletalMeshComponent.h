@@ -12,8 +12,6 @@ class FLineBatcher;
 
 // World의 SkeletalMeshComponent마다 root 디버그를 그린다 (DrawCollisionShapes와 같은 방식). PIE의 Show Root에서 호출
 void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher);
-// Settings > Debug Draw (PIE) > Show Root 값. 에디터가 매 프레임 갱신하고, 런타임 액터("root" 라벨 등)가 읽는다
-extern bool GShowSkeletalRootDebug;
 class UAnimationAsset;
 class UAnimSingleNodeInstance;
 class UAnimGraphInstance;

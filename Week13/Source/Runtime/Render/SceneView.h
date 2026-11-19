@@ -7,6 +7,7 @@
 #include "Math/Frustum.h"
 #include "Math/Rect.h"
 #include "Render/RenderPacket.h"
+#include "Engine/PostProcessSettings.h"
 #include <algorithm>
 
 // Immutable description of one camera view for the duration of a render.
@@ -34,12 +35,13 @@ struct FSceneView
 	FLinearColor OverlayColor{ 0.0f, 0.0f, 0.0f, 0.0f };   // rgb = 페이드 색, a = FadeAmount
 	float LetterboxAmount = 0.0f;                        // 0~1 진행도
 	float LetterboxAspect = 2.39f;                       // 목표 화면비
-	float VignetteIntensity = 0.0f;
+	// 기본값 위에 카메라 값을 섞은 최종 후처리 값. 후처리 패스는 이 값만 읽는다.
+	FPostProcessSettings FinalPostProcessSettings;
 
 	bool NeedsCameraOverlay(bool bVignette, bool bOverlay) const
 	{
 		return (bOverlay && (OverlayColor.A > 0.0f || LetterboxAmount > 0.0f))
-			|| (bVignette && VignetteIntensity > 0.0f);
+			|| (bVignette && FinalPostProcessSettings.VignetteIntensity > 0.0f);
 	}
 
 	FViewContext ToViewContext() const

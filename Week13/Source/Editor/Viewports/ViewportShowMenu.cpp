@@ -16,9 +16,9 @@ void FViewportsPanel::DrawShowMenu()
 
     if (IconMenuItem(nullptr, "Use Defaults", false, EIndicator::None))
     {
-        // 메뉴에 보이는 플래그만 기본값으로 되돌린다. Hidden 플래그는 뷰 모드·Render 메뉴가 정한다.
+        // Show 메뉴에 보이는 플래그만 기본값으로 되돌린다. Render·Hidden 분류는 다른 곳이 정한다.
         for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
-            if (Info.Category != EShowFlagCategory::Hidden)
+            if (Info.Category != EShowFlagCategory::Hidden && Info.Category != EShowFlagCategory::Render)
                 Settings.ShowFlags.Set(Info, Info.bEditorDefault);
     }
 

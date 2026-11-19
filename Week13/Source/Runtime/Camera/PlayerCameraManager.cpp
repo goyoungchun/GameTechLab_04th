@@ -60,6 +60,9 @@ void FMinimalViewInfo::BlendViewInfo(const FMinimalViewInfo& Other, float Alpha)
 	NearClip = FMath::Lerp(NearClip, Other.NearClip, Alpha);
 	FarClip = FMath::Lerp(FarClip, Other.FarClip, Alpha);
 	if (Alpha >= 0.5f) bIsOrthogonal = Other.bIsOrthogonal;
+	// 후처리 값은 bOverride_ 조합이 카메라마다 달라 값끼리 섞지 않고 절반을 넘으면 넘어간다. 섞는 비율만 보간한다.
+	if (Alpha >= 0.5f) PostProcessSettings = Other.PostProcessSettings;
+	PostProcessBlendWeight = FMath::Lerp(PostProcessBlendWeight, Other.PostProcessBlendWeight, Alpha);
 }
 // =======================FViewTargetTransitionParams===============
 float FViewTargetTransitionParams::GetBlendAlpha(float TimePct) const

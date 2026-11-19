@@ -1079,7 +1079,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 					ShowFlags.CameraOverlay = S.ShowFlags.CameraOverlay;
 					ShowFlags.SkeletalMeshes = S.ShowFlags.SkeletalMeshes;
 					ShowFlags.Particles = S.ShowFlags.Particles;
-					ShowFlags.DepthOfField = S.ShowFlags.DepthOfField;
+					ShowFlags.RootBone = S.ShowFlags.RootBone;
 					RenderSettings.bCacheShadows = S.bCacheShadows;
 					RenderSettings.PcfMode = S.PcfMode;
 					RenderSettings.LightingModel = S.LightingModel;
@@ -2108,7 +2108,6 @@ void UEditorEngine::SaveProjectThumbnail()
 void UEditorEngine::DrawPIEDebug(UWorld* World, const FMatrix& ViewProjection)
 {
 	const FEditorSettings& Settings = EditorSettings->GetSettings();
-	GShowSkeletalRootDebug = Settings.ShowFlags.RootBone;  // 런타임 "root" 라벨 표시용
 
 	// 충돌 도형·스프링 암 같은 배치 라인은 에디터 뷰와 SIE에서만 그린다. 게임 화면에는 올리지 않는다.
 	FLineBatcher* LineBatcher = World->LineBatcher.get();
