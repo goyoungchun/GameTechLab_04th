@@ -84,7 +84,7 @@ namespace
 			if (Kind == ECaptionButton::Close)
 				Background = bHeld ? EditorColor::CloseHeld : EditorColor::CloseHover;
 			else
-				Background = bHeld ? EditorColor::White(40) : EditorColor::White(24);
+				Background = bHeld ? EditorColor::Contrast(40) : EditorColor::Contrast(24);
 			DrawList->AddRectFilled(Min, Max, Background);
 		}
 
@@ -245,7 +245,7 @@ void EditorTitleBar::Draw()
 	// 스플래시 구분선과 같은 톤의 1px 하단 적갈색 경계선 (2줄 로고 영역은 건너뛴다)
 	{
 		const float LineStartX = (bLogoSpansRows && GLogo != ImTextureID_Invalid) ? GLogoColumnMaxX : Bar.Min.x;
-		Window->DrawList->AddLine(ImVec2(LineStartX, Bar.Max.y - 1.0f), ImVec2(Bar.Max.x, Bar.Max.y - 1.0f), EditorColor::AccentDim);
+		Window->DrawList->AddLine(ImVec2(LineStartX, Bar.Max.y - 1.0f), ImVec2(Bar.Max.x, Bar.Max.y - 1.0f), EditorColor::GPalette.TitleBarLine);
 	}
 	ImGui::PopClipRect();
 

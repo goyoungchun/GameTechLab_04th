@@ -26,15 +26,15 @@
 
 namespace {
 constexpr float SplitterThickness = 6.0f;
-constexpr ImU32 SplitterColor = EditorColor::BgRaised;
-constexpr ImU32 SplitterHoverColor = EditorColor::AccentHover;
+// 분할선 색은 테마에 따라 바뀌므로 쓰는 자리에서 팔레트를 읽는다.
 
 // Stat Overlay
 constexpr float StatOverlayMargin = 8.0f;
 constexpr float StatOverlayPadding = 6.0f;
+// 통계 글자는 3D 화면 위의 어두운 Scrim 위에 쓰므로 테마와 상관없는 색을 쓴다.
 constexpr ImU32 StatOverlayBackgroundColor = EditorColor::Scrim;
-constexpr ImU32 TitleColor = EditorColor::AccentText;
-constexpr ImU32 ValueColor = EditorColor::TextPrimary;
+constexpr ImU32 TitleColor = EditorColor::OverlayTextAccent;
+constexpr ImU32 ValueColor = EditorColor::OverlayText;
 } // namespace
 
 // 네 View의 렌더 타깃을 최소 크기로 초기화한다.
@@ -295,7 +295,7 @@ void FViewportsPanel::OnRender() {
 			const bool bVerticalLine = Splitters[Index].Axis == EDragAxis::Horizontal;
 			const bool bHighlighted = Splitters[Index].bDraggable &&
 				(bVerticalLine ? bVerticalHighlighted : bHorizontalHighlighted);
-			DrawList->AddRectFilled(Mins[Index], Maxs[Index], bHighlighted ? SplitterHoverColor : SplitterColor);
+			DrawList->AddRectFilled(Mins[Index], Maxs[Index], bHighlighted ? EditorColor::AccentHover : EditorColor::BgRaised);
 		}
 
 		if (bDraggingVerticalSplitter)

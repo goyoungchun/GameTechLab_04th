@@ -89,9 +89,9 @@ void FBoneHierarchyPanel::DrawTree(FSkeletalPreviewEditor& InEditor, char* InSea
 		}
 	}
 
-	ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.11f, 0.11f, 0.11f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_TreeLines, ImVec4(0.45f, 0.45f, 0.48f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_TableRowBg, EditorColor::BgElevated);
+	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, EditorColor::BgElevatedAlt);
+	ImGui::PushStyleColor(ImGuiCol_TreeLines, EditorColor::TextDisabled);
 	// TableSetBgColor로 전체 행 배경을 통일하므로 TreeNode 자체의 부분 사각형(Header)은 투명 처리한다.
 	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -170,7 +170,7 @@ void FBoneHierarchyPanel::DrawBoneHierarchy(FSkeletalPreviewEditor& InEditor, in
 	else if (bIsAncestor)
 	{
 		// 선택된 본의 조상 행은 어둡고 옅은 적갈색 톤으로 표시한다.
-		ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(66, 36, 35, 225));
+		ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, EditorColor::BgSelected);
 	}
 	else if (bRowHovered)
 	{
@@ -228,8 +228,8 @@ void FBoneHierarchyPanel::DrawBoneHierarchy(FSkeletalPreviewEditor& InEditor, in
 		: (LabelAreaStartX + EditorStyle::Scale(6.0f));
 	const ImVec2 IconCenter(IconCenterX, (ItemMin.y + ItemMax.y) * 0.5f);
 	const ImU32 IconColor = bSelected
-		? IM_COL32(14, 14, 16, 255)
-		: (bIsAncestor ? IM_COL32(205, 205, 205, 235) : IM_COL32(180, 180, 180, 220));
+		? EditorColor::Ink
+		: (bIsAncestor ? EditorColor::WithAlpha(EditorColor::TextSecondary, 235) : EditorColor::WithAlpha(EditorColor::TextMuted, 220));
 
 	if (bIsSocketOrLeaf)
 	{

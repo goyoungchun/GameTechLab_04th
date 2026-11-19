@@ -32,6 +32,9 @@ public:
 
 	static bool IsSupportedMeshFile(const fs::path& FilePath, const FString& Utf8Path);
 
+	// 썸네일 배경 체커의 가로 칸 수. 콘텐츠 브라우저의 아이콘 타일도 같은 칸 수로 그린다.
+	static constexpr int CheckerCellsAcross = 8;
+
 	// 캐시된 썸네일 SRV를 돌려준다. 아직 없거나 파일이 갱신됐으면 렌더 큐에 넣고 Invalid를 반환한다.
 	ImTextureID GetOrRequestThumbnail(const fs::path& FilePath, const FString& Utf8Path, fs::file_time_type LastWriteTime);
 
@@ -49,6 +52,8 @@ private:
 		TUniquePtr<FTexture2D> Texture;
 		fs::file_time_type LastWriteTime{};
 		bool bFailed = false;
+		// 찍을 때의 에디터 테마(EEditorTheme). 배경색이 테마를 따르므로 테마가 바뀌면 다시 찍는다.
+		unsigned char Theme = 0;
 	};
 
 	struct FPendingRequest

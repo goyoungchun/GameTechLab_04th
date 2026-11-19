@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "ParticleSystemEmitterPanel.h"
+#include "Editor/EditorUI/EditorStyle.h"
 
 #include "Particles/ParticleEmitter.h"
 #include "Particles/ParticleLODLevel.h"
@@ -238,7 +239,7 @@ void FParticleSystemEmitterPanel::DrawModuleRow(UParticleEmitter* Emitter, UPart
 
 	const char* InvalidReason = nullptr;
 	const bool bCompatible = Editor.IsModuleCompatible(Emitter, Module, &InvalidReason);
-	constexpr ImU32 InvalidColor = IM_COL32(230, 70, 60, 255);
+	const ImU32 InvalidColor = EditorColor::Error;
 
 	const ImVec2 Pos = ImGui::GetCursorScreenPos();
 	const float RowHeight = ImGui::GetFrameHeight();

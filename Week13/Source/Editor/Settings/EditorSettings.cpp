@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "Core/Misc/Paths.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/EditorUI/EditorStyle.h"
 #include "Editor/Viewports/ViewportsPanel.h"
 
 namespace
@@ -80,6 +81,7 @@ bool FEditorSettingsManager::SaveSettings() const
 	File << "\n";
 
 	File << "[Editor]\n";
+	File << "Theme=" << EditorStyle::GetThemeName(EditorStyle::GetTheme()) << "\n";
 	File << "CameraMoveSpeed=" << Settings.CameraSpeed << "\n";
 	File << "CameraRotateSensitivity=" << Settings.MouseSensitivity << "\n";
 	File << "GridSpacing=" << Settings.GridSpacing << "\n";
@@ -245,6 +247,12 @@ bool FEditorSettingsManager::LoadSettings()
 					else if (ValueStr == "Unlit") Settings.LightingModel = ELightingModel::Unlit;
 				}
 
+				else if (Key == "Theme")
+				{
+					// 에디터 UI 테마. 설정 객체가 아니라 팔레트에 바로 적용한다.
+					for (EEditorTheme Theme : EditorStyle::AllThemes)
+						if (ValueStr == EditorStyle::GetThemeName(Theme)) EditorStyle::SetTheme(Theme);
+				}
 				else if (Key == "CameraMoveSpeed") Settings.CameraSpeed = std::stof(ValueStr);
 				else if (Key == "CameraRotateSensitivity") Settings.MouseSensitivity = std::stof(ValueStr);
 				else if (Key == "GridSpacing") Settings.GridSpacing = std::stoi(ValueStr);

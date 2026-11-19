@@ -676,8 +676,8 @@ void FOutputLogPanel::RenderAutocompletePopup(const ImVec2& InputMin, const ImVe
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(22, 24, 28, 248));
-	ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(72, 76, 84, 255));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, EditorColor::WithAlpha(EditorColor::BgPopup, 248));
+	ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderStrong);
 	ImGui::PushFont(LogFont, ImGui::GetStyle().FontSizeBase * 0.75f);
 
 	if (ImGui::Begin("##OutputLogAutocompletePopup", nullptr, PopupFlags))
@@ -750,7 +750,7 @@ void FOutputLogPanel::RenderAutocompletePopup(const ImVec2& InputMin, const ImVe
 
 			const float LabelX = RowMin.x + BadgeWidth + EditorStyle::Scale(6.0f);
 			const float TextY = RowMin.y + (RowHeight - FontHeight) * 0.5f;
-			DrawList->AddText(ImVec2(LabelX, TextY), IM_COL32(232, 234, 238, 255), Item.DisplayText.c_str());
+			DrawList->AddText(ImVec2(LabelX, TextY), EditorColor::TextPrimary, Item.DisplayText.c_str());
 
 			if (!Item.Hint.empty())
 			{
@@ -758,7 +758,7 @@ void FOutputLogPanel::RenderAutocompletePopup(const ImVec2& InputMin, const ImVe
 				const ImVec2 HintSize = ImGui::CalcTextSize(Item.Hint.c_str());
 				const float HintRightX = RowMax.x - EditorStyle::Scale(6.0f) - HintSize.x;
 				if (HintRightX > LabelX + LabelSize.x + EditorStyle::Scale(10.0f))
-					DrawList->AddText(ImVec2(HintRightX, TextY), IM_COL32(140, 146, 156, 255), Item.Hint.c_str());
+					DrawList->AddText(ImVec2(HintRightX, TextY), EditorColor::TextMuted, Item.Hint.c_str());
 			}
 
 			ImGui::PopID();

@@ -1,4 +1,6 @@
 #include "EnginePCH.h"
+// imgui.h보다 먼저 EditorStyle.h(IMGUI_DEFINE_MATH_OPERATORS)를 포함해야 한다.
+#include "Editor/EditorUI/EditorStyle.h"
 #include "Editor/ContentDrawer/MeshThumbnailRenderer.h"
 
 #include "Animation/AnimBlueprintData.h"
@@ -307,10 +309,25 @@ public:
 		RenderSettings.DisplayGamma = Settings->DisplayGamma;
 	}
 
+private:
+	// ThumbnailCheckerShader.hlsl의 cbuffer와 같은 배치
+	struct FCheckerConstants
+	{
+		FVector4 ColorA;
+		FVector4 ColorB;
+		float CellSize = 16.0f;
+		float Padding[3] = {};
+	};
+	static_assert(sizeof(FCheckerConstants) % 16 == 0);
+	static constexpr uint32 ThumbnailCheckerFallbackSize = 128;
+
+	TUniquePtr<FConstantBuffer> BackgroundConstants;
+
 protected:
 	void Draw(const FSceneView* View, FScenePassCallbacks& Callbacks) override
 	{
-		Callbacks.Overlays.EditorGrid = []()
+		const float TargetWidth = View ? View->ViewRect.Width : static_cast<float>(ThumbnailCheckerFallbackSize);
+		Callbacks.Overlays.EditorGrid = [this, TargetWidth]()
 		{
 			FShaderProgram* CheckerShader = FRenderResourceManager::GetShaderProgram(
 				"EngineResources/Shaders/ThumbnailCheckerShader.hlsl");
@@ -318,6 +335,23 @@ protected:
 			{
 				return;
 			}
+			if (!BackgroundConstants)
+			{
+				BackgroundConstants = RenderCommand::CreateConstantBuffer(sizeof(FCheckerConstants));
+			}
+			if (!BackgroundConstants)
+			{
+				return;
+			}
+			// 콘텐츠 브라우저의 다른 타일과 같은 테마 색, 같은 칸 수의 체커. 테마가 바뀌면 썸네일을 다시 찍는다.
+			const ImVec4 A = EditorColor::ToVec4(EditorColor::BgDeepest);
+			const ImVec4 B = EditorColor::ToVec4(EditorColor::BgRaised);
+			FCheckerConstants Background{};
+			Background.ColorA = FVector4(A.x, A.y, A.z, 1.0f);
+			Background.ColorB = FVector4(B.x, B.y, B.z, 1.0f);
+			Background.CellSize = TargetWidth / static_cast<float>(FMeshThumbnailRenderer::CheckerCellsAcross);
+			RenderCommand::UpdateBufferData(BackgroundConstants.get(), &Background, sizeof(Background));
+			RenderCommand::BindConstantBuffer(0, BackgroundConstants.get(), EShaderBindFlagBits::Pixel);
 
 			FPipelineState Pipeline{};
 			Pipeline.Shader = CheckerShader;
@@ -354,7 +388,8 @@ ImTextureID FMeshThumbnailRenderer::GetOrRequestThumbnail(
 	fs::file_time_type LastWriteTime)
 {
 	const auto It = Cache.find(Utf8Path);
-	if (It != Cache.end() && It->second.LastWriteTime == LastWriteTime)
+	const unsigned char CurrentTheme = static_cast<unsigned char>(EditorStyle::GetTheme());
+	if (It != Cache.end() && It->second.LastWriteTime == LastWriteTime && It->second.Theme == CurrentTheme)
 	{
 		if (It->second.Texture && It->second.Texture->GetSRV())
 		{
@@ -461,6 +496,13 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 {
 	FThumbnailEntry& Entry = Cache[Request.Utf8Path];
 	Entry.LastWriteTime = Request.LastWriteTime;
+	// 테마가 바뀌어 다시 찍는 경우, 실패하면 예전 테마 배경이 남지 않도록 이전 이미지를 먼저 버린다.
+	const unsigned char CurrentTheme = static_cast<unsigned char>(EditorStyle::GetTheme());
+	if (Entry.Theme != CurrentTheme)
+	{
+		Entry.Texture.reset();
+	}
+	Entry.Theme = CurrentTheme;
 	Entry.bFailed = true;
 
 	if (!EnsurePreviewScene(Engine))

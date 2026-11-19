@@ -303,6 +303,12 @@ void FEditorTabContainer::DrawEditorTabsMenu()
 	ImGui::SeparatorText("Editors");
 	if (DrawEditorLaunchers)
 		DrawEditorLaunchers();
+	ImGui::SeparatorText("Theme");
+	for (EEditorTheme Theme : EditorStyle::AllThemes)
+	{
+		if (ImGui::MenuItem(EditorStyle::GetThemeName(Theme), nullptr, EditorStyle::GetTheme() == Theme))
+			EditorStyle::SetTheme(Theme);
+	}
 	ImGui::SeparatorText("Editor Tabs");
 	for (IEditorTab* Tab : Tabs)
 	{

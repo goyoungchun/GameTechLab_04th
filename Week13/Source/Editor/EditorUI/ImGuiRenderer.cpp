@@ -153,6 +153,8 @@ void FImGuiRenderer::UpdateDpiScale()
     if (DpiScale == AppliedDpiScale) return;
     // 원본 스타일에서 다시 계산해 모니터 이동 시 반올림 오차가 누적되지 않게 한다.
     ImGui::GetStyle() = UnscaledStyle;
+    // 저장해 둔 원본은 시작할 때의 색이므로, 지금 테마의 색을 다시 입힌다.
+    EditorStyle::ApplyColors(ImGui::GetStyle());
     ImGui::GetStyle().ScaleAllSizes(DpiScale);
     ImGui::GetStyle().FontScaleDpi = DpiScale;
     AppliedDpiScale = DpiScale;

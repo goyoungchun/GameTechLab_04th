@@ -27,11 +27,12 @@ namespace
     constexpr float EndHandleWidth = 5.0f;   // 막대 안쪽으로 잡히는 폭
     constexpr float EndHandleSlop = 3.0f;    // 막대 바깥으로 더 잡히는 폭 (짧은 막대도 잡기 쉽게)
 
-    const ImU32 RowColorA = EditorColor::BgElevated;
-    const ImU32 RowColorB = EditorColor::BgElevatedAlt;
-    const ImU32 NamedNotifyColor = EditorColor::Warning;    // 이름 Notify
-    const ImU32 ClassNotifyColor = EditorColor::CategoryBlue;    // UAnimNotify
-    const ImU32 NotifyStateColor = EditorColor::CategoryPurple;   // UAnimNotifyState
+    // 테마를 바꾸면 따라가도록 값을 복사하지 않고 팔레트를 가리킨다.
+    const ImU32& RowColorA = EditorColor::BgElevated;
+    const ImU32& RowColorB = EditorColor::BgElevatedAlt;
+    const ImU32& NamedNotifyColor = EditorColor::Warning;    // 이름 Notify
+    const ImU32& ClassNotifyColor = EditorColor::CategoryBlue;    // UAnimNotify
+    const ImU32& NotifyStateColor = EditorColor::CategoryPurple;   // UAnimNotifyState
 
     const UObject* NotifyObjectOf(const FAnimNotifyEvent& Event)
     {
@@ -229,7 +230,7 @@ void FAnimTimelinePanel::DrawContent()
             ImGui::InvisibleButton("##NotifiesCategoryBtn", ImVec2(std::max(1.0f, LeftWidth - AddBtnW - EditorStyle::Scale(4.0f)), ScaledRowHeight));
             if (ImGui::IsItemHovered())
             {
-                Draw->AddRectFilled(CatLeftMin, ImVec2(CatLeftMax.x - AddBtnW - EditorStyle::Scale(4.0f), CatLeftMax.y), EditorColor::White(16));
+                Draw->AddRectFilled(CatLeftMin, ImVec2(CatLeftMax.x - AddBtnW - EditorStyle::Scale(4.0f), CatLeftMax.y), EditorColor::Contrast(16));
             }
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             {
@@ -283,7 +284,7 @@ void FAnimTimelinePanel::DrawContent()
                 for (int32 Frame = 0; Frame <= NumFrames; ++Frame)
                 {
                     const float X = RightOriginX + Frame * PixelsPerFrame;
-                    Draw->AddLine(ImVec2(X, CatRightMin.y), ImVec2(X, CatRightMax.y), EditorColor::White(14));
+                    Draw->AddLine(ImVec2(X, CatRightMin.y), ImVec2(X, CatRightMax.y), EditorColor::Contrast(14));
                 }
             }
         }
@@ -412,7 +413,7 @@ void FAnimTimelinePanel::DrawHeaderRow(const ImVec2& Origin, float LeftWidth, fl
         const float IconY = BoxMin.y + ((BoxMax.y - BoxMin.y) - SearchIconSize) * 0.5f;
         Draw->AddImage(SearchIcon,
             ImVec2(IconX, IconY), ImVec2(IconX + SearchIconSize, IconY + SearchIconSize),
-            ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(180, 185, 195, 220));
+            ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), EditorColor::WithAlpha(EditorColor::TextSecondary, 220));
     }
 
     if (bHasFilter)
@@ -509,7 +510,10 @@ void FAnimTimelinePanel::DrawHeaderRow(const ImVec2& Origin, float LeftWidth, fl
         EditorColor::AccentBright, 2.0f);
     const float TextX = std::min(PlayheadX + TagW * 0.5f + EditorStyle::Scale(4.0f),
         RulerMax.x - HeadTextSize.x - EditorStyle::Scale(4.0f));
-    Draw->AddText(ImVec2(std::max(RulerOrigin.x + 2.0f, TextX), RulerOrigin.y + 1.0f),
+    const ImVec2 HeadTextPos(std::max(RulerOrigin.x + 2.0f, TextX), RulerOrigin.y + 1.0f);
+    // 눈금 숫자와 겹쳐도 읽히도록 글자 뒤를 눈금자 색으로 덮는다.
+    Draw->AddRectFilled(ImVec2(HeadTextPos.x - 2.0f, HeadTextPos.y), ImVec2(HeadTextPos.x + HeadTextSize.x + 2.0f, HeadTextPos.y + HeadTextSize.y), EditorColor::BgHeader);
+    Draw->AddText(HeadTextPos,
         EditorColor::TextPrimary, HeadText);
     Draw->AddLine(ImVec2(PlayheadX, RulerOrigin.y), ImVec2(PlayheadX, RulerMax.y), EditorColor::AccentBright, 2.0f);
     Draw->PopClipRect();
@@ -536,7 +540,7 @@ void FAnimTimelinePanel::DrawBottomTransportBar(float LeftWidth, float RightWidt
         EditorColor::Border, 1.0f);
 
     auto DrawIconButton = [BtnSide, IconSide](const char* Id, UTexture2D* Icon, const char* FallbackText,
-        const ImVec4& Tint = ImVec4(1, 1, 1, 1), bool bLeftBar = false, bool bRightBar = false) -> bool
+        const ImVec4& Tint = ImVec4(0, 0, 0, 0), bool bLeftBar = false, bool bRightBar = false) -> bool
     {
         if (Icon && Icon->GetResource() && Icon->GetResource()->GetSRV())
         {
@@ -547,7 +551,8 @@ void FAnimTimelinePanel::DrawBottomTransportBar(float LeftWidth, float RightWidt
             const ImVec2 Center(Pos.x + BtnSide * 0.5f + OffsetX, Pos.y + BtnSide * 0.5f);
             const ImVec2 Min(Center.x - IconSide * 0.5f, Center.y - IconSide * 0.5f);
             const ImVec2 Max(Center.x + IconSide * 0.5f, Center.y + IconSide * 0.5f);
-            const ImU32 Color = ImGui::ColorConvertFloat4ToU32(Tint);
+            // 알파가 0인 Tint는 "기본 색"이라는 뜻이다. 테마의 글자색을 쓴다.
+            const ImU32 Color = Tint.w > 0.0f ? ImGui::ColorConvertFloat4ToU32(Tint) : EditorColor::TextPrimary;
             DrawList->AddImage((ImTextureID)Icon->GetResource()->GetSRV(), Min, Max, ImVec2(0, 0), ImVec2(1, 1), Color);
 
             const float BarW = EditorStyle::Scale(2.5f);
@@ -572,7 +577,7 @@ void FAnimTimelinePanel::DrawBottomTransportBar(float LeftWidth, float RightWidt
     ImGui::SetCursorScreenPos(ImVec2(BarOrigin.x, BarOrigin.y + EditorStyle::Scale(2.0f)));
 
     // 1. |< (처음으로)
-    if (DrawIconButton("##ToFront", IconBackward, "|<", ImVec4(1, 1, 1, 1), true, false))
+    if (DrawIconButton("##ToFront", IconBackward, "|<", ImVec4(0, 0, 0, 0), true, false))
     {
         Editor.SetPlaybackTime(0.0f);
     }
@@ -627,7 +632,7 @@ void FAnimTimelinePanel::DrawBottomTransportBar(float LeftWidth, float RightWidt
 
     // 7. >| (마지막으로)
     ImGui::SameLine();
-    if (DrawIconButton("##ToEnd", IconForward, ">|", ImVec4(1, 1, 1, 1), false, true))
+    if (DrawIconButton("##ToEnd", IconForward, ">|", ImVec4(0, 0, 0, 0), false, true))
     {
         Editor.SetPlaybackTime(Length);
     }
@@ -635,7 +640,7 @@ void FAnimTimelinePanel::DrawBottomTransportBar(float LeftWidth, float RightWidt
 
     // 8. Loop (루프 토글)
     ImGui::SameLine();
-    const ImVec4 LoopTint = Editor.bLooping ? ImVec4(1.0f, 0.85f, 0.3f, 1.0f) : ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
+    const ImVec4 LoopTint = Editor.bLooping ? ImVec4(1.0f, 0.85f, 0.3f, 1.0f) : EditorColor::ToVec4(EditorColor::TextDisabled);
     if (DrawIconButton("##LoopToggle", IconLoop, "Loop", LoopTint))
     {
         Editor.bLooping = !Editor.bLooping;
@@ -805,7 +810,7 @@ void FAnimTimelinePanel::DrawTrackHeaders(const ImVec2& HeaderOrigin, float Widt
         ImGui::InvisibleButton("##TrackHeader", CellSize);
         if (ImGui::IsItemHovered())
         {
-            Draw->AddRect(Min, Max, EditorColor::White(50));
+            Draw->AddRect(Min, Max, EditorColor::Contrast(50));
             ImGui::SetTooltip("Right-click: track menu\nDouble-click: rename");
         }
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
@@ -943,7 +948,7 @@ float FAnimTimelinePanel::DrawNotifyTracks(const ImVec2& TracksOrigin, float Wid
         for (int32 Frame = 0; Frame <= NumFrames; ++Frame)
         {
             const float X = TracksOrigin.x + Frame * PixelsPerFrame;
-            Draw->AddLine(ImVec2(X, TracksOrigin.y), ImVec2(X, TracksMax.y), EditorColor::White(14));
+            Draw->AddLine(ImVec2(X, TracksOrigin.y), ImVec2(X, TracksMax.y), EditorColor::Contrast(14));
         }
     }
 

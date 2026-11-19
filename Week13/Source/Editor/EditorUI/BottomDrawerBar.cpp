@@ -57,7 +57,7 @@ void FBottomDrawerBar::DrawStatusBar(float Height, ImVec2& OutBarMin, ImVec2& Ou
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { EditorStyle::Scale(8.0f), EditorStyle::Scale(3.0f) });
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { EditorStyle::Scale(6.0f), EditorStyle::Scale(0.0f) });
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.086f, 0.086f, 0.098f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::GPalette.BgStatusBar);
 
 	const bool bOpen = ImGui::BeginChild("##EditorStatusBar", ImVec2(0.0f, Height),
 		ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
@@ -67,7 +67,7 @@ void FBottomDrawerBar::DrawStatusBar(float Height, ImVec2& OutBarMin, ImVec2& Ou
 		ImDrawList* DL = ImGui::GetWindowDrawList();
 		const ImVec2 WinPos = ImGui::GetWindowPos();
 		const ImVec2 WinSize = ImGui::GetWindowSize();
-		DL->AddLine(WinPos, { WinPos.x + WinSize.x, WinPos.y }, IM_COL32(48, 48, 54, 255), 1.0f);
+		DL->AddLine(WinPos, { WinPos.x + WinSize.x, WinPos.y }, EditorColor::Border, 1.0f);
 
 		const float BtnHeight = std::max(1.0f, ImGui::GetContentRegionAvail().y);
 		const ImTextureID FolderTex = []() -> ImTextureID {
@@ -96,11 +96,11 @@ void FBottomDrawerBar::DrawStatusBar(float Height, ImVec2& OutBarMin, ImVec2& Ou
 			}
 			else if (bDocked)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, EditorColor::BgHeader);
+				ImGui::PushStyleColor(ImGuiCol_Button, EditorColor::GPalette.BgBarButtonDocked);
 			}
 			else
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, EditorColor::BgElevated);
+				ImGui::PushStyleColor(ImGuiCol_Button, EditorColor::GPalette.BgBarButton);
 			}
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bDrawerActive ? EditorColor::AccentHover : EditorColor::BgAccentHover);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorColor::AccentActive);
@@ -116,7 +116,8 @@ void FBottomDrawerBar::DrawStatusBar(float Height, ImVec2& OutBarMin, ImVec2& Ou
 				DL->AddImage(IconTex,
 					{ X, CenterY - IconSide * 0.5f },
 					{ X + IconSide, CenterY + IconSide * 0.5f },
-					{ 0, 0 }, { 1, 1 }, IM_COL32(225, 225, 230, 255));
+					// 폴더 아이콘은 노란색 원본을 그대로 쓴다. 흰색 아이콘만 테마 글자색으로 물들인다.
+					{ 0, 0 }, { 1, 1 }, IconTex == FolderTex ? EditorColor::White(255) : EditorColor::TextPrimary);
 				X += IconSide + Gap;
 			}
 			DL->AddText({ X, CenterY - ImGui::GetTextLineHeight() * 0.5f },
@@ -175,7 +176,7 @@ void FBottomDrawerBar::DrawStatusBar(float Height, ImVec2& OutBarMin, ImVec2& Ou
 				DL->AddImage(ConsoleTex,
 					{ Cursor.x, CenterY - IconSide * 0.5f },
 					{ Cursor.x + IconSide, CenterY + IconSide * 0.5f },
-					{ 0, 0 }, { 1, 1 }, IM_COL32(190, 190, 196, 255));
+					{ 0, 0 }, { 1, 1 }, EditorColor::TextSecondary);
 				ImGui::SameLine();
 			}
 			ImGui::AlignTextToFramePadding();
@@ -233,8 +234,8 @@ void FBottomDrawerBar::DrawOverlay(const ImVec2& TabWinPos, const ImVec2& BarMin
 	ImGui::SetNextWindowSize(ImVec2(DrawerWidth, DrawerHeight), ImGuiCond_Always);
 	ImGui::SetNextWindowViewport(ImGui::GetWindowViewport()->ID);
 
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.125f, 0.98f));
-	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.30f, 0.30f, 0.34f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, EditorColor::WithAlpha(EditorColor::BgPopup, 250));
+	ImGui::PushStyleColor(ImGuiCol_Border, EditorColor::BorderStrong);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { EditorStyle::Scale(8.0f), EditorStyle::Scale(4.0f) });
 

@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "ParticleSystemCurveEditorPanel.h"
+#include "Editor/EditorUI/EditorStyle.h"
 
 #include "Curves/CurveKeyUtils.h"
 #include "Editor/Viewports/ViewportToolbarWidgets.h"
@@ -51,7 +52,7 @@ namespace
 			Alpha = FMath::Min(Alpha + 0.3f, 1.0f);
 		}
 		ImGui::GetWindowDrawList()->AddImage(Icon, Min, Max, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
-			ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, Alpha)));
+			EditorColor::WithAlpha(EditorColor::TextPrimary, static_cast<int>(Alpha * 255.0f)));
 
 		ImGui::SetItemTooltip(bVisible ? "Hide curve" : "Show curve");
 		return bClicked;
@@ -306,7 +307,7 @@ void FParticleSystemCurveEditorPanel::DrawCanvas()
 	ImDrawList* DrawList = ImGui::GetWindowDrawList();
 	const ImVec2 Max(Pos.x + Size.x, Pos.y + Size.y);
 	DrawList->PushClipRect(Pos, Max, true);
-	DrawList->AddRectFilled(Pos, Max, IM_COL32(28, 28, 30, 255));
+	DrawList->AddRectFilled(Pos, Max, EditorColor::BgElevated);
 
 	HandleViewInput(bHovered);
 	DrawGrid(DrawList);
@@ -327,9 +328,9 @@ void FParticleSystemCurveEditorPanel::DrawCanvas()
 
 void FParticleSystemCurveEditorPanel::DrawGrid(ImDrawList* DrawList) const
 {
-	constexpr ImU32 LineCol = IM_COL32(60, 60, 64, 255);
-	constexpr ImU32 AxisCol = IM_COL32(110, 110, 120, 255);
-	constexpr ImU32 TextCol = IM_COL32(150, 150, 150, 255);
+	const ImU32 LineCol = EditorColor::Border;
+	const ImU32 AxisCol = EditorColor::BorderStrong;
+	const ImU32 TextCol = EditorColor::TextMuted;
 	const float Top = View.Origin.y;
 	const float Bottom = View.Origin.y + View.Size.y;
 	const float Left = View.Origin.x;
@@ -388,7 +389,7 @@ void FParticleSystemCurveEditorPanel::DrawKeys(ImDrawList* DrawList) const
 
 			if (bSelected)
 			{
-				constexpr ImU32 HandleCol = IM_COL32(200, 200, 200, 255);
+				const ImU32 HandleCol = EditorColor::TextSecondary;
 				if (i + 1 < Keys.Num() && Key.InterpMode == ECurveInterpMode::Cubic)
 				{
 					const ImVec2 H = TangentHandlePos(Key, Key.LeaveTangent, +1.0f);
@@ -405,7 +406,7 @@ void FParticleSystemCurveEditorPanel::DrawKeys(ImDrawList* DrawList) const
 
 			constexpr float R = 5.0f;
 			DrawList->AddQuadFilled(ImVec2(P.x, P.y - R), ImVec2(P.x + R, P.y), ImVec2(P.x, P.y + R), ImVec2(P.x - R, P.y),
-				bSelected ? IM_COL32(255, 255, 255, 255) : Track.Color);
+				bSelected ? EditorColor::TextPrimary : Track.Color);
 		}
 	}
 }

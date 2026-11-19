@@ -46,6 +46,10 @@ namespace
 		if (const ImTextureID Texture = ViewportToolbarWidgets::GetIcon(Icon); Texture != ImTextureID_Invalid)
 			DL->AddImage(Texture, { X, CenterY - IconSide * 0.5f }, { X + IconSide, CenterY + IconSide * 0.5f },
 				{ 0, 0 }, { 1, 1 }, EditorColor::TextSecondary);
+		// "<Icon>Badge" 아이콘이 있으면 원래 색 그대로 위에 겹친다. 테마 색으로 물들이면 안 되는 부분(빨간 + 등)이다.
+		if (const ImTextureID Badge = ViewportToolbarWidgets::GetIcon((std::string(Icon) + "Badge").c_str()); Badge != ImTextureID_Invalid)
+			DL->AddImage(Badge, { X, CenterY - IconSide * 0.5f }, { X + IconSide, CenterY + IconSide * 0.5f },
+				{ 0, 0 }, { 1, 1 }, EditorColor::White(255));
 		X += IconSide;
 		const ImU32 TextColor = ImGui::GetColorU32(ImGuiCol_Text);
 		if (Label)
@@ -84,7 +88,7 @@ void FLevelEditorToolbar::DrawPlacementGroup()
 	BeginToolbarGroup();
 
 	EditorStyle::FPopupAnchor AddAnchor{}, SnapAnchor{}, GridAnchor{};
-	if (DropdownButton("##AddActor", "Add", nullptr))
+	if (DropdownButton("##AddActor", "AddActor", nullptr))
 		ImGui::OpenPopup("LevelAddPopup");
 	AddAnchor = EditorStyle::LastItemAnchor();
 	if (ImGui::IsItemHovered() && !ImGui::IsPopupOpen("LevelAddPopup"))

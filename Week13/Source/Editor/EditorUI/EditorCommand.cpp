@@ -65,9 +65,16 @@ namespace EditorCommandUI
 		bool bClicked = false;
 		if (Command.Icon)
 		{
+			// 흰색 틴트는 "기본 색"이라는 뜻으로 보고 테마 글자색으로 바꾼다. 흰 아이콘이 밝은 테마 배경에 묻히지 않게 한다.
+			const ImVec4& Tint = Command.IconTint;
+			const bool bDefaultTint = Tint.x >= 0.999f && Tint.y >= 0.999f && Tint.z >= 0.999f;
+			const ImVec4 Primary = EditorColor::ToVec4(EditorColor::TextPrimary);
+			const ImVec4 IconColor = bDefaultTint
+				? ImVec4(Primary.x, Primary.y, Primary.z, Tint.w)
+				: Tint;
 			// 비활성일 때는 BeginDisabled가 알파를 낮춰 준다.
 			bClicked = ImGui::ImageButton(Id, (ImTextureID)Command.Icon->GetResource()->GetSRV(),
-				{ EditorStyle::Scale(IconSize), EditorStyle::Scale(IconSize) }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 0 }, Command.IconTint);
+				{ EditorStyle::Scale(IconSize), EditorStyle::Scale(IconSize) }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 0 }, IconColor);
 		}
 		else
 		{

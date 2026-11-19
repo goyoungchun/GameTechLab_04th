@@ -174,7 +174,7 @@ bool FAnimAssetBrowserView::Draw(const FString& PreviewMeshPath, const FString& 
         const float IconY = BoxMin.y + ((BoxMax.y - BoxMin.y) - SearchIconSize) * 0.5f;
         ImGui::GetWindowDrawList()->AddImage(SearchIcon,
             ImVec2(IconX, IconY), ImVec2(IconX + SearchIconSize, IconY + SearchIconSize),
-            ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(180, 185, 195, 220));
+            ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), EditorColor::WithAlpha(EditorColor::TextSecondary, 220));
     }
 
     if (bHasSearch)
@@ -205,8 +205,8 @@ bool FAnimAssetBrowserView::Draw(const FString& PreviewMeshPath, const FString& 
     }
 
     // 이름 / 경로 / 크기 테이블 (회색-검은색 줄 번갈아 표시)
-    ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.11f, 0.11f, 0.11f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TableRowBg, EditorColor::BgElevated);
+    ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, EditorColor::BgElevatedAlt);
     const ImGuiTableFlags TableFlags =
         ImGuiTableFlags_RowBg |
         ImGuiTableFlags_BordersInnerV |

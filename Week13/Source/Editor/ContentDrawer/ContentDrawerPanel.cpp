@@ -74,7 +74,7 @@ namespace
 				ImVec2(IconX + IconSize, IconY + IconSize),
 				ImVec2(0.0f, 0.0f),
 				ImVec2(1.0f, 1.0f),
-				IM_COL32(180, 185, 195, 220));
+				EditorColor::WithAlpha(EditorColor::TextSecondary, 220));
 		}
 
 		if (bHasText)
@@ -104,16 +104,16 @@ namespace
 
 		if (bActive)
 		{
-			DrawList->AddCircleFilled(Center, Radius, IM_COL32(255, 255, 255, 45), 24);
+			DrawList->AddCircleFilled(Center, Radius, EditorColor::Contrast(45), 24);
 		}
 		else if (bHovered)
 		{
-			DrawList->AddCircleFilled(Center, Radius, IM_COL32(255, 255, 255, 26), 24);
+			DrawList->AddCircleFilled(Center, Radius, EditorColor::Contrast(26), 24);
 		}
 
 		const ImU32 InkCol = bEnabled
-			? (bHovered ? IM_COL32(240, 242, 246, 255) : IM_COL32(205, 210, 218, 240))
-			: IM_COL32(125, 130, 138, 100);
+			? (bHovered ? EditorColor::TextPrimary : EditorColor::WithAlpha(EditorColor::TextSecondary, 240))
+			: EditorColor::WithAlpha(EditorColor::TextDisabled, 100);
 		const float Stroke = EditorStyle::Scale(1.5f);
 
 		DrawList->AddCircle(Center, Radius, InkCol, 24, Stroke);
@@ -407,7 +407,7 @@ namespace
 
 	void DrawCheckerboardRect(ImDrawList* DL, const ImVec2& Min, const ImVec2& Max, float CellSize, float Rounding)
 	{
-		DL->AddRectFilled(Min, Max, IM_COL32(14, 15, 17, 255), Rounding, ImDrawFlags_RoundCornersTop);
+		DL->AddRectFilled(Min, Max, EditorColor::BgDeepest, Rounding, ImDrawFlags_RoundCornersTop);
 		if (CellSize <= 1.0f)
 		{
 			return;
@@ -415,7 +415,7 @@ namespace
 		DL->PushClipRect(Min, Max, true);
 		const int Cols = static_cast<int>((Max.x - Min.x) / CellSize) + 1;
 		const int Rows = static_cast<int>((Max.y - Min.y) / CellSize) + 1;
-		const ImU32 LightCellCol = IM_COL32(25, 27, 30, 255);
+		const ImU32 LightCellCol = EditorColor::BgRaised;
 		for (int r = 0; r < Rows; ++r)
 		{
 			for (int c = 0; c < Cols; ++c)
@@ -592,7 +592,7 @@ void FContentDrawerPanel::RenderContents()
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.055f, 0.058f, 0.065f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::BgDeepest);
 	ImGui::BeginChild("FolderTreeView", ImVec2(FolderTreeWidth, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
 	ImGui::PopStyleColor();
 	ImGui::PopStyleVar(2);
@@ -600,7 +600,7 @@ void FContentDrawerPanel::RenderContents()
 		const float HeaderHeight = ImGui::GetFrameHeight() + EditorStyle::Scale(6.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(EditorStyle::Scale(8.0f), EditorStyle::Scale(3.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.18f, 0.19f, 0.21f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::BgHeader);
 		if (ImGui::BeginChild("FolderTreeHeader", ImVec2(0.0f, HeaderHeight), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar))
 		{
 			const ImVec2 HeaderPos = ImGui::GetCursorScreenPos();
@@ -651,7 +651,7 @@ void FContentDrawerPanel::RenderContents()
 			else
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.26f, 0.28f, 0.32f, 0.75f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorColor::Contrast(40));
 			}
 
 			bool bToggleClicked = false;
@@ -702,7 +702,7 @@ void FContentDrawerPanel::RenderContents()
 		// 검은색 배경의 폴더 하이라키 영역
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(EditorStyle::Scale(4.0f), EditorStyle::Scale(6.0f)));
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.055f, 0.058f, 0.065f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::BgDeepest);
 		ImGui::BeginChild("FolderTreeScroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar(2);
@@ -760,7 +760,7 @@ void FContentDrawerPanel::RenderContents()
 		const float MidX = (SplitMin.x + SplitMax.x) * 0.5f;
 		const ImU32 LineCol = (bSplitterHovered || bSplitterActive)
 			? IM_COL32(70, 125, 215, 255)
-			: IM_COL32(28, 30, 35, 255);
+			: EditorColor::BgElevated;
 		ImGui::GetWindowDrawList()->AddLine(ImVec2(MidX, SplitMin.y), ImVec2(MidX, SplitMax.y), LineCol, EditorStyle::Scale(1.5f));
 	}
 
@@ -769,7 +769,7 @@ void FContentDrawerPanel::RenderContents()
 	// 우측 영역: 상단 툴바(Import, 뒤로/앞으로, 브레드크럼) + 검색창 + 에셋 그리드
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(EditorStyle::Scale(8.0f), EditorStyle::Scale(6.0f)));
 	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.125f, 0.132f, 0.148f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::BgElevated);
 	ImGui::BeginChild("AssetGridView", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 	ImGui::PopStyleColor();
 	ImGui::PopStyleVar(2);
@@ -785,7 +785,7 @@ void FContentDrawerPanel::RenderContents()
 		ImGui::Spacing();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-		ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.11f, 0.118f, 0.132f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::BgRaised);
 		ImGui::BeginChild("AssetGridScroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
@@ -924,7 +924,7 @@ void FContentDrawerPanel::RenderContents()
 					}
 					else if (bHovered)
 					{
-						DL->AddRectFilled(CardMin, CardMax, IM_COL32(255, 255, 255, 16), CardRounding);
+						DL->AddRectFilled(CardMin, CardMax, EditorColor::Contrast(16), CardRounding);
 					}
 
 					if (TileTextureId != ImTextureID_Invalid)
@@ -937,7 +937,7 @@ void FContentDrawerPanel::RenderContents()
 
 					if (bDrawNameText)
 					{
-						const ImU32 NameCol = IM_COL32(228, 230, 235, 255);
+						const ImU32 NameCol = EditorColor::TextPrimary;
 						DrawCardNameLines(DL, DisplayName,
 							ImVec2(CardMin.x + TextPadX, ThumbMax.y + EditorStyle::Scale(4.0f)),
 							CardW - TextPadX * 2.0f, NameCol, true, bOutNameTruncated);
@@ -957,7 +957,9 @@ void FContentDrawerPanel::RenderContents()
 				}
 				else
 				{
-					DrawCheckerboardRect(DL, ThumbMin, ThumbMax, EditorStyle::Scale(12.0f), CardRounding);
+					// 배경은 메시 썸네일과 같은 체커다. 칸 수를 맞춰 타일 크기가 바뀌어도 메시 썸네일과 같은 무늬가 된다.
+					DrawCheckerboardRect(DL, ThumbMin, ThumbMax,
+						(ThumbMax.x - ThumbMin.x) / static_cast<float>(FMeshThumbnailRenderer::CheckerCellsAcross), CardRounding);
 					if (TileTextureId != ImTextureID_Invalid)
 					{
 						if (bIsFullImageThumb)
@@ -979,13 +981,13 @@ void FContentDrawerPanel::RenderContents()
 
 				const ImU32 FooterCol = bIsSelected
 					? EditorColor::Accent
-					: (bHovered ? IM_COL32(55, 58, 65, 255) : IM_COL32(42, 44, 48, 255));
+					: (bHovered ? EditorColor::BgHover : EditorColor::BgHeader);
 				DL->AddRectFilled(FooterMin, FooterMax, FooterCol, CardRounding, ImDrawFlags_RoundCornersBottom);
 
 				DL->PushClipRect(FooterMin, FooterMax, true);
 				if (bDrawNameText)
 				{
-					const ImU32 NameCol = IM_COL32(232, 234, 238, 255);
+					const ImU32 NameCol = EditorColor::TextPrimary;
 					DrawCardNameLines(DL, DisplayName,
 						ImVec2(FooterMin.x + TextPadX, FooterMin.y + TextPadY),
 						CardW - TextPadX * 2.0f, NameCol, false, bOutNameTruncated);
@@ -999,7 +1001,7 @@ void FContentDrawerPanel::RenderContents()
 
 				const ImU32 BorderCol = bIsSelected
 					? EditorColor::AccentBright
-					: (bHovered ? IM_COL32(115, 120, 130, 255) : IM_COL32(26, 28, 32, 255));
+					: (bHovered ? EditorColor::BorderStrong : EditorColor::BgRaised);
 				DL->AddRect(CardMin, CardMax, BorderCol, CardRounding, 0, bIsSelected ? EditorStyle::Scale(1.8f) : 1.0f);
 			};
 
@@ -1399,7 +1401,7 @@ void FContentDrawerPanel::RenderNavigationBar()
 		Segments.push_back({ Part.string(), AccumPath });
 	}
 
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.085f, 0.092f, 0.105f, 0.90f));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, EditorColor::WithAlpha(EditorColor::BgPanel, 230));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(EditorStyle::Scale(6.0f), 0.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, EditorStyle::Scale(4.0f));
@@ -1407,8 +1409,8 @@ void FContentDrawerPanel::RenderNavigationBar()
 		ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.27f, 0.33f, 0.70f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.30f, 0.34f, 0.42f, 0.90f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorColor::Contrast(36));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorColor::Contrast(60));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, EditorStyle::Scale(3.0f));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(EditorStyle::Scale(2.0f), 0.0f));
@@ -1793,7 +1795,7 @@ void FContentDrawerPanel::RenderAssetModals()
 
 		if (!FileOpErrorMessage.empty())
 		{
-			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", FileOpErrorMessage.c_str());
+			ImGui::TextColored(EditorColor::ToVec4(EditorColor::Error), "%s", FileOpErrorMessage.c_str());
 		}
 
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.68f, 0.16f, 0.16f, 1.0f));

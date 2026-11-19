@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "ParticleSystemDetailsPanel.h"
+#include "Editor/EditorUI/EditorStyle.h"
 
 #include "Editor/Details/PropertyEditor.h"
 #include "Editor/ParticleSystemEditor/DistributionCustomization.h"
@@ -24,7 +25,7 @@ void FParticleSystemDetailsPanel::DrawContent()
 	const char* Reason = nullptr;
 	if (Module && !Editor.IsModuleCompatible(Editor.GetSelectedEmitter(), Module, &Reason))
 	{
-		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(230, 80, 70, 255));
+		ImGui::PushStyleColor(ImGuiCol_Text, EditorColor::Error);
 		ImGui::TextWrapped("This module has no effect: %s", Reason);
 		ImGui::PopStyleColor();
 		ImGui::Separator();
