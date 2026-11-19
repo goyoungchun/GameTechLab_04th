@@ -2,30 +2,36 @@
 $ErrorActionPreference = 'Stop'
 $engineRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $solution = Join-Path $engineRoot 'Kurisu.slnx'
-$temporaryDrive = $null
+
+# Premake breaks on non-ASCII paths, so generate through an ASCII junction.
+# A junction, unlike subst, does not broadcast a drive change to every window,
+# which made the console wait for a busy Visual Studio before closing.
+$aliasRoot = Join-Path $env:ProgramData 'KurisuProjectGen'
+$aliasCreated = $false
+
+function Remove-Alias {
+    $item = Get-Item -LiteralPath $aliasRoot -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) { return }
+    if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Not a junction, refusing to remove: $aliasRoot"
+    }
+    # Non-recursive delete removes only the link, never the repository behind it.
+    [IO.Directory]::Delete($aliasRoot)
+}
+
 try {
-    # Generate through an ASCII drive alias, then keep generated paths relative.
-    $temporaryDrive = 90..68 |
-        ForEach-Object { '{0}:' -f [char]$_ } |
-        Where-Object {
-            [IO.Directory]::GetLogicalDrives() -notcontains "$_\"
-        } |
-        Select-Object -First 1
-
-    if (-not $temporaryDrive) {
-        throw 'No free drive letter is available.'
+    if ($aliasRoot -match '[^\x00-\x7F]') {
+        throw "Generation path is not ASCII: $aliasRoot"
     }
 
-    & subst.exe $temporaryDrive $engineRoot
-    if ($LASTEXITCODE -ne 0) {
-        $temporaryDrive = $null
-        throw 'Could not create the temporary project path.'
-    }
+    # A previous run that was killed may have left the junction behind.
+    Remove-Alias
+    New-Item -ItemType Junction -Path $aliasRoot -Target $engineRoot | Out-Null
+    $aliasCreated = $true
 
-    Push-Location -LiteralPath "$temporaryDrive\"
+    Push-Location -LiteralPath $aliasRoot
     try {
-        $premake = "$temporaryDrive\Setup\Build\premake5.exe"
-        & $premake --file=Setup/Build/premake5.lua vs2026
+        & "$aliasRoot\Setup\Build\premake5.exe" --file=Setup/Build/premake5.lua vs2026
 
         if ($LASTEXITCODE -ne 0) {
             throw "Premake failed: $LASTEXITCODE"
@@ -35,35 +41,36 @@ try {
         Pop-Location
     }
 
+    # premake5.lua keeps paths relative, so this is only a safety net for absolute ones.
+    $aliasForward = $aliasRoot.Replace('\', '/')
     $projectDirectory = Join-Path $engineRoot 'Build\Projects'
-    $encoding = [Text.UTF8Encoding]::new($false)
+
+    # Premake skips files whose content is unchanged, and Visual Studio asks to
+    # reload any file whose timestamp moves. Write back only real changes, with
+    # the same BOM, so the next run still matches what premake produces.
+    function Update-GeneratedFile([string]$Path, [string[]]$From, [string[]]$To) {
+        $bytes = [IO.File]::ReadAllBytes($Path)
+        $hasBom = $bytes.Length -ge 3 -and
+            $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+        $original = [IO.File]::ReadAllText($Path)
+        $content = $original
+        for ($i = 0; $i -lt $From.Count; ++$i) {
+            $content = $content.Replace($From[$i], $To[$i])
+        }
+        if ($content.Contains($aliasRoot) -or $content.Contains($aliasForward)) {
+            throw "Temporary path reference remains in $(Split-Path -Leaf $Path)."
+        }
+        if ($content -ne $original) {
+            [IO.File]::WriteAllText($Path, $content, [Text.UTF8Encoding]::new($hasBom))
+        }
+        return $content
+    }
 
     Get-ChildItem -LiteralPath $projectDirectory `
         -Filter '*.vcxproj*' -File | ForEach-Object {
-        $content = [IO.File]::ReadAllText($_.FullName)
-        if ($_.Extension -eq '.filters') {
-            # Filter names are plain labels, not paths: macros are not expanded there.
-            # Premake writes them from the drive root, so strip the drive instead of
-            # rewriting it to $(ProjectDir), and drop the filter for the root itself.
-            $drive = [regex]::Escape($temporaryDrive)
-            $content = [regex]::Replace($content,
-                "\s*<Filter Include=""$drive\\?"">\s*<UniqueIdentifier>[^<]*</UniqueIdentifier>\s*</Filter>", '')
-            $content = [regex]::Replace($content,
-                "(<Filter Include=""|<Filter>)$drive[\\/]", '$1')
-            $content = [regex]::Replace($content,
-                "\s*<Filter>$drive\\?</Filter>", '')
-        }
-        $content = $content.Replace(
-            "$temporaryDrive\", '$(ProjectDir)..\..\')
-        $content = $content.Replace(
-            "$temporaryDrive/", '$(ProjectDir)../../')
-        # Premake also emits the drive root without a trailing separator.
-        $content = $content.Replace($temporaryDrive, '$(ProjectDir)..\..')
-        if ($content.Contains($temporaryDrive)) {
-            throw "Temporary drive reference remains in $($_.Name)."
-        }
-        [IO.File]::WriteAllText(
-            $_.FullName, $content, $encoding)
+        [void](Update-GeneratedFile $_.FullName `
+            @("$aliasRoot\", "$aliasForward/", $aliasRoot, $aliasForward) `
+            @('$(ProjectDir)..\..\', '$(ProjectDir)../../', '$(ProjectDir)..\..', '$(ProjectDir)../..'))
     }
 
     if (-not (Test-Path -LiteralPath $solution -PathType Leaf)) {
@@ -71,10 +78,8 @@ try {
     }
 
     # Solution paths are relative to the repository, not to ProjectDir.
-    $solutionContent = [IO.File]::ReadAllText($solution)
-    $solutionContent = $solutionContent.Replace("$temporaryDrive\", '')
-    $solutionContent = $solutionContent.Replace("$temporaryDrive/", '')
-    [IO.File]::WriteAllText($solution, $solutionContent, $encoding)
+    $solutionContent = Update-GeneratedFile $solution `
+        @("$aliasRoot\", "$aliasForward/") @('', '')
 
     [xml]$solutionDocument = $solutionContent
     $projectReferences = $solutionDocument.SelectNodes(
@@ -94,5 +99,5 @@ catch {
     exit 1
 }
 finally {
-    if ($temporaryDrive) { & subst.exe $temporaryDrive /D }
+    if ($aliasCreated) { Remove-Alias }
 }
