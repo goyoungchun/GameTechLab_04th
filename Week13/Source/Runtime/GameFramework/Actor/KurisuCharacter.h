@@ -17,6 +17,10 @@ class AKurisuCharacter : public AMyCharacter
 public:
 	AKurisuCharacter();
 
+	// 메시가 비어 있으면 기본 Kurisu 메시를 넣는다
+	static constexpr const char* DefaultMeshPath = "FBX/Kurisu/Kurisu.fbx.bin";
+	void EnsureDefaultMesh();
+
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	// 플레이어 입력은 여기서 가로챈다. 액션(구르기·슬라이드·공격) 중에는 이동으로 넘기지 않고 방향만 기억한다

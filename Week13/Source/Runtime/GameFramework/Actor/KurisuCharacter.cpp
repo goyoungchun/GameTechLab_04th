@@ -7,6 +7,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CharacterMovementComponent.h"
+#include "Asset/AssetManager.h"
+#include "Core/Misc/Paths.h"
+#include "Render/SkeletalMesh.h"
 #include "Input/KeyCode.h"
 #include <algorithm>
 #include <cmath>
@@ -36,6 +39,24 @@ AKurisuCharacter::AKurisuCharacter()
 	SpringArmComponent->CameraLagSpeed = 14.0f;
 
 	ApplyMovementSettings();
+
+	// 에디터의 액터 추가 메뉴로 놓아도 바로 보이도록 기본 메시를 넣는다. 씬에 저장된 메시가 있으면 불러올 때 덮어쓴다.
+	if (FPaths::HasProject())
+	{
+		EnsureDefaultMesh();
+	}
+}
+
+void AKurisuCharacter::EnsureDefaultMesh()
+{
+	if (!SkeletalMeshComponent || SkeletalMeshComponent->GetSkeletalMesh())
+	{
+		return;
+	}
+	if (USkeletalMesh* Mesh = UAssetManager::GetAssetByPath<USkeletalMesh>(DefaultMeshPath))
+	{
+		SkeletalMeshComponent->SetSkeletalMesh(Mesh);
+	}
 }
 
 void AKurisuCharacter::ApplyMovementSettings()
@@ -57,6 +78,7 @@ void AKurisuCharacter::BeginPlay()
 
 	// 씬에 저장된 이동 컴포넌트 값(예전 루트 모션 설정)이 생성자 값을 덮으므로 여기서 다시 맞춘다
 	ApplyMovementSettings();
+	EnsureDefaultMesh();
 
 	if (SkeletalMeshComponent->GetAnimBlueprintPath().empty() && !GetKurisuAnimInstance())
 	{
