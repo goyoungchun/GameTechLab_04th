@@ -18,23 +18,23 @@ class UKurisuAnimInstance : public UAnimInstance
 
 public:
 	UPROPERTY(EditAnywhere)
-	FString IdleAnimationPath = "FBX/Kurisu_Idle/Kurisu_Idle.anim.bin";
+	FString IdleAnimationPath = "FBX/Kurisu/Kurisu_Idle.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString WalkAnimationPath = "FBX/Kurisu_Walking/Kurisu_Walking.anim.bin";
+	FString WalkAnimationPath = "FBX/Kurisu/Kurisu_Walking.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString SlowRunAnimationPath = "FBX/Kurisu_SlowRun/Kurisu_SlowRun.anim.bin";
+	FString SlowRunAnimationPath = "FBX/Kurisu/Kurisu_SlowRun.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString RunAnimationPath = "FBX/Kurisu_Running/Kurisu_Running.anim.bin";
+	FString RunAnimationPath = "FBX/Kurisu/Kurisu_Running.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString JumpAnimationPath = "FBX/Kurisu_Jump/Kurisu_Jump.anim.bin";
+	FString JumpAnimationPath = "FBX/Kurisu/Kurisu_Jump.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString RollAnimationPath = "FBX/Kurisu_StandToRoll/Kurisu_StandToRoll.anim.bin";
+	FString RollAnimationPath = "FBX/Kurisu/Kurisu_StandToRoll.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString SlideAnimationPath = "FBX/Kurisu_RunningSlide/Kurisu_RunningSlide.anim.bin";
+	FString SlideAnimationPath = "FBX/Kurisu/Kurisu_RunningSlide.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString JabAnimationPath = "FBX/Kurisu_Jab/Kurisu_Jab.anim.bin";
+	FString JabAnimationPath = "FBX/Kurisu/Kurisu_Jab.anim.bin";
 	UPROPERTY(EditAnywhere)
-	FString PunchAnimationPath = "FBX/Kurisu_Punching/Kurisu_Punching.anim.bin";
+	FString PunchAnimationPath = "FBX/Kurisu/Kurisu_Punching.anim.bin";
 
 	// Jab.anim.bin 타이밍 (초). 0~0.33 자세만 잡음, 0.37~0.55 왼손 뻗기, 0.6~0.75 회수
 	UPROPERTY(EditAnywhere)
