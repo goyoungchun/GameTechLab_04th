@@ -4,7 +4,15 @@ cbuffer ToneMapconstants : register(b0)
 {
     float InvGamma;
     float bGammaCorrection;
-    float2 Padding;
+    float Exposure;
+    float Padding;
+}
+
+// ACES 근사 곡선(Narkowicz). 큰 값일수록 1.0에 천천히 다가가 하이라이트 그라데이션이 남는다
+float3 ACESFilm(float3 X)
+{
+    const float A = 2.51f, B = 0.03f, C = 2.43f, D = 0.59f, E = 0.14f;
+    return saturate((X * (A * X + B)) / (X * (C * X + D) + E));
 }
 
 
@@ -25,7 +33,7 @@ float4 mainPS(FPSInput Input) : SV_Target
 {
     int2 Pixel = int2(Input.Position.xy);
     float3 HDR = max(LightingHDR.Load(int3(Pixel, 0)).rgb, 0.0f);
-    float3 Ldr = saturate(HDR);
+    float3 Ldr = ACESFilm(HDR * Exposure);
     // SceneColor는 UNORM이므로 화면에 표시할 sRGB 근사값으로 변환한다.
     float3 DisplayColor = (bGammaCorrection > 0.5f) ? pow(Ldr, InvGamma) : Ldr;
     return float4(DisplayColor, 1.0f);

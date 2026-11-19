@@ -61,6 +61,7 @@ void FLevelEditorViewportClient::Draw(FRenderer* Renderer)
 		RenderSettings.SpotShadowMapSize = S.GetSpotShadowMapSize();
 		RenderSettings.bGammaCorrection = S.bGammaCorrection;
 		RenderSettings.DisplayGamma = S.DisplayGamma;
+		RenderSettings.ExposureCompensation = S.ExposureCompensation;
 		RenderSettings.bDecalCulling = S.bDecalCulling;
 		RenderSettings.bDecalNarrowCulling = S.bDecalNarrowCulling;
 		RenderSettings.bDecalBVHCulling = S.bDecalBVHCulling;

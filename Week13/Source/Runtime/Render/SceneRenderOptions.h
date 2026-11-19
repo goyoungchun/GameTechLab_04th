@@ -26,6 +26,7 @@ struct FSceneRenderSettings
 
 	bool bGammaCorrection = true;
 	float DisplayGamma = 2.2f;
+	float ExposureCompensation = 0.0f; // 스톱 단위. +1이면 2배 밝게 (UE PostProcess의 Exposure Compensation)
 	bool bUsePreviewSkybox = false;
 };
 

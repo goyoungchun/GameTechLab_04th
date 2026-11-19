@@ -1089,6 +1089,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 					RenderSettings.SpotShadowMapSize = S.GetSpotShadowMapSize();
 					RenderSettings.bGammaCorrection = S.bGammaCorrection;
 					RenderSettings.DisplayGamma = S.DisplayGamma;
+					RenderSettings.ExposureCompensation = S.ExposureCompensation;
 				}
 			}
 		}

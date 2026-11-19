@@ -65,6 +65,7 @@ bool FEditorSettingsManager::SaveSettings() const
 
 	File << "GammaCorrection=" << Settings.bGammaCorrection << "\n";
 	File << "DisplayGamma=" << Settings.DisplayGamma << "\n";
+	File << "ExposureCompensation=" << Settings.ExposureCompensation << "\n";
 
 	File << "LightCullingMode=" << (Settings.LightCullingMode == ELightCullingMode::Off ? "Off" : "Tiled") << "\n";
 	File << "LightingModel=" << (Settings.LightingModel == ELightingModel::Gouraud ? "Gouraud" :
@@ -225,6 +226,7 @@ bool FEditorSettingsManager::LoadSettings()
 
 				else if (Key == "GammaCorrection")   Settings.bGammaCorrection = std::stoi(ValueStr);
 				else if (Key == "DisplayGamma")      Settings.DisplayGamma = std::stof(ValueStr);
+				else if (Key == "ExposureCompensation") Settings.ExposureCompensation = std::stof(ValueStr);
 
 				else if (Key == "LightCullingMode")
 				{
