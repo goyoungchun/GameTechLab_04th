@@ -111,6 +111,7 @@ void FViewportsPanel::DrawRenderMenu()
     ImGui::BeginDisabled(!Settings.bGammaCorrection);
     ImGui::SliderFloat("Display Gamma", &Settings.DisplayGamma, 1.0f, 3.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
     ImGui::EndDisabled();
+    ImGui::SliderFloat("Exposure (EV)", &Settings.ExposureCompensation, -5.0f, 5.0f, "%+.1f", ImGuiSliderFlags_AlwaysClamp);
 
     ImGui::SeparatorText("Performance");
     const char* Decals[] = { "Off", "Linear AABB", "BVH" };

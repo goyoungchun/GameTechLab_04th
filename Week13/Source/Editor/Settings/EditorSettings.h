@@ -60,6 +60,7 @@ struct FEditorSettings
 
 	bool bGammaCorrection = true;
 	float DisplayGamma = 2.2f;
+	float ExposureCompensation = 0.0f;
 
 	inline uint32 GetDirectionalShadowMapSize() const { return DirectionalShadowMapSizePerLevels[DirectionalShadowMapSizeLevel]; }
 	inline uint32 GetPointShadowMapSize() const { return PointShadowMapSizePerLevels[PointShadowMapSizeLevel]; }
