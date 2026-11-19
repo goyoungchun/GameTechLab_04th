@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "Editor/KurisuEd/EditorHierarchy.h"
+#include "Editor/KurisuEd/EditorSelection.h"
 #include "Editor/EditorUI/EditorStyle.h"
 #include "Editor/Details/DetailsPanel.h"
 #include "Editor/Details/PropertyEditor.h"
@@ -3583,6 +3584,29 @@ void FDetailsPanel::OnRender()
 }
 
 
+void FDetailsPanel::SetSelection(FEditorSelection* InSelection)
+{
+	if (Selection == InSelection) return;
+	if (Selection)
+		Selection->OnChanged.RemoveAll(this);
+	Selection = InSelection;
+	if (Selection)
+	{
+		Selection->OnChanged.AddRaw(this, &FDetailsPanel::OnSelectionChanged);
+		OnSelectionChanged();
+	}
+}
+
+// 선택 객체의 액터 목록과 고른 컴포넌트를 보여 줄 대상으로 옮긴다.
+void FDetailsPanel::OnSelectionChanged()
+{
+	if (!Selection) return;
+	UActorComponent* Desired = Selection->GetComponent();
+	SetTargets(Selection->GetActors());
+	if (Desired && TargetActor && Desired->GetOwner() == TargetActor)
+		TargetComponent = Desired;
+}
+
 void FDetailsPanel::SelectComponent(UActorComponent* Component)
 {
 	if (!Component)
@@ -3591,16 +3615,16 @@ void FDetailsPanel::SelectComponent(UActorComponent* Component)
 		EditingNameComponent = nullptr;
 		bFocusNameEdit = false;
 
-		if (Callback)
-			Callback(nullptr);
+		if (Selection)
+			Selection->SelectComponent(nullptr);
 
 		return;
 	}
 
 	TargetComponent = Component;
 
-	if (Callback)
-		Callback(TargetComponent);
+	if (Selection)
+		Selection->SelectComponent(TargetComponent);
 }
 
 void FDetailsPanel::DrawCompoenetList(AActor* SelectedActor, UActorComponent*& OutSelectedComponent)
@@ -3633,7 +3657,13 @@ void FDetailsPanel::DrawCompoenetList(AActor* SelectedActor, UActorComponent*& O
                     SelectedActor->GetFName(), OldRootName, NewRootName, ExtParentActor, ExtParentComp));
             }
             OutSelectedComponent = NewRoot;
-            if (Callback) Callback(NewRoot);
+            if (Selection)
+            {
+                // 루트가 바뀌었으므로 고른 컴포넌트가 같아도 따라오는 쪽(기즈모)을 다시 갱신한다.
+                FEditorSelectionBatch Batch(*Selection);
+                Selection->SelectComponent(NewRoot);
+                Selection->NotifyChanged();
+            }
         }
     }
     USceneComponent* Root = SelectedActor->GetRootComponent();
@@ -3940,5 +3970,6 @@ void FDetailsPanel::OnActorDestroyed(AActor* Actor)
 
 FDetailsPanel::~FDetailsPanel()
 {
-	//delete transform;
+	if (Selection)
+		Selection->OnChanged.RemoveAll(this);
 }

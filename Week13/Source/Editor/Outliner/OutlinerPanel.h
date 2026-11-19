@@ -12,8 +12,8 @@ class UPrimitiveComponent;
 class USceneComponent;
 class FEditorUndoHistory;
 
-using SelectionCallback = std::function<void(USceneComponent*)>;
-using MultiSelectionCallback = std::function<void(const TArray<AActor*>&)>;
+class FEditorSelection;
+
 using DeleteActorCallback = std::function<void(AActor*)>;
 using DeleteActorsCallback = std::function<void(const TArray<AActor*>&)>;
 
@@ -23,8 +23,8 @@ public:
     FOutlinerPanel() = default;
     ~FOutlinerPanel() = default;
 
-    void SetSelectionCallback(SelectionCallback InCallback) { Callback = std::move(InCallback); }
-    void SetMultiSelectionCallback(MultiSelectionCallback InCallback) { MultiCallback = std::move(InCallback); }
+    // 선택 상태는 이 객체가 가진다. 패널은 읽고 클릭을 여기에 반영하기만 한다.
+    void SetSelection(FEditorSelection* InSelection) { Selection = InSelection; }
     void SetDeleteActorCallback(DeleteActorCallback InCallback) { DeleteCallback = std::move(InCallback); }
     void SetDeleteActorsCallback(DeleteActorsCallback InCallback) { MultiDeleteCallback = std::move(InCallback); }
     void SetUndoHistory(FEditorUndoHistory* InHistory) { UndoHistory = InHistory; }
@@ -39,27 +39,23 @@ public:
 
     void DrawActors(ULevel* Level);
     void DrawActorNode(AActor* Actor);
-    void SelectActor(AActor* Actor, bool bAdditiveToggle = false, bool bRangeSelect = false);
-    void SelectActors(const TArray<AActor*>& Actors);
     void OnActorDestroyed(AActor* Actor);
-
-    AActor* GetSelectedActor() const;
-    const TArray<AActor*>& GetSelectedActors() const { return SelectedActors; }
-    bool IsActorSelected(const AActor* Actor) const;
 	bool IsFocused() const { return bFocused; }
 
 
 private:
-    void NotifySelectionChanged();
+    // 아웃라이너 클릭을 선택 객체에 반영한다.
+    void SelectActor(AActor* Actor, bool bAdditiveToggle = false, bool bRangeSelect = false);
     void PruneInvalidSelections(ULevel* Level);
+    AActor* GetSelectedActor() const;
+    int32 GetSelectedActorCount() const;
+    bool IsActorSelected(const AActor* Actor) const;
 
     UWorld* World = nullptr;
-    TArray<AActor*> SelectedActors;
-    AActor* SelectionAnchorActor = nullptr;
+    FEditorSelection* Selection = nullptr;
+    // Shift 범위 선택에 쓰는, 이번 프레임에 그린 순서
     TArray<AActor*> VisibleActorOrder;
 
-    SelectionCallback Callback;
-    MultiSelectionCallback MultiCallback;
     DeleteActorCallback DeleteCallback;
     DeleteActorsCallback MultiDeleteCallback;
     FEditorUndoHistory* UndoHistory = nullptr;

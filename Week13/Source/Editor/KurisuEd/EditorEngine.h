@@ -33,6 +33,7 @@
 #include "Editor/Rendering/Outline.h"
 #include "Editor/Rendering/OutLineRenderer.h"
 #include "Editor/Outliner/OutlinerPanel.h"
+#include "Editor/KurisuEd/EditorSelection.h"
 
 #include "PlayInEditorDataTypes.h"
 #include "Core/Misc/Optional.h"
@@ -108,7 +109,10 @@ public:
 	// GetDefault<ULevelEditorViewportSettings>()). 다만 이 세 함수의 이름은 UE에 없는, 이 엔진 고유의 이름이다.
 	// 설정 패널이 아직 없으면 nullptr이다.
 	const FEditorSettings* GetEditorSettings() const { return EditorSettings ? &EditorSettings->GetSettings() : nullptr; }
-	// 지금 선택된 컴포넌트와 조작 모드를 가진 기즈모
+	// 레벨 에디터에서 무엇이 선택됐는지의 원본
+	FEditorSelection& GetSelection() { return Selection; }
+	const FEditorSelection& GetSelection() const { return Selection; }
+	// 선택된 컴포넌트를 조작하는 기즈모. 조작 대상은 선택을 따라간다.
 	FGizmo* GetGizmo() const { return Gizmo.get(); }
 	// 지금 선택된 메시의 외곽선
 	FOutline* GetOutline() const { return Outline.get(); }
@@ -186,6 +190,10 @@ private:
 	TUniquePtr<FOutline> Outline;
 	TUniquePtr<FUIRenderer> UIRenderer;
 	TUniquePtr<FGizmo> Gizmo;
+	// 패널들이 구독하므로 패널보다 오래 산다.
+	FEditorSelection Selection;
+	// 선택이 바뀌면 기즈모와 외곽선을 선택에 맞춘다.
+	void OnSelectionChanged();
 
 
 	FLevelEditorTab* LevelEditorTab = nullptr;

@@ -90,11 +90,12 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 	const FSceneView& SceneView = *View;
 
 	// 디버그 선은 이 뷰포트가 보는 월드의 LineBatcher로 그린다.
-	// 무엇이 선택됐는지(Gizmo, Outline)와 에디터 설정은 에디터 전체가 공유하므로 엔진(GEditor)에서 읽는다.
+	// 선택, 기즈모, 외곽선과 에디터 설정은 에디터 전체가 공유하므로 엔진(GEditor)에서 읽는다.
 	const FEditorSettings& Settings = *GEditor->GetEditorSettings();
 	FLineBatcher* LineBatcher = GetWorld()->LineBatcher.get();
 	FGizmo* Gizmo = GEditor->GetGizmo();
 	FOutline* Outline = GEditor->GetOutline();
+	AActor* SelectedActor = GEditor->GetSelection().GetPrimaryActor();
 
 	// 뷰 모드가 Scene Depth, Cascade일 때 깊이를 색으로 바꿔 보여 준다.
 	FTexture2D* ColorTarget = ViewTargets.SceneColor.get();
@@ -112,14 +113,14 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 	const FViewportSettings ViewportSetting{ 0, 0, ViewTargets.SceneColor->GetWidth(), ViewTargets.SceneColor->GetHeight(), 0.0f, 1.0f };
 	const bool bIsActiveViewport = (GCurrentLevelEditingViewportClient == this);
 
-	const bool bDrawSelectedLight = bIsActiveViewport && Gizmo->GetTarget() &&
-		(Cast<ASpotLightActor>(Gizmo->GetTarget()->GetOwner()) ||
-			Cast<APointLightActor>(Gizmo->GetTarget()->GetOwner()) ||
-			Cast<ADecalActor>(Gizmo->GetTarget()->GetOwner()));
+	const bool bDrawSelectedLight = bIsActiveViewport && SelectedActor &&
+		(Cast<ASpotLightActor>(SelectedActor) ||
+			Cast<APointLightActor>(SelectedActor) ||
+			Cast<ADecalActor>(SelectedActor));
 
 	const bool bDrawCascadeBounds = EngineShowFlags.CascadeBounds;
 	{
-		Callbacks.Overlays.EditorLines = [this, &SceneView, &Settings, LineBatcher, Gizmo, bDrawSelectedLight, bDrawCascadeBounds]
+		Callbacks.Overlays.EditorLines = [this, &SceneView, &Settings, LineBatcher, SelectedActor, bDrawSelectedLight, bDrawCascadeBounds]
 			{
 				LineBatcher->BeginFrame();
 				if (bDrawCascadeBounds)
@@ -155,16 +156,13 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 				
 				if (bDrawSelectedLight)
 				{
-					if (ASpotLightActor* Light = Cast<ASpotLightActor>(Gizmo->GetTarget()->GetOwner()))
+					if (ASpotLightActor* Light = Cast<ASpotLightActor>(SelectedActor))
 						Light->GetSpotLightComponent()->DrawDebug(LineBatcher);
-					else if (APointLightActor* Light = Cast<APointLightActor>(Gizmo->GetTarget()->GetOwner()))
+					else if (APointLightActor* Light = Cast<APointLightActor>(SelectedActor))
 						Light->GetPointLightComponent()->DrawDebug(LineBatcher);
-					else if (ADecalActor* Decal = Cast<ADecalActor>(Gizmo->GetTarget()->GetOwner()))
+					else if (ADecalActor* Decal = Cast<ADecalActor>(SelectedActor))
 						Decal->GetDecalComponent()->DrawDebug(LineBatcher);
 				}
-
-				const AActor* SelectedActor =
-					Gizmo->GetTarget() ? Gizmo->GetTarget()->GetOwner() : nullptr;
 
 				// 이 뷰포트가 보고 있는 월드의 것을 그린다. PIE와 SIE 중에는 PIE 월드다.
 				if (EngineShowFlags.Collision)

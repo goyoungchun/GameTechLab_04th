@@ -8,9 +8,9 @@
 struct FTransform;
 class FImGuiRenderer;
 class FEditorUndoHistory;
+class FEditorSelection;
 using FShadowPreviewQuery = std::function<bool(const ULightComponent*, FTexture2DArray*&, TArray<FLightShadowRenderData>&)>;
 
-using DetailsSelectionCallback = std::function<void(UActorComponent*)>;
 using DetailsDeleteComponentCallback = std::function<void(UActorComponent*)>;
 
 class FDetailsPanel : public IEditorPanel
@@ -84,7 +84,8 @@ public:
 		TargetComponent = InTargetComponent;
 	}
 
-	void SetSelectionCallback(DetailsSelectionCallback InCallback) { Callback = InCallback; }
+	// 보여 줄 대상은 이 선택 객체를 따라간다. 컴포넌트를 고르면 선택 객체에 반영한다.
+	void SetSelection(FEditorSelection* InSelection);
 	void SetDeleteComponentCallback(DetailsDeleteComponentCallback InCallback) { DeleteCallback = InCallback; }
 	void SetUndoHistory(FEditorUndoHistory* InHistory) { UndoHistory = InHistory; }
 
@@ -105,6 +106,7 @@ public:
 
 private:
 	void DrawShadowPreview();
+	void OnSelectionChanged();
 	void DrawComponentNameEditor(UActorComponent* Component, UActorComponent*& Selected, bool bRequested);
 	USceneComponent* PendingRootComponent = nullptr;
 	FShadowPreviewQuery QueryShadowPreview;
@@ -132,7 +134,7 @@ private:
 	TArray<AActor*> TargetActors;
 	AActor* TargetActor = nullptr;
 	UActorComponent* TargetComponent = nullptr;
-	DetailsSelectionCallback Callback;
+	FEditorSelection* Selection = nullptr;
 	DetailsDeleteComponentCallback DeleteCallback;
 
 	UActorComponent* PendingDeleteComponent = nullptr;

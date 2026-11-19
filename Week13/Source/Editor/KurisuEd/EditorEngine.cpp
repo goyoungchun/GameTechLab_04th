@@ -420,67 +420,10 @@ void UEditorEngine::InitPanels()
 
 	OutlinerPanel = LevelEditorTab->AddPanel<FOutlinerPanel>();
 	OutlinerPanel->SetWorld(GetActiveWorld());
-	OutlinerPanel->SetMultiSelectionCallback(
-		[this](const TArray<AActor*>& SelectedActors)
-		{
-			AActor* Primary = SelectedActors.IsEmpty() ? nullptr : SelectedActors.Last();
-			USceneComponent* Root = Primary ? Primary->GetRootComponent() : nullptr;
-			Gizmo->SetTarget(Root, true);
-			DetailsPanel->SetTargets(SelectedActors);
-
-			TArray<UPrimitiveComponent*> Primitives;
-			for (AActor* Actor : SelectedActors)
-			{
-				if (!Actor)
-				{
-					continue;
-				}
-				for (UActorComponent* C : Actor->GetComponents())
-				{
-					if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(C))
-					{
-						Primitives.Add(Prim);
-					}
-				}
-			}
-			Outline->SetTargets(Primitives);
-		});
-	OutlinerPanel->SetSelectionCallback(
-		[this](USceneComponent* Root)
-		{
-			Gizmo->SetTarget(Root, true);
-			DetailsPanel->SetTarget(Root ? Root->GetOwner() : nullptr);
-
-			UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Root);
-			if (!Primitive && Root && Root->GetOwner())
-			{
-				for (UActorComponent* C : Root->GetOwner()->GetComponents())
-					if ((Primitive = Cast<UPrimitiveComponent>(C))) break;
-			}
-			Outline->SetTarget(Primitive);
-		});
-
-	DetailsPanel->SetSelectionCallback(
-		[this](UActorComponent* Component)
-		{
-			if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))
-			{
-				AActor* Owner = SceneComponent->GetOwner();
-				if (Owner && SceneComponent == Owner->GetRootComponent())
-				{
-					Gizmo->SetTarget(SceneComponent, true);
-				}
-				else
-				{
-					Gizmo->SetTarget(SceneComponent);
-				}
-			}
-			else
-			{
-				Gizmo->SetTarget(nullptr);
-			}
-		}
-	);
+	// 선택 상태는 Selection 하나가 가진다. 패널, 기즈모, 외곽선은 그 변경을 따라간다.
+	OutlinerPanel->SetSelection(&Selection);
+	DetailsPanel->SetSelection(&Selection);
+	Selection.OnChanged.AddDynamic(this, &UEditorEngine::OnSelectionChanged);
 
 	OutlinerPanel->SetUndoHistory(&UndoHistory);
 	DetailsPanel->SetUndoHistory(&UndoHistory);
@@ -514,31 +457,8 @@ void UEditorEngine::InitPanels()
 				return;
 			}
 
-			if (Gizmo && Gizmo->GetTarget() && Gizmo->GetTarget()->GetOwner() == DestroyedActor)
-			{
-				Gizmo->SetTarget(nullptr, false);
-			}
-			if (Outline)
-			{
-				const TArray<UPrimitiveComponent*>& CurTargets = Outline->GetTargets();
-				bool bHadTarget = false;
-				TArray<UPrimitiveComponent*> Remaining;
-				for (UPrimitiveComponent* Prim : CurTargets)
-				{
-					if (Prim && Prim->GetOwner() == DestroyedActor)
-					{
-						bHadTarget = true;
-					}
-					else if (Prim)
-					{
-						Remaining.Add(Prim);
-					}
-				}
-				if (bHadTarget)
-				{
-					Outline->SetTargets(Remaining);
-				}
-			}
+			// 선택에서 빼면 기즈모, 외곽선, 디테일이 선택 변경을 따라 정리된다.
+			Selection.RemoveActor(DestroyedActor);
 			if (DetailsPanel)
 			{
 				DetailsPanel->OnActorDestroyed(DestroyedActor);
@@ -555,7 +475,7 @@ void UEditorEngine::InitPanels()
 	ViewportsPanel->SetEditorSettings(EditorSettings.get());
 	ViewportsPanel->SetActorSpawnedCallback([this](AActor* Actor)
 	{
-		OutlinerPanel->SelectActor(Actor);
+		Selection.SelectActor(Actor);
 		if (Actor && !IsPlaying() && UndoHistory.CanRecord())
 		{
 			FActorUndoSnapshot Snapshot;
@@ -698,7 +618,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 	FStatOverlay::Tick(DeltaTime);
 
 	if (!ImGui::GetIO().WantTextInput && FInputSystem::IsKeyPressed(EKeyCode::Delete))
-		DeleteActors(OutlinerPanel->GetSelectedActors());
+		DeleteActors(Selection.GetActors());
 
 	// 뷰포트 레이아웃과 에디터 카메라를 갱신한다. 패널의 요청(레이아웃 변경, 분할선 드래그)을 적용하고,
 	// 어느 View 위에 마우스가 있는지 찾아 활성 View를 정한 뒤 View마다 카메라 입력을 처리한다.
@@ -888,7 +808,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 				if (FInputSystem::IsKeyPressed(EKeyCode::V)) PasteActor();
 				if (FInputSystem::IsKeyPressed(EKeyCode::D))
 				{
-					const TArray<AActor*> Selected = OutlinerPanel->GetSelectedActors();
+					const TArray<AActor*> Selected = Selection.GetActors();
 					TArray<AActor*> Duplicates;
 					for (AActor* Actor : Selected)
 					{
@@ -899,7 +819,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 					}
 					if (!Duplicates.IsEmpty())
 					{
-						OutlinerPanel->SelectActors(Duplicates);
+						Selection.SelectActors(Duplicates);
 						if (!IsPlaying() && UndoHistory.CanRecord())
 						{
 							TArray<TUniquePtr<IEditorUndoCommand>> Cmds;
@@ -928,7 +848,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 			else if (!ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyAlt &&
 				CapturedViewportIndex == -1 && FInputSystem::IsKeyPressed(EKeyCode::F))
 			{
-				const TArray<AActor*>& Selected = OutlinerPanel->GetSelectedActors();
+				const TArray<AActor*>& Selected = Selection.GetActors();
 				if (!Selected.IsEmpty())
 				{
 					if (auto* Client = ViewportsPanel->GetViewportClient(ViewportsPanel->GetActiveViewIndex()))
@@ -1347,9 +1267,9 @@ void UEditorEngine::UpdateGizmoAndPicking()
 		}
 		CandidateEntries.Add(PrimaryEntry);
 
-		if (OutlinerPanel && OutlinerPanel->GetSelectedActors().Num() > 1)
+		if (Selection.GetActors().Num() > 1)
 		{
-			const TArray<AActor*>& Selected = OutlinerPanel->GetSelectedActors();
+			const TArray<AActor*>& Selected = Selection.GetActors();
 			auto HasSelectedAncestor = [&Selected](AActor* Actor) -> bool
 			{
 				for (AActor* Parent = EditorHierarchy::GetParentActor(Actor); Parent; Parent = EditorHierarchy::GetParentActor(Parent))
@@ -1399,7 +1319,8 @@ void UEditorEngine::UpdateGizmoAndPicking()
 
 	const FVector2 LocalMousePosition = ViewportsPanel->GetLocalMousePosition();
 	ViewClient->UpdateGizmoAndPicking(Gizmo.get(), LocalMousePosition, [this](AActor* SelectedActor, bool bCtrlToggle) {
-		OutlinerPanel->SelectActor(SelectedActor, bCtrlToggle);
+		if (bCtrlToggle) Selection.ToggleActor(SelectedActor);
+		else Selection.SelectActor(SelectedActor);
 		});
 
 	const bool bIsUsingNow = Gizmo && Gizmo->IsUsing();
@@ -1603,6 +1524,8 @@ void UEditorEngine::FinishGizmoDragUndo()
 void UEditorEngine::PreExit()
 {
 	UWorld::SetOnActorDestroyedCallback(nullptr);
+	// 월드를 비우기 전에 선택을 비워 액터를 가리키는 참조가 남지 않게 한다. 패널이 살아 있을 때 알린다.
+	Selection.Clear();
 	EndViewportNavCapture();
 	bTrackingGizmoDrag = false;
 	UndoHistory.Clear();
@@ -1670,22 +1593,12 @@ void UEditorEngine::SelectActorForUndo(AActor* Actor, UActorComponent* Component
 {
 	bTrackingGizmoDrag = false;
 	GizmoDragEntries.Reset();
-	if (!Actor)
-	{
-		if (Gizmo) Gizmo->SetTarget(nullptr);
-		if (Outline) Outline->SetTarget(nullptr);
-		if (DetailsPanel) DetailsPanel->SelectComponent(nullptr);
-		if (OutlinerPanel) OutlinerPanel->SelectActor(nullptr);
-		return;
-	}
 
-	if (OutlinerPanel)
+	FEditorSelectionBatch Batch(Selection);
+	Selection.SelectActor(Actor);
+	if (Actor && Component)
 	{
-		OutlinerPanel->SelectActor(Actor);
-	}
-	if (Component && DetailsPanel)
-	{
-		DetailsPanel->SelectComponent(Component);
+		Selection.SelectComponent(Component);
 	}
 }
 
@@ -1693,10 +1606,7 @@ void UEditorEngine::SelectActorsForUndo(const TArray<AActor*>& Actors)
 {
 	bTrackingGizmoDrag = false;
 	GizmoDragEntries.Reset();
-	if (OutlinerPanel)
-	{
-		OutlinerPanel->SelectActors(Actors);
-	}
+	Selection.SelectActors(Actors);
 }
 
 void UEditorEngine::DeleteActorForUndo(AActor* Actor)
@@ -1704,8 +1614,7 @@ void UEditorEngine::DeleteActorForUndo(AActor* Actor)
 	if (!Actor)
 		return;
 
-	OutlinerPanel->SelectActor(nullptr);
-	DetailsPanel->SelectComponent(nullptr);
+	Selection.Clear();
 
 	Actor->Destroy();
 }
@@ -1715,9 +1624,58 @@ void UEditorEngine::DeleteComponentForUndo(UActorComponent* Component)
 	if (!Component)
 		return;
 
-	DetailsPanel->SelectComponent(nullptr);
-	Outline->SetTarget(nullptr);
+	if (Selection.GetComponent() == Component)
+	{
+		Selection.SelectComponent(nullptr);
+	}
 	Component->GetOwner()->DestroyComponent(Component);
+	// 외곽선 등이 지운 컴포넌트를 가리키지 않도록 선택을 따라오는 쪽을 다시 갱신한다.
+	Selection.NotifyChanged();
+}
+
+// 기즈모는 주 선택 액터(또는 고른 컴포넌트)에, 외곽선은 선택된 모든 액터의 프리미티브에 맞춘다.
+void UEditorEngine::OnSelectionChanged()
+{
+	AActor* Primary = Selection.GetPrimaryActor();
+	USceneComponent* Root = Primary ? Primary->GetRootComponent() : nullptr;
+	UActorComponent* Component = Selection.GetComponent();
+
+	if (Gizmo)
+	{
+		if (!Component || Component == Root)
+		{
+			Gizmo->SetTarget(Root, true);
+		}
+		else if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))
+		{
+			Gizmo->SetTarget(SceneComponent);
+		}
+		else
+		{
+			// 트랜스폼이 없는 컴포넌트는 조작할 대상이 없다.
+			Gizmo->SetTarget(nullptr);
+		}
+	}
+
+	if (Outline)
+	{
+		TArray<UPrimitiveComponent*> Primitives;
+		for (AActor* Actor : Selection.GetActors())
+		{
+			if (!Actor)
+			{
+				continue;
+			}
+			for (UActorComponent* C : Actor->GetComponents())
+			{
+				if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(C))
+				{
+					Primitives.Add(Prim);
+				}
+			}
+		}
+		Outline->SetTargets(Primitives);
+	}
 }
 
 void UEditorEngine::DeleteActors(const TArray<AActor*>& Actors)
@@ -1872,7 +1830,7 @@ void UEditorEngine::CopySelectedActor()
 {
 	if (PlayWorld || !OutlinerPanel) return;
 	TArray<AActor*> SourceActors;
-	for (AActor* Selected : OutlinerPanel->GetSelectedActors())
+	for (AActor* Selected : Selection.GetActors())
 	{
 		if (Selected && SourceActors.Find(Selected) == INDEX_NONE)
 		{
@@ -1948,7 +1906,7 @@ void UEditorEngine::PasteActor()
 	}
 	if (ValidPasted.IsEmpty()) return;
 
-	OutlinerPanel->SelectActors(ValidPasted);
+	Selection.SelectActors(ValidPasted);
 
 	if (UndoHistory.CanRecord())
 	{
@@ -1977,10 +1935,7 @@ void UEditorEngine::PasteActor()
 void UEditorEngine::ResetSceneSelection()
 {
 	ActorClipboard.Reset();
-	Gizmo->SetTarget(nullptr, false);
-	Outline->SetTarget(nullptr);
-	DetailsPanel->SetTarget(nullptr);
-	OutlinerPanel->SelectActor(nullptr);
+	Selection.Clear();
 }
 
 // 새 씬 생성이 성공하면 에디터 선택 상태를 초기화한다.
