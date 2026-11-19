@@ -139,8 +139,9 @@ end
 
 -- 헤더 툴 (UE의 UnrealHeaderTool 역할). 엔진 코드에 의존하지 않고 std만 쓴다.
 -- KurisuEngine / KurisuEditor가 빌드 전에 이 exe로 *.generated.h를 만든다.
-HeaderTool = '"' .. ProjectRoot .. '/Build/Bin/' .. outputdir .. '/KurisuHeaderTool.exe"'
-GeneratedDir = ProjectRoot .. "/Build/Generated"
+-- 다른 빌드 이벤트처럼 상대 경로로 둬야 바뀐 게 없을 때 vcxproj가 그대로 남는다.
+HeaderTool = '"' .. ProjectRelative(ProjectRoot .. '/Build/Bin/' .. outputdir .. '/KurisuHeaderTool.exe') .. '"'
+GeneratedDir = ProjectRelative(ProjectRoot .. "/Build/Generated")
 
 project "KurisuHeaderTool"
 	location (ProjectRoot .. "/Build/Projects")
@@ -193,7 +194,7 @@ project "KurisuEngine"
 	filter {}
 
 	dependson { "KurisuHeaderTool" }
-	prebuildcommands { HeaderTool .. ' Runtime "' .. GeneratedDir .. '/Runtime" "' .. ProjectRoot .. '/Source/Runtime"' }
+	prebuildcommands { HeaderTool .. ' Runtime "' .. GeneratedDir .. '\\Runtime" "' .. ProjectRelative(ProjectRoot .. '/Source/Runtime') .. '"' }
 
 	-- sol2 템플릿이 섹션 수 제한을 넘긴다
 	filter "files:**/Script/**.cpp"
@@ -276,7 +277,7 @@ project "KurisuEditor"
 	-- game must finish first. Solution dependencies cannot be per-configuration,
 	-- so Debug editor builds also build the (small) game launcher.
 	dependson { "KurisuHeaderTool", "KurisuGame" }
-	prebuildcommands { HeaderTool .. ' Editor "' .. GeneratedDir .. '/Editor" "' .. ProjectRoot .. '/Source/Editor"' }
+	prebuildcommands { HeaderTool .. ' Editor "' .. GeneratedDir .. '\\Editor" "' .. ProjectRelative(ProjectRoot .. '/Source/Editor') .. '"' }
 
 	includedirs
 	{
