@@ -65,3 +65,8 @@
 
 * **주요 구현:** FBX 애니메이션 임포트·재생과 GPU 스키닝, Animation Viewer, AnimGraph 기반 상태 머신·BlendSpace1D, Anim Notify·Root Motion 구현
 * **담당 부분:** AnimGraph 노드 구조와 조건·우선순위 기반 상태 전이, Any State 인터럽트·포즈 블렌딩 구현. Sequence Player·TwoWayBlend·Cached Pose·Slot 노드 구성과 Lua 바인딩, 커비 Locomotion·점프/피격 및 State Transition·BlendSpace 비교 시연 씬 구성.
+
+### [Week12 — Hitori Engine](./Week12)
+
+* **주요 구현:** Sprite·Mesh·Ribbon·Beam 파티클과 모듈 기반 생성·갱신, 충돌 이벤트, 파티클 에디터 및 LOD 시스템 구현. UE5 스타일 에디터 UI와 크래시 미니덤프·심볼 기반 디버깅 지원.
+* **담당 부분:** ParticleSystemComponent와 ParticleEmitter·ParticleEmitterInstance·ParticleLODLevel 구조 및 실행 로직 구현. 파티클 생성·갱신·수명 관리, 컴포넌트 활성화·종료 처리와 카메라 거리 기반 LOD 선택·전환 구현.
