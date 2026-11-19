@@ -3,6 +3,27 @@
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewports/ViewportsPanel.h"
 
+namespace
+{
+	// [ShowFlags] 섹션의 키는 "ShowFlag.<플래그 이름>"이다. 다른 섹션 키와 겹치지 않게 접두사를 붙인다.
+	constexpr const char* ShowFlagKeyPrefix = "ShowFlag.";
+
+	// 예전 editor.ini의 [Rendering] 키를 새 플래그 이름으로 바꾼다. 없으면 nullptr.
+	const char* FindLegacyShowFlagKey(const std::string& Key)
+	{
+		struct FLegacyKey { const char* Old; const char* Flag; };
+		static constexpr FLegacyKey LegacyKeys[] = {
+			{ "DrawPrimitives", "StaticMeshes" }, { "DrawBoundingBox", "Bounds" }, { "ShowUUID", "ObjectUUID" },
+			{ "ShowRootDebug", "RootBone" }, { "DrawDecals", "Decals" }, { "DrawBatchLine", "Grid" },
+			{ "DrawCascadeBounds", "CascadeBounds" }, { "EnableFXAA", "AntiAliasing" }, { "ShowVignette", "Vignette" },
+			{ "ShowCameraOverlay", "CameraOverlay" }, { "ShowSkeletalMesh", "SkeletalMeshes" }, { "ShowParticles", "Particles" },
+		};
+		for (const FLegacyKey& Legacy : LegacyKeys)
+			if (Key == Legacy.Old) return Legacy.Flag;
+		return nullptr;
+	}
+}
+
 // 종료 시 렌더·에디터·뷰포트 설정을 함께 저장한다.
 FEditorSettingsManager::~FEditorSettingsManager()
 {
@@ -34,33 +55,26 @@ bool FEditorSettingsManager::SaveSettings() const
 	}
 
 	File << "[Rendering]\n";
-	File << "DrawPrimitives=" << Settings.bDrawPrimitives << "\n";
 	File << "CacheShadows=" << Settings.bCacheShadows << "\n";
 	File << "PcfMode=" << static_cast<uint32_t>(Settings.PcfMode) << "\n";
-	File << "DrawBoundingBox=" << Settings.bDrawBoundingBox << "\n";
-	File << "ShowUUID=" << Settings.bShowUUID << "\n";
-	File << "ShowRootDebug=" << Settings.bShowRootDebug << "\n";
-	File << "DrawDecals=" << Settings.bDrawDecals << "\n";
 	File << "DecalCulling=" << Settings.bDecalCulling << "\n";
 	File << "DecalNarrowCulling=" << Settings.bDecalNarrowCulling << "\n";
 	File << "DecalBVHCulling=" << Settings.bDecalBVHCulling << "\n";
 	File << "DecalOBBTree=" << Settings.bDecalOBBTree << "\n";
-	File << "DrawBatchLine=" << Settings.bDrawBatchLine << "\n";
-	File << "DrawCascadeBounds=" << Settings.bDrawCascadeBounds << "\n";
 	File << "SceneDepthMaxRange=" << Settings.SceneDepthMaxRange << "\n";
-	File << "EnableFXAA=" << Settings.bEnableFXAA << "\n";
 
 	File << "GammaCorrection=" << Settings.bGammaCorrection << "\n";
 	File << "DisplayGamma=" << Settings.DisplayGamma << "\n";
-	File << "ShowVignette=" << Settings.bShowVignette << "\n";
-	File << "ShowCameraOverlay=" << Settings.bShowCameraOverlay << "\n";
-	File << "ShowSkeletalMesh=" << Settings.bShowSkeletalMesh << "\n";
-	File << "ShowParticles=" << Settings.bShowParticles << "\n";
 
 	File << "LightCullingMode=" << (Settings.LightCullingMode == ELightCullingMode::Off ? "Off" : "Tiled") << "\n";
 	File << "LightingModel=" << (Settings.LightingModel == ELightingModel::Gouraud ? "Gouraud" :
 		Settings.LightingModel == ELightingModel::Lambert ? "Lambert" :
 		Settings.LightingModel == ELightingModel::Unlit ? "Unlit" : "Phong") << "\n";
+	File << "\n";
+
+	File << "[ShowFlags]\n";
+	for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
+		File << ShowFlagKeyPrefix << Info.Name << "=" << Settings.ShowFlags.Get(Info) << "\n";
 	File << "\n";
 
 	File << "[Editor]\n";
@@ -186,7 +200,10 @@ bool FEditorSettingsManager::LoadSettings()
                         RotationComponentMasks[Index] |= 1 << 3;
                     }
                 }
-                if (Key == "DrawPrimitives") Settings.bDrawPrimitives = std::stoi(ValueStr);
+				if (Key.rfind(ShowFlagKeyPrefix, 0) == 0)
+					Settings.ShowFlags.SetByName(std::string_view(Key).substr(std::char_traits<char>::length(ShowFlagKeyPrefix)), std::stoi(ValueStr) != 0);
+				else if (const char* LegacyFlag = FindLegacyShowFlagKey(Key))
+					Settings.ShowFlags.SetByName(LegacyFlag, std::stoi(ValueStr) != 0);
 				else if (Key == "CacheShadows") Settings.bCacheShadows = std::stoi(ValueStr);
 				else if (Key == "PcfMode")
 				{
@@ -194,25 +211,14 @@ bool FEditorSettingsManager::LoadSettings()
 					if (Mode >= 0 && Mode <= static_cast<int>(EPcfMode::PCSS))
 						Settings.PcfMode = static_cast<EPcfMode>(Mode);
 				}
-				else if (Key == "DrawBoundingBox") Settings.bDrawBoundingBox = std::stoi(ValueStr);
-				else if (Key == "ShowUUID") Settings.bShowUUID = std::stoi(ValueStr);
-				else if (Key == "ShowRootDebug") Settings.bShowRootDebug = std::stoi(ValueStr);
-				else if (Key == "DrawDecals") Settings.bDrawDecals = std::stoi(ValueStr);
 				else if (Key == "DecalCulling") Settings.bDecalCulling = std::stoi(ValueStr);
 				else if (Key == "DecalNarrowCulling") Settings.bDecalNarrowCulling = std::stoi(ValueStr);
 				else if (Key == "DecalBVHCulling") Settings.bDecalBVHCulling = std::stoi(ValueStr);
 				else if (Key == "DecalOBBTree") Settings.bDecalOBBTree = std::stoi(ValueStr);
-				else if (Key == "DrawBatchLine") Settings.bDrawBatchLine = std::stoi(ValueStr);
-				else if (Key == "DrawCascadeBounds") Settings.bDrawCascadeBounds = std::stoi(ValueStr);
 				else if (Key == "SceneDepthMaxRange") Settings.SceneDepthMaxRange = std::stof(ValueStr);
-				else if (Key == "EnableFXAA") Settings.bEnableFXAA = std::stoi(ValueStr);
 
 				else if (Key == "GammaCorrection")   Settings.bGammaCorrection = std::stoi(ValueStr);
 				else if (Key == "DisplayGamma")      Settings.DisplayGamma = std::stof(ValueStr);
-				else if (Key == "ShowVignette")      Settings.bShowVignette = std::stoi(ValueStr);
-				else if (Key == "ShowCameraOverlay") Settings.bShowCameraOverlay = std::stoi(ValueStr);
-				else if (Key == "ShowSkeletalMesh")  Settings.bShowSkeletalMesh = std::stoi(ValueStr);
-				else if (Key == "ShowParticles")     Settings.bShowParticles = std::stoi(ValueStr);
 
 				else if (Key == "LightCullingMode")
 				{

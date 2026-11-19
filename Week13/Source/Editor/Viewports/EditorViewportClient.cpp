@@ -245,11 +245,12 @@ void FEditorViewportClient::Draw(FRenderer* Renderer)
 
 	// 보이는 물체와 라이트를 모은다.
 	FSceneRenderer SceneRenderer(TargetWorld, SceneView, RenderData);
-	SceneRenderer.InitViews(Renderer, EngineShowFlags);
+	const FSceneRenderOptions RenderOptions = GetRenderOptions();
+	SceneRenderer.InitViews(Renderer, RenderOptions);
 
 	// 패스를 순서대로 실행해 ViewTargets에 그린다. 씬 위에 올릴 에디터 요소는
 	// 두 번째 Draw가 등록하고, 등록한 함수는 Render 안에서 불린다.
-	SceneRenderer.Render(Renderer, ViewTargets, EngineShowFlags,
+	SceneRenderer.Render(Renderer, ViewTargets, RenderOptions,
 		[this, &SceneView](FScenePassCallbacks& Callbacks)
 		{
 			Draw(&SceneView, Callbacks);

@@ -59,27 +59,31 @@ FGameSettings FGameSettings::Load(const FString& Path)
 	Settings.bVSync = Config.GetBool("Window", "VSync", Settings.bVSync);
 
 	FSceneRenderOptions& Options = Settings.RenderOptions;
-	Options.LightingModel = ParseLightingModel(Config.GetString("Rendering", "LightingModel", ""), Options.LightingModel);
-	Options.LightCullingMode = ParseLightCullingMode(Config.GetString("Rendering", "LightCullingMode", ""), Options.LightCullingMode);
-	Options.bEnableFXAA = Config.GetBool("Rendering", "EnableFXAA", Options.bEnableFXAA);
-	Options.bGammaCorrection = Config.GetBool("Rendering", "GammaCorrection", Options.bGammaCorrection);
-	Options.bShowVignette = Config.GetBool("Rendering", "ShowVignette", Options.bShowVignette);
-	Options.bShowCameraOverlay = Config.GetBool("Rendering", "ShowCameraOverlay", Options.bShowCameraOverlay);
-	Options.bShowSkeletalMesh = Config.GetBool("Rendering", "ShowSkeletalMesh", Options.bShowSkeletalMesh);
-	Options.bShowParticles = Config.GetBool("Rendering", "ShowParticles", Options.bShowParticles);
+	Options.Settings.LightingModel = ParseLightingModel(Config.GetString("Rendering", "LightingModel", ""), Options.Settings.LightingModel);
+	Options.Settings.LightCullingMode = ParseLightCullingMode(Config.GetString("Rendering", "LightCullingMode", ""), Options.Settings.LightCullingMode);
+	Options.ShowFlags.AntiAliasing = Config.GetBool("Rendering", "EnableFXAA", Options.ShowFlags.AntiAliasing);
+	Options.Settings.bGammaCorrection = Config.GetBool("Rendering", "GammaCorrection", Options.Settings.bGammaCorrection);
+	Options.ShowFlags.Vignette = Config.GetBool("Rendering", "ShowVignette", Options.ShowFlags.Vignette);
+	Options.ShowFlags.CameraOverlay = Config.GetBool("Rendering", "ShowCameraOverlay", Options.ShowFlags.CameraOverlay);
+	Options.ShowFlags.SkeletalMeshes = Config.GetBool("Rendering", "ShowSkeletalMesh", Options.ShowFlags.SkeletalMeshes);
+	Options.ShowFlags.Particles = Config.GetBool("Rendering", "ShowParticles", Options.ShowFlags.Particles);
 	if (const FString Gamma = Config.GetString("Rendering", "DisplayGamma", ""); !Gamma.empty())
 	{
-		try { Options.DisplayGamma = FMath::Clamp(std::stof(Gamma), 1.0f, 3.0f); } catch (...) {}
+		try { Options.Settings.DisplayGamma = FMath::Clamp(std::stof(Gamma), 1.0f, 3.0f); } catch (...) {}
 	}
 
-	Options.bCacheShadows = Config.GetBool("Rendering", "CacheShadows", Options.bCacheShadows);
+	Options.Settings.bCacheShadows = Config.GetBool("Rendering", "CacheShadows", Options.Settings.bCacheShadows);
 
-	const int32 PcfMode = Config.GetInt("Rendering", "PcfMode", static_cast<int32>(Options.PcfMode));
+	const int32 PcfMode = Config.GetInt("Rendering", "PcfMode", static_cast<int32>(Options.Settings.PcfMode));
 	if (PcfMode >= 0 && PcfMode <= static_cast<int32>(EPcfMode::PCSS))
-		Options.PcfMode = static_cast<EPcfMode>(PcfMode);
+		Options.Settings.PcfMode = static_cast<EPcfMode>(PcfMode);
 
-	Options.DirectionalShadowMapSize = GetUInt("Rendering", "DirectionalShadowMapSize", Options.DirectionalShadowMapSize, false);
-	Options.PointShadowMapSize = GetUInt("Rendering", "PointShadowMapSize", Options.PointShadowMapSize, false);
-	Options.SpotShadowMapSize = GetUInt("Rendering", "SpotShadowMapSize", Options.SpotShadowMapSize, false);
+	Options.Settings.DirectionalShadowMapSize = GetUInt("Rendering", "DirectionalShadowMapSize", Options.Settings.DirectionalShadowMapSize, false);
+	Options.Settings.PointShadowMapSize = GetUInt("Rendering", "PointShadowMapSize", Options.Settings.PointShadowMapSize, false);
+	Options.Settings.SpotShadowMapSize = GetUInt("Rendering", "SpotShadowMapSize", Options.Settings.SpotShadowMapSize, false);
+
+	// [ShowFlags] 섹션: 플래그 이름 그대로 키를 쓴다. 예) Fog=0. 위의 [Rendering] 옛 키보다 우선한다.
+	for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
+		Options.ShowFlags.Set(Info, Config.GetBool("ShowFlags", Info.Name, Options.ShowFlags.Get(Info)));
 	return Settings;
 }

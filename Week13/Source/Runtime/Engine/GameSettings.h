@@ -21,9 +21,9 @@ struct FGameSettings
 
 	FGameSettings()
 	{
-		RenderOptions.DirectionalShadowMapSize = 1024;
-		RenderOptions.PointShadowMapSize = 512;
-		RenderOptions.SpotShadowMapSize = 512;
+		RenderOptions.Settings.DirectionalShadowMapSize = 1024;
+		RenderOptions.Settings.PointShadowMapSize = 512;
+		RenderOptions.Settings.SpotShadowMapSize = 512;
 	}
 
 	static FGameSettings Load(const FString& Path);

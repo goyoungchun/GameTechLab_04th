@@ -50,38 +50,32 @@ void FLevelEditorViewportClient::Draw(FRenderer* Renderer)
 	{
 		const FEditorSettings& S = *EditorSettings;
 
-		// 모든 뷰포트에 똑같이 적용되는 에디터 설정
-		EngineShowFlags.bEnableFXAA = S.bEnableFXAA;
-		EngineShowFlags.bCacheShadows = S.bCacheShadows;
-		EngineShowFlags.PcfMode = S.PcfMode;
-		EngineShowFlags.LightingModel = S.LightingModel;
-		EngineShowFlags.LightCullingMode = S.LightCullingMode;
-		EngineShowFlags.DirectionalShadowMapSize = S.GetDirectionalShadowMapSize();
-		EngineShowFlags.PointShadowMapSize = S.GetPointShadowMapSize();
-		EngineShowFlags.SpotShadowMapSize = S.GetSpotShadowMapSize();
-		EngineShowFlags.bGammaCorrection = S.bGammaCorrection;
-		EngineShowFlags.DisplayGamma = S.DisplayGamma;
-		EngineShowFlags.bShowVignette = S.bShowVignette;
-		EngineShowFlags.bShowCameraOverlay = S.bShowCameraOverlay;
-		EngineShowFlags.bShowSkeletalMesh = S.bShowSkeletalMesh;
-		EngineShowFlags.bShowParticles = S.bShowParticles;
-		EngineShowFlags.bDrawPrimitives = S.bDrawPrimitives;
-		EngineShowFlags.bDrawDecals = S.bDrawDecals;
-		EngineShowFlags.bDecalCulling = S.bDecalCulling;
-		EngineShowFlags.bDecalNarrowCulling = S.bDecalNarrowCulling;
-		EngineShowFlags.bDecalBVHCulling = S.bDecalBVHCulling;
-		EngineShowFlags.bDecalOBBTree = S.bDecalOBBTree;
+		// 모든 뷰포트에 똑같이 적용되는 에디터 설정. 표시 플래그는 통째로 받고, 뷰 모드가 정하는 것만 아래에서 덮는다.
+		EngineShowFlags = S.ShowFlags;
+		RenderSettings.bCacheShadows = S.bCacheShadows;
+		RenderSettings.PcfMode = S.PcfMode;
+		RenderSettings.LightingModel = S.LightingModel;
+		RenderSettings.LightCullingMode = S.LightCullingMode;
+		RenderSettings.DirectionalShadowMapSize = S.GetDirectionalShadowMapSize();
+		RenderSettings.PointShadowMapSize = S.GetPointShadowMapSize();
+		RenderSettings.SpotShadowMapSize = S.GetSpotShadowMapSize();
+		RenderSettings.bGammaCorrection = S.bGammaCorrection;
+		RenderSettings.DisplayGamma = S.DisplayGamma;
+		RenderSettings.bDecalCulling = S.bDecalCulling;
+		RenderSettings.bDecalNarrowCulling = S.bDecalNarrowCulling;
+		RenderSettings.bDecalBVHCulling = S.bDecalBVHCulling;
+		RenderSettings.bDecalOBBTree = S.bDecalOBBTree;
 
 		// 이 뷰포트의 뷰 모드에서 나오는 설정
-		EngineShowFlags.bEnableFog = ViewportMode == EViewportMode::Solid || ViewportMode == EViewportMode::Unlit;
+		EngineShowFlags.Fog = ViewportMode == EViewportMode::Solid || ViewportMode == EViewportMode::Unlit;
 		// Unlit은 Solid와 같은 경로로 그리되 이 뷰포트만 라이팅 모델을 Unlit으로 바꾼다.
 		if (ViewportMode == EViewportMode::Unlit)
-			EngineShowFlags.LightingModel = ELightingModel::Unlit;
-		EngineShowFlags.bShowSceneDepth = IsSceneDepth();
-		EngineShowFlags.bShowCascade = IsCascade();
-		EngineShowFlags.bShowWorldNormal = IsWorldNormal();
-		EngineShowFlags.bShowLightCulling = IsLightCulling();
-		EngineShowFlags.SceneDepthRange = MaxRange;
+			RenderSettings.LightingModel = ELightingModel::Unlit;
+		EngineShowFlags.VisualizeSceneDepth = IsSceneDepth();
+		EngineShowFlags.VisualizeCascades = IsCascade();
+		EngineShowFlags.VisualizeWorldNormal = IsWorldNormal();
+		EngineShowFlags.VisualizeLightCulling = IsLightCulling();
+		RenderSettings.SceneDepthRange = MaxRange;
 	}
 
 	FEditorViewportClient::Draw(Renderer);
@@ -122,7 +116,7 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 			Cast<APointLightActor>(Gizmo->GetTarget()->GetOwner()) ||
 			Cast<ADecalActor>(Gizmo->GetTarget()->GetOwner()));
 
-	const bool bDrawCascadeBounds = Settings.bDrawCascadeBounds;
+	const bool bDrawCascadeBounds = EngineShowFlags.CascadeBounds;
 	{
 		Callbacks.Overlays.EditorLines = [this, &SceneView, &Settings, LineBatcher, Gizmo, bDrawSelectedLight, bDrawCascadeBounds]
 			{
@@ -153,7 +147,7 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 						}
 					}
 				}
-				if (Settings.bDrawBatchLine && Settings.bDrawBoundingBox)
+				if (EngineShowFlags.Grid && EngineShowFlags.Bounds)
 				{
 					LineBatcher->BuildVertexBuffer();
 				}
@@ -172,9 +166,10 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 					Gizmo->GetTarget() ? Gizmo->GetTarget()->GetOwner() : nullptr;
 
 				// 이 뷰포트가 보고 있는 월드의 것을 그린다. PIE와 SIE 중에는 PIE 월드다.
-				DrawCollisionShapes(GetWorld(), LineBatcher, SelectedActor);
+				if (EngineShowFlags.Collision)
+					DrawCollisionShapes(GetWorld(), LineBatcher, SelectedActor);
 				DrawSpringArms(GetWorld(), LineBatcher, SelectedActor);
-				if (EngineShowFlags.bShowParticles)
+				if (EngineShowFlags.Particles)
 				{
 					DrawParticleSystems(GetWorld(), LineBatcher);
 					DrawParticleLODDistances(GetWorld(), LineBatcher, SelectedActor);
@@ -183,7 +178,7 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 				LineBatcher->OnRender(SceneView.ViewProjectionMatrix);
 			};
 	}
-	if (Settings.bDrawBatchLine)
+	if (EngineShowFlags.Grid)
 	{
 		Callbacks.Overlays.EditorGrid = [this, &SceneView, &Settings, ViewportSetting]
 			{
@@ -213,7 +208,7 @@ void FLevelEditorViewportClient::Draw(const FSceneView* View, FScenePassCallback
 			Gizmo->Render(&SceneView);
 		};
 	Callbacks.Overlays.bClearEditorDepth = true;
-	if (Settings.bShowUUID)
+	if (EngineShowFlags.ObjectUUID)
 		Callbacks.Overlays.EditorUUID = [this, &SceneView] { RenderActorUUIDs(SceneView); };
 }
 

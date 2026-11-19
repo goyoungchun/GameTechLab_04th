@@ -16,18 +16,10 @@ void FViewportsPanel::DrawShowMenu()
 
     if (IconMenuItem(nullptr, "Use Defaults", false, EIndicator::None))
     {
-        const FEditorSettings Defaults{};
-        Settings.bDrawPrimitives = Defaults.bDrawPrimitives;
-        Settings.bShowSkeletalMesh = Defaults.bShowSkeletalMesh;
-        Settings.bShowParticles = Defaults.bShowParticles;
-        Settings.bDrawDecals = Defaults.bDrawDecals;
-        Settings.bDrawBatchLine = Defaults.bDrawBatchLine;
-        Settings.bDrawBoundingBox = Defaults.bDrawBoundingBox;
-        Settings.bShowUUID = Defaults.bShowUUID;
-        Settings.bDrawCascadeBounds = Defaults.bDrawCascadeBounds;
-        Settings.bShowRootDebug = Defaults.bShowRootDebug;
-        Settings.bShowVignette = Defaults.bShowVignette;
-        Settings.bShowCameraOverlay = Defaults.bShowCameraOverlay;
+        // 메뉴에 보이는 플래그만 기본값으로 되돌린다. Hidden 플래그는 뷰 모드·Render 메뉴가 정한다.
+        for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
+            if (Info.Category != EShowFlagCategory::Hidden)
+                Settings.ShowFlags.Set(Info, Info.bEditorDefault);
     }
 
     // 뷰포트 통계: 콘솔의 stat 명령과 같은 상태를 켜고 끈다.
@@ -61,24 +53,25 @@ void FViewportsPanel::DrawShowMenu()
                 { X - EditorStyle::Scale(4.0f), CenterY + IconSize() * 0.5f }, { 0, 0 }, { 1, 1 }, EditorColor::TextSecondary);
     }
 
-    auto Flag = [](const char* Icon, const char* Label, bool& bValue)
-    {
-        if (IconMenuItem(Icon, Label, bValue, EIndicator::Check)) bValue = !bValue;
+    // 플래그 목록(Render/ShowFlagsValues.h)을 분류별로 그린다.
+    struct FSection { EShowFlagCategory Category; const char* Title; };
+    constexpr FSection Sections[] = {
+        { EShowFlagCategory::Common, "Common Show Flags" },
+        { EShowFlagCategory::Physics, "Physics" },
+        { EShowFlagCategory::PostProcess, "Post Process" },
+        { EShowFlagCategory::Developer, "Developer" },
     };
-    SectionHeader("Common Show Flags");
-    Flag("Bounds", "Bounding Boxes", Settings.bDrawBoundingBox);
-    Flag("Decals", "Decals", Settings.bDrawDecals);
-    Flag("Grid", "Grid", Settings.bDrawBatchLine);
-    Flag("Particles", "Particles", Settings.bShowParticles);
-    Flag("SkeletalMesh", "Skeletal Meshes", Settings.bShowSkeletalMesh);
-    Flag("StaticMesh", "Static Meshes", Settings.bDrawPrimitives);
-    SectionHeader("Developer");
-    Flag("Cascade", "Cascade Bounds", Settings.bDrawCascadeBounds);
-    Flag("Pivot", "Object UUID", Settings.bShowUUID);
-    SectionHeader("PIE");
-    Flag("SkeletalMesh", "Root Bone", Settings.bShowRootDebug);
-    Flag("Lighting", "Vignette", Settings.bShowVignette);
-    Flag("Camera", "Camera Fade / Letterbox", Settings.bShowCameraOverlay);
+    for (const FSection& Section : Sections)
+    {
+        SectionHeader(Section.Title);
+        for (const FShowFlagInfo& Info : FEngineShowFlags::GetAll())
+        {
+            if (Info.Category != Section.Category) continue;
+            const bool bValue = Settings.ShowFlags.Get(Info);
+            if (IconMenuItem(Info.Icon, Info.DisplayName, bValue, EIndicator::Check))
+                Settings.ShowFlags.Set(Info, !bValue);
+        }
+    }
     ImGui::Spacing();
     ImGui::TextDisabled("Applies to all editor views");
 }
@@ -113,7 +106,7 @@ void FViewportsPanel::DrawRenderMenu()
         Settings.PcfMode = static_cast<EPcfMode>(Filter);
 
     ImGui::SeparatorText("Post Process");
-    ImGui::Checkbox("FXAA", &Settings.bEnableFXAA);
+    ImGui::Checkbox("FXAA", &Settings.ShowFlags.AntiAliasing);
     ImGui::Checkbox("Gamma Correction", &Settings.bGammaCorrection);
     ImGui::BeginDisabled(!Settings.bGammaCorrection);
     ImGui::SliderFloat("Display Gamma", &Settings.DisplayGamma, 1.0f, 3.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);

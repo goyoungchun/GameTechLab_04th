@@ -289,11 +289,11 @@ public:
 	explicit FThumbnailViewportClient(FPreviewScene& InScene)
 		: FEditorViewportClient(InScene)
 	{
-		EngineShowFlags.bEnableFog = false;
-		EngineShowFlags.bEnableFXAA = true;
-		EngineShowFlags.bShowVignette = false;
-		EngineShowFlags.bShowCameraOverlay = false;
-		EngineShowFlags.bShowSkeletalMesh = true;
+		EngineShowFlags.Fog = false;
+		EngineShowFlags.AntiAliasing = true;
+		EngineShowFlags.Vignette = false;
+		EngineShowFlags.CameraOverlay = false;
+		EngineShowFlags.SkeletalMeshes = true;
 	}
 
 	void ApplySettings(const FEditorSettings* Settings)
@@ -302,9 +302,9 @@ public:
 		{
 			return;
 		}
-		EngineShowFlags.LightingModel = Settings->LightingModel;
-		EngineShowFlags.bGammaCorrection = Settings->bGammaCorrection;
-		EngineShowFlags.DisplayGamma = Settings->DisplayGamma;
+		RenderSettings.LightingModel = Settings->LightingModel;
+		RenderSettings.bGammaCorrection = Settings->bGammaCorrection;
+		RenderSettings.DisplayGamma = Settings->DisplayGamma;
 	}
 
 protected:

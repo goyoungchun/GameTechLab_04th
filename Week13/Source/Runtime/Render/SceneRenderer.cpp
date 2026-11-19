@@ -177,8 +177,8 @@ void FSceneRenderer::InitViews(FRenderer* Renderer, const FSceneRenderOptions& O
 		return;
 	}
 
-	CachedViewContext.bShowSkeletalMesh = Options.bShowSkeletalMesh;
-	CachedViewContext.bShowParticles = Options.bShowParticles;
+	CachedViewContext.bShowSkeletalMesh = Options.ShowFlags.SkeletalMeshes;
+	CachedViewContext.bShowParticles = Options.ShowFlags.Particles;
 
 	// 게임 쪽(파티클 LOD 등)이 다음 Tick에서 카메라 거리를 알 수 있게 남긴다
 	World->AddRenderedViewLocation(View.ViewLocation);
@@ -230,7 +230,7 @@ bool FSceneRenderer::BindForwardLighting(FRenderer* Renderer, const FSceneRender
 	}
 	
 	FPipelineState* BasePSO = FRenderResourceManager::GetPSO(EPSOType::StaticMesh_Forward);
-	FShaderProgram* Program = FRenderResourceManager::GetForwardShaderProgram(Options.LightingModel);
+	FShaderProgram* Program = FRenderResourceManager::GetForwardShaderProgram(Options.Settings.LightingModel);
 	if (!BasePSO || !Program)
 	{
 		return false;
@@ -284,7 +284,7 @@ bool FSceneRenderer::AddWorldNormalPass(FRenderGraphBuilder& Graph, FRenderer* R
 	Pass.Name = "WorldNormal";
 	Pass.ColorAttachments = { { SceneColor, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } } };
 	Pass.DepthAttachment = { Depth, ERenderGraphLoadAction::Clear, 1.0f, 0 };
-	return Graph.AddRasterPass(std::move(Pass), [this, Renderer, bDrawPrimitives = Options.bDrawPrimitives]
+	return Graph.AddRasterPass(std::move(Pass), [this, Renderer, bDrawPrimitives = Options.ShowFlags.StaticMeshes]
 		{
 			if (!bDrawPrimitives) return;
 			FMeshPassProcessor Processor;
@@ -308,7 +308,7 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 
 	bCorePassSucceeded = true;
 	bTilesBuilt = false;
-	if (Options.bShowWorldNormal)
+	if (Options.ShowFlags.VisualizeWorldNormal)
 		return AddWorldNormalPass(Graph, Renderer, Targets, Options);
 
 	const FRenderGraphTextureRef SceneColor = Graph.ImportTexture(Targets.SceneColor.get(), "SceneColor"); // Texture Handle 리턴 해줌
@@ -325,7 +325,7 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 
 	// 스카이 배경을 물체보다 먼저 HDR 타깃에 깐다. 이 패스가 LightingHDR을 Clear하고, 포워드 패스는 Load로 그 위에 그린다.
 	FSkyboxRenderer* PreviewSkybox = Renderer->GetPreviewSkybox();
-	FSkyboxRenderer* Skybox = (Options.bUsePreviewSkybox && PreviewSkybox && PreviewSkybox->IsValid())
+	FSkyboxRenderer* Skybox = (Options.Settings.bUsePreviewSkybox && PreviewSkybox && PreviewSkybox->IsValid())
 		? PreviewSkybox
 		: Renderer->GetSkybox();
 	// 직교 뷰에서는 스카이를 그리지 않는다.
@@ -367,11 +367,11 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 
 	{ // Opaque forward rendering
 		ForwardBatches.Reset();
-		if (Options.bDrawPrimitives)
+		if (Options.ShowFlags.StaticMeshes)
 		{
 			FMeshPassProcessor Processor;
 			if (!Processor.Build(View, RenderData.RenderQueue, &RenderData,
-				EMeshPassType::Forward, ForwardBatches, Options.LightingModel)) return false;
+				EMeshPassType::Forward, ForwardBatches, Options.Settings.LightingModel)) return false;
 		}
 		// 현재 업로드된 광원 정보를 기존 그리드에 전달한다.
 		FForwardLightTileGrid& Tiles = RenderData.ViewLightResources.GetTiles();
@@ -381,17 +381,17 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 		std::memcpy(GridLighting.LightOffsets, RenderData.LightParameterOffsets, sizeof(RenderData.LightParameterOffsets));
 
 		// 픽셀 조명 경로에서만 목록을 사용한다.
-		const ELightCullingMode CullingMode = !View.bIsWireframe && Options.LightingModel != ELightingModel::Gouraud &&
-			Options.LightingModel != ELightingModel::Unlit ? Options.LightCullingMode : ELightCullingMode::Off;
+		const ELightCullingMode CullingMode = !View.bIsWireframe && Options.Settings.LightingModel != ELightingModel::Gouraud &&
+			Options.Settings.LightingModel != ELightingModel::Unlit ? Options.Settings.LightCullingMode : ELightCullingMode::Off;
 
 		// Off도 이번 프레임의 화면 정보와 입력 광원 개수를 갱신한다.
 		bool bUseDepthPrepass = false;
-		const bool bGridPrepared = Options.bDrawPrimitives && bLightUploadSucceeded &&
+		const bool bGridPrepared = Options.ShowFlags.StaticMeshes && bLightUploadSucceeded &&
 			Tiles.PrepareBuild(View, GridLighting, SceneLights, Targets.Depth.get(), CullingMode);
 
 		const bool bNeedsLightCulling = bGridPrepared && CullingMode != ELightCullingMode::Off && (RenderData.HasSpotLights() || RenderData.HasPointLights());
 		// 그림자 마스크는 장면 깊이로 Projection하므로 프리패스가 필요하다. Gouraud는 FinalizeShadowLights가 채널을 주지 않는다.
-		const bool bForwardShadows = Options.bDrawPrimitives && ShadowAtlasRef && !ShadowedLights.IsEmpty();
+		const bool bForwardShadows = Options.ShowFlags.StaticMeshes && ShadowAtlasRef && !ShadowedLights.IsEmpty();
 		if (bNeedsLightCulling || bForwardShadows)
 		{
 			FPipelineState* DepthPipeline = FRenderResourceManager::GetPSO(EPSOType::StaticMesh_DepthOnly);
@@ -470,7 +470,7 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 		Forward.DepthAttachment = { Depth, bUseDepthPrepass ? ERenderGraphLoadAction::Load : ERenderGraphLoadAction::Clear, 1.0f, 0 };
 		if (!Graph.AddRasterPass(std::move(Forward), [this, Renderer, &Graph, LightingOptions = Options, bUseDepthPrepass, ForwardShadowMask]
 		{
-			if (!LightingOptions.bDrawPrimitives) return;
+			if (!LightingOptions.ShowFlags.StaticMeshes) return;
 			bCorePassSucceeded = BindForwardLighting(Renderer, LightingOptions, ForwardShadowMask ? Graph.Resolve(ForwardShadowMask) : nullptr);
 			if (!bCorePassSucceeded) return;
 			if (bUseDepthPrepass)
@@ -523,7 +523,7 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 			UnbindForwardLighting(Renderer);
 		})) return false;
 
-		if (Options.bDrawDecals)
+		if (Options.ShowFlags.Decals)
 		{
 			FRenderGraphRasterPassDesc Decal{};
 			Decal.Name = "Decal";
@@ -531,9 +531,9 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 			Decal.DepthAttachment = { Depth, ERenderGraphLoadAction::Load, 1.0f, 0 };
 			Decal.ReadTextures = {};
 			Decal.Viewport = {};
-			if (!Graph.AddRasterPass(std::move(Decal), [this, Renderer, bDecalCulling = Options.bDecalCulling, 
-				bDecalNarrowCulling = Options.bDecalNarrowCulling, bDecalBVHCulling = Options.bDecalBVHCulling,
-				bDecalOBBTree = Options.bDecalOBBTree]
+			if (!Graph.AddRasterPass(std::move(Decal), [this, Renderer, bDecalCulling = Options.Settings.bDecalCulling, 
+				bDecalNarrowCulling = Options.Settings.bDecalNarrowCulling, bDecalBVHCulling = Options.Settings.bDecalBVHCulling,
+				bDecalOBBTree = Options.Settings.bDecalOBBTree]
 				{
 					SCOPE_CYCLE_COUNTER(STAT_DecalPass);
 					if (!bCorePassSucceeded || ForwardBatches.IsEmpty()) return;
@@ -694,7 +694,7 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 	ToneMap.Name = "ToneMap";
 	ToneMap.ReadTextures = { LightingHDR };
 	ToneMap.ColorAttachments = { { SceneColor, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } } };
-	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.bGammaCorrection, DisplayGamma = Options.DisplayGamma]
+	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.Settings.bGammaCorrection, DisplayGamma = Options.Settings.DisplayGamma]
 		{
 			if (bCorePassSucceeded)
 			{
@@ -723,10 +723,10 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	const FScenePassCallbacks& Callbacks) // 뷰포트에 그려져야 되는 패스들을 옵션에 따라 정해진 순서로 Graph에 등록
 {
 	FSceneRenderOptions CoreOptions = Options;
-	if (Options.bShowLightCulling)
+	if (Options.ShowFlags.VisualizeLightCulling)
 	{
 		// 디버그 보기에서 현재 뷰의 실제 타일 목록을 생성한다.
-		CoreOptions.LightingModel = ELightingModel::Lambert;
+		CoreOptions.Settings.LightingModel = ELightingModel::Lambert;
 	}
 	if (!AddCorePasses(Graph, Renderer, Targets, CoreOptions)) // 기본적으로 그려져야 되는 Core Pass 들
 		return false;
@@ -737,7 +737,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	bHasFog = false;
 	bFXAAPassSucceeded = true;
 
-	if (!Options.bShowWorldNormal && Options.bDrawPrimitives && Options.bEnableFog && Callbacks.HeightFog)
+	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.StaticMeshes && Options.ShowFlags.Fog && Callbacks.HeightFog)
 	{
 		FRenderGraphRasterPassDesc Pass = MakeViewportPass("HeightFog", SceneColor);
 		Pass.ReadTextures = { Depth };
@@ -746,7 +746,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			bHasFog = DrawFog();
 			})) return false;
 	}
-	if (!Options.bShowWorldNormal && Options.bDrawPrimitives)
+	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.StaticMeshes)
 	{
 		if (!Graph.AddRasterPass(MakeViewportPass("Translucent", SceneColor, Depth),
 			[this, Renderer, GetFog = Callbacks.TranslucentFogConstants]
@@ -754,25 +754,25 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			RenderTranslucent(Renderer, GetFog ? GetFog(bHasFog) : nullptr);
 			})) return false;
 	}
-	if (!Options.bShowWorldNormal && Callbacks.SceneText &&
+	if (!Options.ShowFlags.VisualizeWorldNormal && Callbacks.SceneText &&
 		!Graph.AddRasterPass(MakeViewportPass("SceneText", SceneColor, Depth), Callbacks.SceneText))
 		return false;
 
-	if (!Options.bShowWorldNormal && Options.bShowSceneDepth && Callbacks.DepthVisualization)
+	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.VisualizeSceneDepth && Callbacks.DepthVisualization)
 	{
 		FRenderGraphRasterPassDesc Pass = MakeViewportPass("SceneDepthVisualization", SceneColor);
 		Pass.ReadTextures = { Depth };
 		if (!Graph.AddRasterPass(std::move(Pass), Callbacks.DepthVisualization)) return false;
 	}
 
-	if (!Options.bShowWorldNormal && !Options.bShowSceneDepth &&
-		View.NeedsCameraOverlay(Options.bShowVignette, Options.bShowCameraOverlay))
+	if (!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeSceneDepth &&
+		View.NeedsCameraOverlay(Options.ShowFlags.Vignette, Options.ShowFlags.CameraOverlay))
 	{
 		const uint32 Width = Targets.SceneColor->GetWidth();
 		const uint32 Height = Targets.SceneColor->GetHeight();
 		if (!Graph.AddRasterPass(MakeViewportPass("CameraOverlay", SceneColor),
 			[this, Renderer, Width, Height,
-			bVignette = Options.bShowVignette, bOverlay = Options.bShowCameraOverlay]
+			bVignette = Options.ShowFlags.Vignette, bOverlay = Options.ShowFlags.CameraOverlay]
 			{
 				if (FCameraOverlayRenderer* Overlay = Renderer->GetCameraOverlay())
 					Overlay->OnRender(View, Width, Height, bVignette, bOverlay);
@@ -780,7 +780,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	}
 
 	FRenderGraphTextureRef FinalColor = SceneColor;
-	if (!Options.bShowWorldNormal && Callbacks.FXAAOutput && Callbacks.FXAA)
+	if (!Options.ShowFlags.VisualizeWorldNormal && Callbacks.FXAAOutput && Callbacks.FXAA)
 	{
 		FinalColor = Graph.ImportTexture(Callbacks.FXAAOutput, "FXAAOutput");
 		if (!FinalColor) return false;
@@ -792,7 +792,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			})) return false;
 	}
 
-	if (Options.bShowLightCulling && Options.bDrawPrimitives && !Options.bShowWorldNormal)
+	if (Options.ShowFlags.VisualizeLightCulling && Options.ShowFlags.StaticMeshes && !Options.ShowFlags.VisualizeWorldNormal)
 	{
 		FRenderGraphRasterPassDesc Debug = MakeViewportPass("LightCullingDebug", FinalColor);
 		Debug.ReadTextures = { Depth };
@@ -819,7 +819,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	}
 
 	const FSceneOverlayCallbacks& Overlay = Callbacks.Overlays;
-	if (Options.bShowCascade && Callbacks.CascadeVisualization)
+	if (Options.ShowFlags.VisualizeCascades && Callbacks.CascadeVisualization)
 	{
 		FRenderGraphRasterPassDesc Pass = MakeViewportPass("CascadeFloorVisualization", FinalColor);
 		Pass.ReadTextures = { Depth };
@@ -867,8 +867,8 @@ bool FSceneRenderer::Render(FRenderer* Renderer, FSceneViewTargets& Targets, con
 	Callbacks.SceneText = [this, Renderer] { RenderSceneText(Renderer); };
 
 	FFXAARenderer* FXAA = Renderer->GetFXAA();
-	const bool bUseFXAA = Options.bEnableFXAA && !Options.bShowSceneDepth &&
-		!Options.bShowWorldNormal && FXAA && FXAA->PrepareOutput(ColorTarget);
+	const bool bUseFXAA = Options.ShowFlags.AntiAliasing && !Options.ShowFlags.VisualizeSceneDepth &&
+		!Options.ShowFlags.VisualizeWorldNormal && FXAA && FXAA->PrepareOutput(ColorTarget);
 	if (bUseFXAA)
 	{
 		Callbacks.FXAAOutput = FXAA->GetOutputTarget().get();

@@ -1,38 +1,37 @@
 #pragma once
 
 #include "Render/RenderEnums.h"
+#include "Render/ShowFlags.h"
 
-// 뷰 하나의 씬 렌더링 옵션. 에디터와 게임 뷰포트가 같은 설정을 전달한다.
-struct FSceneRenderOptions
+// 뷰 하나를 "어떻게 그릴지" 정하는 품질·경로 설정. 표시 여부는 FEngineShowFlags가 맡는다.
+// 엔진 전체에 하나만 있는 값이라 나중에 CVar(r.*)로 옮기기 쉽도록 따로 둔다.
+struct FSceneRenderSettings
 {
-	bool bDrawPrimitives = true;
 	EPcfMode PcfMode = EPcfMode::Sample8;
 	float ShadowDepthBias = 0.0001f;
 	bool bCacheShadows = true; // r.Shadow.CacheWholeSceneShadows: 바뀌지 않은 그림자 타일은 다시 그리지 않는다
-	bool bEnableFog = true;
-	bool bEnableFXAA = false;
 	ELightCullingMode LightCullingMode = ELightCullingMode::Tiled;
-	bool bShowSceneDepth = false;
-	bool bShowCascade = false;
-	bool bShowWorldNormal = false;
-	bool bShowLightCulling = false;
-	bool bDrawDecals = true;
+	ELightingModel LightingModel = ELightingModel::Gouraud;
+
+	// 데칼 컬링 단계별 on/off (성능 비교용)
 	bool bDecalCulling = true;
 	bool bDecalNarrowCulling = true;
 	bool bDecalBVHCulling = true;
 	bool bDecalOBBTree = true;
-	float SceneDepthRange = 1.0f;
+
+	float SceneDepthRange = 1.0f;     // VisualizeSceneDepth의 최대 거리
 	uint32 DirectionalShadowMapSize = 0;
 	uint32 PointShadowMapSize = 0;
 	uint32 SpotShadowMapSize = 0;
 
 	bool bGammaCorrection = true;
 	float DisplayGamma = 2.2f;
-	bool bShowVignette = true;
-	bool bShowCameraOverlay = true;
-	bool bShowSkeletalMesh = true;
-	bool bShowParticles = true;
 	bool bUsePreviewSkybox = false;
+};
 
-	ELightingModel LightingModel = ELightingModel::Gouraud;
+// 렌더러에 넘기는 뷰 하나의 표시 플래그와 렌더 설정 묶음.
+struct FSceneRenderOptions
+{
+	FEngineShowFlags ShowFlags{ EShowFlagInitMode::Game };
+	FSceneRenderSettings Settings;
 };

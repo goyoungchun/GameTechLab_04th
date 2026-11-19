@@ -247,8 +247,9 @@ bool FGameViewportClient::Draw(FRenderer* Renderer, FUIRenderer* UIRenderer)
 
 	// 보이는 물체와 라이트를 모은 뒤 패스를 순서대로 실행해 ViewTargets에 그린다.
 	FSceneRenderer SceneRenderer(World, SceneView, RenderData);
-	SceneRenderer.InitViews(Renderer, EngineShowFlags);
-	return SceneRenderer.Render(Renderer, ViewTargets, EngineShowFlags,
+	const FSceneRenderOptions RenderOptions = GetRenderOptions();
+	SceneRenderer.InitViews(Renderer, RenderOptions);
+	return SceneRenderer.Render(Renderer, ViewTargets, RenderOptions,
 		[this, UIRenderer, &SceneView](FScenePassCallbacks& Callbacks)
 		{
 			// 게임 UI는 씬 위에 그려야 하므로 그 시점에 불릴 함수로 등록한다.

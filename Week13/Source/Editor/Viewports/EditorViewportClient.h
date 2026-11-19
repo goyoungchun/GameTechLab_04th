@@ -186,10 +186,12 @@ protected:
 	uint32 Height = 0;
 	FSceneViewTargets ViewTargets;
 	FSceneRenderData RenderData;
-	// 이 뷰포트가 무엇을 어떻게 보여 줄지 정하는 설정. Draw가 이 값으로 씬을 그린다.
-	// UE의 FEditorViewportClient::EngineShowFlags와 같은 자리다. UE의 FEngineShowFlags는 표시 여부만 담지만
-	// 이 엔진의 FSceneRenderOptions는 그림자 해상도, 렌더링 경로 같은 품질 설정도 같이 담는다.
-	FSceneRenderOptions EngineShowFlags;
+	// 이 뷰포트가 무엇을 보여 줄지(표시 여부). Draw가 이 값으로 씬을 그린다.
+	FEngineShowFlags EngineShowFlags{ EShowFlagInitMode::Editor };
+	// 이 뷰포트를 어떻게 그릴지(그림자 해상도, 라이팅 모델 같은 품질·경로 설정).
+	FSceneRenderSettings RenderSettings;
+	// Draw가 렌더러에 넘기는 묶음
+	FSceneRenderOptions GetRenderOptions() const { return { EngineShowFlags, RenderSettings }; }
 
 	FVector ViewLocation = FVector(0.0f, 0.0f, 0.0f);
 	FVector FocusStartLocation{}, FocusTargetLocation{};

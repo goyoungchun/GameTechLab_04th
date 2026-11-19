@@ -55,10 +55,13 @@ public:
 	// 씬을 그렸으면 true를 돌려준다.
 	bool Draw(FRenderer* Renderer, FUIRenderer* UIRenderer);
 
-	// 이 뷰포트가 무엇을 어떻게 보여 줄지 정하는 설정. Draw가 이 값으로 씬을 그린다.
+	// 이 뷰포트가 무엇을 보여 줄지(표시 여부). Draw가 이 값으로 씬을 그린다.
 	// UE의 UGameViewportClient::EngineShowFlags와 같은 자리이고 UE에서도 public 멤버다.
 	// 게임 빌드는 UGameEngine이 게임 설정으로, PIE는 UEditorEngine이 에디터 설정으로 채운다.
-	FSceneRenderOptions EngineShowFlags;
+	FEngineShowFlags EngineShowFlags{ EShowFlagInitMode::Game };
+	// 이 뷰포트를 어떻게 그릴지(품질·경로 설정). 채우는 쪽은 EngineShowFlags와 같다.
+	FSceneRenderSettings RenderSettings;
+	FSceneRenderOptions GetRenderOptions() const { return { EngineShowFlags, RenderSettings }; }
 
 	// Draw가 패스를 등록할 때 부른다. 에디터가 PIE 화면에 충돌 도형, 기즈모 같은 것을 올릴 때 쓴다. 게임 빌드에서는 비어 있다.
 	FDebugDrawDelegate DebugDrawDelegate;

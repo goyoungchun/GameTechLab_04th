@@ -78,7 +78,8 @@ namespace
 	public:
 		explicit FProjectThumbnailViewport(const FSceneRenderOptions& Options)
 		{
-			EngineShowFlags = Options;
+			EngineShowFlags = Options.ShowFlags;
+			RenderSettings = Options.Settings;
 		}
 	};
 
@@ -1070,21 +1071,24 @@ void UEditorEngine::Tick(const float DeltaTime)
 				if (EditorSettings)
 				{
 					const FEditorSettings& S = EditorSettings->GetSettings();
-					FSceneRenderOptions& ShowFlags = Context->GameViewport->EngineShowFlags;
-					ShowFlags.bEnableFXAA = S.bEnableFXAA;
-					ShowFlags.bCacheShadows = S.bCacheShadows;
-					ShowFlags.PcfMode = S.PcfMode;
-					ShowFlags.LightingModel = S.LightingModel;
-					ShowFlags.LightCullingMode = S.LightCullingMode;
-					ShowFlags.DirectionalShadowMapSize = S.GetDirectionalShadowMapSize();
-					ShowFlags.PointShadowMapSize = S.GetPointShadowMapSize();
-					ShowFlags.SpotShadowMapSize = S.GetSpotShadowMapSize();
-					ShowFlags.bGammaCorrection = S.bGammaCorrection;
-					ShowFlags.DisplayGamma = S.DisplayGamma;
-					ShowFlags.bShowVignette = S.bShowVignette;
-					ShowFlags.bShowCameraOverlay = S.bShowCameraOverlay;
-					ShowFlags.bShowSkeletalMesh = S.bShowSkeletalMesh;
-					ShowFlags.bShowParticles = S.bShowParticles;
+					FEngineShowFlags& ShowFlags = Context->GameViewport->EngineShowFlags;
+					FSceneRenderSettings& RenderSettings = Context->GameViewport->RenderSettings;
+					// 게임 화면에 의미 있는 표시 플래그만 넘긴다. Grid·Bounds 같은 에디터 오버레이 플래그는 게임 기본값을 유지한다.
+					ShowFlags.AntiAliasing = S.ShowFlags.AntiAliasing;
+					ShowFlags.Vignette = S.ShowFlags.Vignette;
+					ShowFlags.CameraOverlay = S.ShowFlags.CameraOverlay;
+					ShowFlags.SkeletalMeshes = S.ShowFlags.SkeletalMeshes;
+					ShowFlags.Particles = S.ShowFlags.Particles;
+					ShowFlags.DepthOfField = S.ShowFlags.DepthOfField;
+					RenderSettings.bCacheShadows = S.bCacheShadows;
+					RenderSettings.PcfMode = S.PcfMode;
+					RenderSettings.LightingModel = S.LightingModel;
+					RenderSettings.LightCullingMode = S.LightCullingMode;
+					RenderSettings.DirectionalShadowMapSize = S.GetDirectionalShadowMapSize();
+					RenderSettings.PointShadowMapSize = S.GetPointShadowMapSize();
+					RenderSettings.SpotShadowMapSize = S.GetSpotShadowMapSize();
+					RenderSettings.bGammaCorrection = S.bGammaCorrection;
+					RenderSettings.DisplayGamma = S.DisplayGamma;
 				}
 			}
 		}
@@ -2104,13 +2108,13 @@ void UEditorEngine::SaveProjectThumbnail()
 void UEditorEngine::DrawPIEDebug(UWorld* World, const FMatrix& ViewProjection)
 {
 	const FEditorSettings& Settings = EditorSettings->GetSettings();
-	GShowSkeletalRootDebug = Settings.bShowRootDebug;  // 런타임 "root" 라벨 표시용
+	GShowSkeletalRootDebug = Settings.ShowFlags.RootBone;  // 런타임 "root" 라벨 표시용
 
 	// 충돌 도형·스프링 암 같은 배치 라인은 에디터 뷰와 SIE에서만 그린다. 게임 화면에는 올리지 않는다.
 	FLineBatcher* LineBatcher = World->LineBatcher.get();
 
 	// root는 바닥 높이라 가려지기 쉬우므로 깊이 테스트 없이 따로 그린다 (항상 위에 보임)
-	if (Settings.bShowRootDebug)
+	if (Settings.ShowFlags.RootBone)
 	{
 		LineBatcher->BeginFrame();
 		DrawSkeletalRootDebug(World, LineBatcher);

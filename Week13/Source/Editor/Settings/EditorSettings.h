@@ -5,6 +5,7 @@
 #include "Math/Quat.h"
 #include "Math/Vector.h"
 #include "Render/RenderEnums.h"
+#include "Render/ShowFlags.h"
 
 class UWorld;
 
@@ -15,18 +16,12 @@ struct FEditorSettings
 	const uint32 SpotShadowMapSizePerLevels[5] = { 128, 256, 512, 1024, 2048 };
 
 	// 에디터 렌더 옵션과 Multiple Viewports 레이아웃의 영구 설정을 한곳에 담는다.
+	// 표시 플래그(Show 메뉴). 목록은 Render/ShowFlagsValues.h에 있다.
+	FEngineShowFlags ShowFlags{ EShowFlagInitMode::Editor };
+
 	// Toggles
-	bool bDrawPrimitives = true;
 	bool bCacheShadows = true; // r.Shadow.CacheWholeSceneShadows
 	EPcfMode PcfMode = EPcfMode::PCSS;
-	bool bDrawBoundingBox = false;
-	bool bShowUUID = false;
-	// Debug Draw (UE show 플래그): PIE에서만 적용된다
-	bool bShowRootDebug = false;  // root 본 구체 + 액터→root 선
-	bool bDrawBatchLine = true;
-	bool bDrawCascadeBounds = false;
-	bool bEnableFXAA = false;
-	bool bDrawDecals = true;
 	bool bDecalCulling = true;
 	bool bDecalNarrowCulling = true;
 	bool bDecalBVHCulling = true;
@@ -65,10 +60,6 @@ struct FEditorSettings
 
 	bool bGammaCorrection = true;
 	float DisplayGamma = 2.2f;
-	bool bShowVignette = true;
-	bool bShowCameraOverlay = true;
-	bool bShowSkeletalMesh = true;
-	bool bShowParticles = true;
 
 	inline uint32 GetDirectionalShadowMapSize() const { return DirectionalShadowMapSizePerLevels[DirectionalShadowMapSizeLevel]; }
 	inline uint32 GetPointShadowMapSize() const { return PointShadowMapSizePerLevels[PointShadowMapSizeLevel]; }

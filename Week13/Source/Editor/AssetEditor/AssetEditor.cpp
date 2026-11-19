@@ -159,21 +159,21 @@ FAssetEditorViewportClient::FAssetEditorViewportClient(FAssetEditor& InAssetEdit
 	, AssetEditor(InAssetEditor)
 {
 	// 미리보기 화면의 표시 설정. 한 번 정하면 바뀌지 않으므로 생성할 때 채운다.
-	EngineShowFlags.bEnableFog = false;
-	EngineShowFlags.bEnableFXAA = true;
-	EngineShowFlags.bShowVignette = false;
-	EngineShowFlags.bShowCameraOverlay = false;
+	EngineShowFlags.Fog = false;
+	EngineShowFlags.AntiAliasing = true;
+	EngineShowFlags.Vignette = false;
+	EngineShowFlags.CameraOverlay = false;
 
 	GridRenderer.Init(GEditor ? GEditor->GetEngineLoop().GetRenderer() : nullptr);
 }
 
 void FAssetEditorViewportClient::Draw(FRenderer* Renderer)
 {
-	EngineShowFlags.LightingModel = (ViewportMode == EViewportMode::Unlit)
+	RenderSettings.LightingModel = (ViewportMode == EViewportMode::Unlit)
 		? ELightingModel::Unlit
 		: ELightingModel::Gouraud;
-	EngineShowFlags.bShowWorldNormal = IsWorldNormal();
-	EngineShowFlags.bUsePreviewSkybox = AssetEditor.UsesPreviewSkybox();
+	EngineShowFlags.VisualizeWorldNormal = IsWorldNormal();
+	RenderSettings.bUsePreviewSkybox = AssetEditor.UsesPreviewSkybox();
 	FEditorViewportClient::Draw(Renderer);
 }
 

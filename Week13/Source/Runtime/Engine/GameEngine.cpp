@@ -169,7 +169,8 @@ void UGameEngine::RedrawViewports(FGameViewportClient& Viewport)
 	Viewport.Resize(Width, Height);
 
 	// 게임 설정 파일에서 읽은 렌더 설정을 뷰포트에 넘긴다.
-	Viewport.EngineShowFlags = Settings.RenderOptions;
+	Viewport.EngineShowFlags = Settings.RenderOptions.ShowFlags;
+	Viewport.RenderSettings = Settings.RenderOptions.Settings;
 
 	if (!Viewport.Draw(Loop.GetRenderer(), UIRenderer.get()))
 		return;
