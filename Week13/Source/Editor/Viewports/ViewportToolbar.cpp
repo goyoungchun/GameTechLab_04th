@@ -93,7 +93,8 @@ void FViewportsPanel::DrawViewportToolbar(int32 ViewIndex)
     Items[Projection] = { ProjectionLabels[ProjectionIndex], ProjectionIcons[ProjectionIndex], true, "Viewport type and camera" };
     Items[Speed] = { SpeedLabel, "CameraSpeed", true, "Camera speed\nHold the right mouse button and scroll to change it." };
     Items[ViewMode] = { ViewModeLabels[ModeIndex], ViewModeIcons[ModeIndex], true, "View mode" };
-    Items[Show] = { nullptr, "Show", true, "Show flags and viewport stats" };
+    // 아이콘은 테마 글자색으로 틴트되므로, 면을 채운 눈이 아닌 외곽선형 눈을 써야 라이트 테마에서 반전돼 보이지 않는다.
+    Items[Show] = { nullptr, "visible", true, "Show flags and viewport stats" };
     Items[Render] = { nullptr, "Settings", true, "Render settings" };   // UE 뷰포트처럼 톱니 아이콘
     Items[Layout] = { nullptr, nullptr, false, "Viewport layouts", EGlyph::Kebab };
     // 누르면 바뀔 모양을 보여 준다: 싱글이면 田(쿼드로), 여러 패널이면 □(이 뷰만 크게).

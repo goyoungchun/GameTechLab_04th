@@ -22,6 +22,7 @@
 #include "Components/ParticleSystemComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 
+#include "Components/ShapeComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkinnedMeshComponent.h"
 
@@ -41,8 +42,9 @@
 #include "UObject/UObjectGlobals.h"
 
 #include "Script/LuaBindings.h"
+
 #include "Physics/Collision.h"
-#include "Components/ShapeComponent.h"
+#include "Physics/PhysScene.h"
 
 namespace
 {
@@ -93,6 +95,8 @@ bool UWorld::Init()
 	// 디버그 선 도구를 만든다. FLineBatcher::Init의 렌더러 인자는 쓰이지 않는다.
 	LineBatcher = MakeUnique<FLineBatcher>();
 	LineBatcher->Init(nullptr, this);
+
+	PhysicsScene = MakeUnique<FPhysScene>(this);
 
 	return true;
 }
