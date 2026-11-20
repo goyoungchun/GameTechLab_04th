@@ -19,7 +19,9 @@ try {
     foreach ($path in @($stage, $output)) {
         if ((Split-Path -Parent $path) -ne $distributionRoot) { throw 'Invalid distribution output path.' }
     }
-    $binaries = @('KurisuEditor.exe', 'libfbxsdk.dll')
+    # Both the editor and the game launcher load these PhysX DLLs.
+    $physXDlls = @('PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll', 'PhysXCooking_64.dll')
+    $binaries = @('KurisuEditor.exe', 'libfbxsdk.dll') + $physXDlls
     foreach ($name in $binaries) {
         if (-not (Test-Path -LiteralPath (Join-Path $bin $name) -PathType Leaf)) {
             throw "Missing $name. Build the corresponding Release target first."
@@ -39,6 +41,7 @@ try {
     $playerDirectory = Join-Path $stage 'EngineResources\Runtime\Windows-x86_64'
     New-Item -ItemType Directory -Path $playerDirectory -Force | Out-Null
     Copy-Item -LiteralPath $gameExe -Destination $playerDirectory
+    foreach ($name in $physXDlls) { Copy-Item -LiteralPath (Join-Path $bin $name) -Destination $playerDirectory }
     # The editor packages games with the same script as a source checkout.
     $packagingDirectory = Join-Path $stage 'Setup\Packaging'
     New-Item -ItemType Directory -Path $packagingDirectory -Force | Out-Null
