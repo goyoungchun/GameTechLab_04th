@@ -2,6 +2,7 @@
 
 #include <functional>
 #include "Core/EngineString.h"
+#include "imgui.h"
 
 struct ImFont;
 class UObject;
@@ -34,5 +35,7 @@ namespace FPropertyEditor
 
 	// 프로퍼티 에디터(머티리얼 슬롯 등)에서 에셋 에디터를 열 때 쓰는 전역 콜백
 	void SetOpenAssetEditorCallback(std::function<void(const FString&)> InCallback);
+	// 머티리얼 에셋 3D 썸네일 조회/요청 콜백 (ContentDrawer의 FMeshThumbnailRenderer와 캐시 공유)
+	void SetMaterialThumbnailQuery(std::function<ImTextureID(const FString&)> InQuery);
 }
 // DetailsPanel.cpp는 이 헤더를 include하고 원래 함수 대신 FPropertyEditor::를 부르도록 바꾼다.

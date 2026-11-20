@@ -21,6 +21,7 @@ public:
 	void OnRender() override;
 	void RenderContents();
 	void RenderPendingThumbnails(class UEditorEngine& Engine, class FRenderer* Renderer);
+	FMeshThumbnailRenderer& GetThumbnailRenderer() { return MeshThumbnailRenderer; }
 	const char* GetPanelName() const override { return "Content Drawer"; }
 	void RenderFolderTree(const fs::path& Path, fs::path& SelectedPath);
 

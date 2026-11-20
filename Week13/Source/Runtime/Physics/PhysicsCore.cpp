@@ -34,8 +34,20 @@ namespace
 }
 
 bool FPhysicsCore::Init()
-{  
-	return false;
+{
+	MainThreadId = std::this_thread::get_id();
+	if (Foundation) 
+		return true;
+	Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, Allocator, ErrorCallback);
+
+	if (!Foundation)
+	{
+		KRS_LOG(Error, "PxCreateFoundation failed!");
+		return false;
+	}
+
+	KRS_LOG(Info, "PhysX Foundation created.");
+	return true;
 }
 
 void FPhysicsCore::EnqueueLog(ELogVerbosity Verbosity, FString Message)
@@ -63,4 +75,51 @@ void FPhysicsCore::FlushPendingLogs()
 	{
 		FLog::Emit(Log.Verbosity, Log.Message);
 	}
+}
+
+void FPhysicsCore::Shutdown()
+{
+	if (LiveSceneCount > 0)
+	{
+		KRS_LOG(Warning, "FPhysicsCore::Shutdown called while {} PhysX scenes are still alive!", LiveSceneCount);
+	}
+	if (Dispatcher)
+	{
+		Dispatcher->release();
+		Dispatcher = nullptr;
+	}
+	if (DefaultMaterial)
+	{
+		DefaultMaterial->release();
+		DefaultMaterial = nullptr;
+	}
+	if (Physics)
+	{
+		Physics->release();
+		Physics = nullptr;
+	}
+	// Pvd가 release 중에 Transport로 연결을 끊으므로 Pvd를 먼저 해제한다.
+	if (Pvd)
+	{
+		Pvd->release();
+		Pvd = nullptr;
+	}
+	if (PvdTransport)
+	{
+		PvdTransport->release();
+		PvdTransport = nullptr;
+	}
+	if (Foundation)
+	{
+		Foundation->release();
+		Foundation = nullptr;
+	}
+	// 해제 도중 생긴 메시지(누수 보고 등)까지 내보낸다.
+	FlushPendingLogs();
+	KRS_LOG(Info, "PhysX shutdown complete.");
+}
+
+bool FPhysicsCore::InitPvd()
+{ 
+	return false;
 }

@@ -1239,6 +1239,23 @@ void FContentDrawerPanel::RenderContents()
 
 						ImGui::EndDragDropSource();
 					}
+					// 스태틱/스켈레탈 메시(.obj / .fbx.bin) 드래그앤드롭
+					if (!bIsDirectory && (Path.extension() == ".obj" || FFbxMeshBake::IsBakedPath(PathString)) && ImGui::BeginDragDropSource())
+					{
+						const std::string LowerPath = ToLowerAscii(PathString);
+						const bool bIsStaticMeshFile = (Path.extension() == ".obj")
+							|| (LowerPath.size() >= 15 && LowerPath.compare(LowerPath.size() - 15, 15, "_static.fbx.bin") == 0);
+						const char* PayloadType = bIsStaticMeshFile ? EditorDragDrop::StaticMesh : EditorDragDrop::SkeletalMesh;
+						ImGui::SetDragDropPayload(PayloadType, PathString.c_str(), PathString.size() + 1);
+
+						if (MeshThumbId != ImTextureID_Invalid)
+						{
+							ImGui::Image(MeshThumbId, { ThumbSize, ThumbSize });
+						}
+						ImGui::TextUnformatted(FilenameString.c_str());
+
+						ImGui::EndDragDropSource();
+					}
 
 					// 더블 클릭 이벤트 처리
 					if (bHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))

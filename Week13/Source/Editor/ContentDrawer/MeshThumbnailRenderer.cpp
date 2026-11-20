@@ -431,6 +431,55 @@ ImTextureID FMeshThumbnailRenderer::GetOrRequestThumbnail(
 	return ImTextureID_Invalid;
 }
 
+ImTextureID FMeshThumbnailRenderer::GetOrRequestAssetThumbnail(const FString& AssetPathOrKey)
+{
+	if (AssetPathOrKey.empty())
+	{
+		return ImTextureID_Invalid;
+	}
+
+	// 디스크 기반 에셋(.mat, .obj, .fbx.bin, .anim.bin 등) — ContentDrawerPanel과 동일한 정규 경로 캐시 키 사용
+	{
+		const FString Resolved = FAssetUtils::ResolveAssetFilePath(AssetPathOrKey);
+		fs::path FilePath = FPaths::FromUtf8(Resolved.empty() ? AssetPathOrKey : Resolved);
+		if (FilePath.is_relative())
+		{
+			FilePath = FPaths::ProjectContentDir() / FPaths::FromUtf8(FAssetUtils::GetAssetKey(AssetPathOrKey));
+		}
+
+		std::error_code Ec;
+		if (fs::is_regular_file(FilePath, Ec))
+		{
+			const fs::path AbsPath = fs::absolute(FilePath, Ec).lexically_normal();
+			const FString CacheKey = FPaths::ToUtf8(AbsPath);
+			if (IsSupportedMeshFile(AbsPath, CacheKey))
+			{
+				const fs::file_time_type WriteTime = fs::last_write_time(AbsPath, Ec);
+				return GetOrRequestThumbnail(AbsPath, CacheKey, WriteTime);
+			}
+		}
+	}
+
+	// 내장 에셋("DefaultMaterial", "Cube", "Sphere" 등)
+	if (URenderAsset* Loaded = UAssetManager::FindLoadedAsset(AssetPathOrKey))
+	{
+		if (Loaded->IsA<UMaterial>())
+		{
+			return GetOrRequestThumbnail({}, "builtin_mat:" + AssetPathOrKey, fs::file_time_type{});
+		}
+		if (Loaded->IsA<UStaticMesh>())
+		{
+			return GetOrRequestThumbnail({}, "builtin_mesh:" + AssetPathOrKey, fs::file_time_type{});
+		}
+		if (Loaded->IsA<USkeletalMesh>())
+		{
+			return GetOrRequestThumbnail({}, "builtin_skel:" + AssetPathOrKey, fs::file_time_type{});
+		}
+	}
+
+	return ImTextureID_Invalid;
+}
+
 void FMeshThumbnailRenderer::RenderPending(UEditorEngine& Engine, FRenderer* Renderer)
 {
 	if (PendingQueue.empty() || !Renderer || bPreviewInitFailed)
@@ -526,9 +575,41 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 
 	StaticMeshComp->ClearOverrideMaterials();
 
-	if (MaterialFile::IsMaterialPath(Request.Utf8Path))
+	if (Request.Utf8Path.starts_with("builtin_mesh:"))
 	{
-		UMaterial* Material = UAssetManager::Get().LoadMaterial(Request.Utf8Path);
+		const FString BuiltinName = Request.Utf8Path.substr(13);
+		if (UStaticMesh* StaticMesh = UAssetManager::GetAssetByPath<UStaticMesh>(BuiltinName))
+		{
+			const auto& MeshData = StaticMesh->GetMeshData();
+			if (!MeshData.Vertices.IsEmpty() && !MeshData.Indices.IsEmpty())
+			{
+				SkeletalMeshComp->SetSkeletalMesh(nullptr);
+				StaticMeshComp->SetStaticMesh(StaticMesh);
+				BoundsBox = StaticMesh->GetRenderBounds();
+				bValidMesh = AreBoundsFinite(BoundsBox);
+			}
+		}
+	}
+	else if (Request.Utf8Path.starts_with("builtin_skel:"))
+	{
+		const FString BuiltinName = Request.Utf8Path.substr(13);
+		if (USkeletalMesh* SkelMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(BuiltinName))
+		{
+			bValidMesh = SetupSkeletalThumbnail(SkelMesh, nullptr, StaticMeshComp, SkeletalMeshComp, BoundsBox);
+		}
+	}
+	else if (MaterialFile::IsMaterialPath(Request.Utf8Path) || Request.Utf8Path.starts_with("builtin_mat:"))
+	{
+		UMaterial* Material = nullptr;
+		if (Request.Utf8Path.starts_with("builtin_mat:"))
+		{
+			const FString BuiltinName = Request.Utf8Path.substr(12);
+			Material = UAssetManager::GetAssetByPath<UMaterial>(BuiltinName);
+		}
+		else
+		{
+			Material = UAssetManager::Get().LoadMaterial(Request.Utf8Path);
+		}
 		UStaticMesh* Sphere = UAssetManager::GetAssetByPath<UStaticMesh>("Sphere");
 		if (Material && Sphere)
 		{

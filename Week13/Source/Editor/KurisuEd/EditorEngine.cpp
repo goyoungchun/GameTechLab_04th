@@ -418,6 +418,14 @@ void UEditorEngine::InitPanels()
 			EditorManager->OpenEditor(Path);
 		}
 	});
+	FPropertyEditor::SetMaterialThumbnailQuery([this](const FString& Path) -> ImTextureID
+	{
+		if (ContentDrawerPanel)
+		{
+			return ContentDrawerPanel->GetThumbnailRenderer().GetOrRequestAssetThumbnail(Path);
+		}
+		return ImTextureID_Invalid;
+	});
 
 	// .scene 더블클릭 → 레벨 에디터에 그 씬을 연다
 	ContentDrawerPanel->SetOpenSceneCallback([this](const FString& Path) { OpenSceneFromPath(Path); });
