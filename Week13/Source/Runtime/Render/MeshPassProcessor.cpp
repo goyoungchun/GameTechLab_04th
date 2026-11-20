@@ -4,6 +4,7 @@
 #include "Render/SceneView.h"
 #include "Render/RenderResourceManager.h"
 #include "Render/Mesh.h"
+#include "Asset/AssetManager.h"
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Core/EngineTimer.h"
 #include <algorithm>
@@ -42,17 +43,27 @@ namespace
 	{
 		if (!VertexFactory || !VertexFactory->IsValid() || !Material) return false;
 		Batch.VertexFactory = VertexFactory;
+		const EVertexFactoryType VFType = VertexFactory->GetType();
 		const bool bUsesUberShader = Pass == EMeshPassType::Forward || Pass == EMeshPassType::WorldNormal;
 		if (bUsesUberShader)
 		{
 			const bool bWorldNormal = Pass == EMeshPassType::WorldNormal;
 			FPipelineState* Base = FRenderResourceManager::GetPSO(bWorldNormal
 				? EPSOType::StaticMesh_WorldNormal : EPSOType::StaticMesh_Forward);
+			// 뷰포트가 전역 Unlit이거나 머티리얼 자체가 Unlit이면 Unlit 셰이더 사용
+			const ELightingModel EffectiveLighting =
+				(LightingModel == ELightingModel::Unlit || Material->IsUnlit())
+					? ELightingModel::Unlit
+					: LightingModel;
 			FShaderProgram* Shader = bWorldNormal ? (Base ? Base->Shader : nullptr)
-				: FRenderResourceManager::GetForwardShaderProgram(LightingModel);
+				: FRenderResourceManager::GetForwardShaderProgram(EffectiveLighting);
 			if (!Base || !Shader || !Shader->VertexShader || !Shader->PixelShader) return false;
 			Batch.Pipeline = *Base;
 			Batch.Pipeline.Shader = Shader;
+			if (Material->bTwoSided)
+			{
+				Batch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
+			}
 			Batch.bUseObjectSlots = false;
 			Batch.bBindViewConstants = false;
 			Batch.ObjectBindingSlot = 0;
@@ -61,6 +72,7 @@ namespace
 			Batch.MaterialStages = EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel;
 			Batch.SamplerStages = Batch.MaterialStages;
 			Batch.bForceWireframe = !bWorldNormal && View.bIsWireframe;
+			Batch.bIsMasked = Material->IsMasked();
 
 			FForwardMaterialConstants Params{};
 			Params.BaseColor = Material->BaseColor;
@@ -69,7 +81,8 @@ namespace
 			UTexture2D* Color = Material->Textures.IsEmpty() ? nullptr : Material->Textures[0];
 			UTexture2D* Normal = Material->Textures.Num() > 1 ? Material->Textures[1] : nullptr;
 			const bool bHasColor = Color && Color->GetResource() && Color->GetResource()->GetSRV();
-			Params.SurfaceParams = FVector4(Material->bFlipNormalY ? 1.0f : 0.0f, 0.0f, bHasColor ? 1.0f : 0.0f,
+			const float MaskClip = Material->IsMasked() ? std::max(0.0f, Material->OpacityMaskClipValue) : -1.0f;
+			Params.SurfaceParams = FVector4(Material->bFlipNormalY ? 1.0f : 0.0f, MaskClip, bHasColor ? 1.0f : 0.0f,
 				GetNormalEncoding(Normal));
 			const FVector2 UV = Material->UVScrollSpeed * EngineTimer::GetTotalTime();
 			Params.UVTransform = FVector4(UV.X, UV.Y, 1.0f, 1.0f);
@@ -78,22 +91,46 @@ namespace
 		}
 		else
 		{
-			EPSOType Type = Material->PSOType;
-			if (View.bIsWireframe && Type == EPSOType::StaticMesh_Opaque)
-				Type = EPSOType::StaticMesh_Wireframe;
+			// 그리는 쪽(Pass + VertexFactory)이 머티리얼 속성(BlendMode, bTwoSided)을 보고 PSO를 결정한다
+			const bool bIsParticleSpriteOrTrail =
+				VFType == EVertexFactoryType::SpriteParticle || VFType == EVertexFactoryType::Trail;
+			const bool bIsBillboard = Material->PSOType == EPSOType::Billboard;
+
+			EPSOType Type = EPSOType::StaticMesh_Translucent;
+			if (bIsBillboard)
+			{
+				Type = EPSOType::Billboard;
+			}
+			else if (bIsParticleSpriteOrTrail)
+			{
+				Type = (Material->BlendMode == EMaterialBlendMode::Additive)
+					? EPSOType::Particle_Additive
+					: EPSOType::Particle_AlphaBlend;
+			}
+			else
+			{
+				Type = (Material->BlendMode == EMaterialBlendMode::Additive)
+					? EPSOType::StaticMesh_Additive
+					: EPSOType::StaticMesh_Translucent;
+			}
+
 			FPipelineState* Pipeline = FRenderResourceManager::GetPSO(Type);
 			if (!Pipeline || !Pipeline->Shader) return false;
 			Batch.Pipeline = *Pipeline;
-			Batch.bForceWireframe = View.bIsWireframe;
-			if (Material->PSOType == EPSOType::StaticMesh_Opaque ||
-				Material->PSOType == EPSOType::StaticMesh_Translucent ||
-				Material->PSOType == EPSOType::StaticMesh_Additive ||
-				Material->PSOType == EPSOType::StaticMesh_Wireframe)
+			if (!bIsBillboard && !bIsParticleSpriteOrTrail && Material->bTwoSided)
 			{
+				Batch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
+			}
+			Batch.bForceWireframe = View.bIsWireframe;
+
+			if (!bIsBillboard && !bIsParticleSpriteOrTrail)
+			{
+				UTexture2D* Color = Material->Textures.IsEmpty() ? nullptr : Material->Textures[0];
+				const bool bHasColor = Color && Color->GetResource() && Color->GetResource()->GetSRV();
 				FStaticMeshMaterialParams Params{};
 				Params.BaseColor = Material->BaseColor;
 				Params.UVOffset = Material->UVScrollSpeed * EngineTimer::GetTotalTime();
-				Params.TextureFlags.X = GetNormalEncoding(Material->Textures.Num() > 1 ? Material->Textures[1] : nullptr);
+				Params.TextureFlags.X = bHasColor ? 1.0f : 0.0f;
 				Params.TextureFlags.Y = Material->bFlipNormalY ? 1.0f : 0.0f;
 				std::memcpy(Batch.MaterialData.data(), &Params, sizeof(Params));
 				Batch.MaterialDataSize = sizeof(Params);
@@ -102,7 +139,7 @@ namespace
 			{
 				std::memcpy(Batch.MaterialData.data(), OverrideParams, OverrideSize);
 				Batch.MaterialDataSize = OverrideSize;
-				if (Type == EPSOType::Particle_Additive || Type == EPSOType::Particle_AlphaBlend)
+				if (bIsParticleSpriteOrTrail)
 					Batch.MaterialStages = EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel;
 			}
 		}
@@ -122,6 +159,19 @@ namespace
 			if (bUsesUberShader && Index == 1 && GetNormalEncoding(Texture) <= 0.5f)
 				Texture = nullptr;
 			Batch.Textures.Add({ Texture, Stages });
+		}
+		// 파티클 스프라이트/트레일 셰이더는 항상 t0를 샘플링하므로 텍스처가 비어 있으면 흰 텍스처로 대체한다
+		if (!bUsesUberShader && (VFType == EVertexFactoryType::SpriteParticle || VFType == EVertexFactoryType::Trail))
+		{
+			UTexture2D* Primary = Batch.Textures.IsEmpty() ? nullptr : Batch.Textures[0].Texture;
+			if (!Primary || !Primary->GetResource() || !Primary->GetResource()->GetSRV())
+			{
+				UTexture2D* White = UAssetManager::GetAssetByPath<UTexture2D>("WhiteTexture");
+				if (Batch.Textures.IsEmpty())
+					Batch.Textures.Add({ White, EShaderBindFlagBits::Pixel });
+				else
+					Batch.Textures[0].Texture = White;
+			}
 		}
 		return true;
 	}
@@ -247,7 +297,7 @@ bool FMeshPassProcessor::Build(const FSceneView& View, const FRenderQueue& Queue
 	{
 		const FRenderPacket& Packet = Queue[Index];
 		if (Pass == EMeshPassType::WorldNormal &&
-			(!Packet.Material || Packet.Material->PSOType != EPSOType::StaticMesh_Opaque)) continue;
+			(!Packet.Material || !Packet.Material->IsOpaqueOrMasked() || Packet.Material->PSOType == EPSOType::Billboard)) continue;
 		FMeshDrawBatch Batch;
 		if (!BuildBatch(Batch, GetPacketVertexFactory(Packet), Packet.Material, Pass, View,
 			LightingModel, Packet.MaterialParamData, Packet.MaterialParamDataSize)) return false;
@@ -298,6 +348,8 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 				const FVertexFactory* VertexFactory = GetPacketVertexFactory(Packet);
 				if (!VertexFactory || !VertexFactory->IsValid() || Packet.IndexCount == 0)
 					continue;
+				if (Packet.Material && Packet.Material->IsTranslucent())
+					continue;
 				FMeshDrawBatch Batch{};
 				Batch.Pipeline = *Pipeline;
 				Batch.VertexFactory = VertexFactory;
@@ -337,6 +389,8 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 		{
 			const FCachedMeshSection& Section = Proxy->GetSection(Index);
 			if (Section.IndexCount == 0)
+				continue;
+			if (Section.Material && Section.Material->IsTranslucent())
 				continue;
 
 			Batch.Items.Add(std::move(MakeShadowItem(Proxy, Section.StartIndex, Section.IndexCount, PreTranslation)));

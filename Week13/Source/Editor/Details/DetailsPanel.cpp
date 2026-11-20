@@ -39,6 +39,7 @@
 #include "Asset/AssetManager.h"
 #include "Asset/AssetUtils.h"
 #include "Render/Material.h"
+#include "Render/MaterialFile.h"
 #include "Render/Texture2D.h"
 #include "Render/SkeletalMesh.h"
 #include "Text/Font.h"
@@ -519,6 +520,129 @@ namespace
 			_rotator.Yaw = Euler[2];
 		}
 		return isChanged;
+	}
+
+	std::function<void(const FString&)>& GetOpenAssetEditorCallback()
+	{
+		static std::function<void(const FString&)> Callback;
+		return Callback;
+	}
+
+	FString GetMaterialDisplayName(const UMaterial* Material)
+	{
+		if (!Material)
+		{
+			return "None";
+		}
+		if (!Material->GetPath().empty())
+		{
+			fs::path P(Material->GetPath());
+			return P.stem().string();
+		}
+		if (Material->bIsInstance)
+		{
+			if (const UMaterial* Base = Material->GetBaseAsset(); Base && !Base->GetPath().empty())
+			{
+				return fs::path(Base->GetPath()).stem().string() + " (Instance)";
+			}
+			return "Material Instance";
+		}
+		return "Material";
+	}
+
+	// .mat 에셋 선택 콤보 + 드래그앤드롭 + Edit 버튼
+	template <typename FOnPick>
+	bool DrawMaterialAssetPicker(UMaterial* Current, const char* ComboId, FOnPick&& OnPick, bool bAllowClear = true, bool bMixed = false)
+	{
+		bool bChanged = false;
+		const FString CurrentPath = (Current && !bMixed) ? Current->GetPath() : "";
+		const FString DisplayName = bMixed ? "Multiple Values" : GetMaterialDisplayName(Current);
+		const bool bCanEdit = !bMixed && Current && !CurrentPath.empty() && MaterialFile::IsMaterialPath(CurrentPath);
+		const float EditBtnW = bCanEdit ? EditorStyle::Scale(42.0f) : 0.0f;
+		const float Spacing = bCanEdit ? ImGui::GetStyle().ItemSpacing.x : 0.0f;
+
+		ImGui::SetNextItemWidth(std::max(EditorStyle::Scale(80.0f), ImGui::GetContentRegionAvail().x - EditBtnW - Spacing));
+		const bool bOpen = ImGui::BeginCombo(ComboId, DisplayName.c_str());
+		if (ImGui::IsItemHovered() && !bMixed && Current && !CurrentPath.empty())
+		{
+			ImGui::SetTooltip("%s", CurrentPath.c_str());
+		}
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::Material))
+			{
+				const FString DroppedPath(static_cast<const char*>(Payload->Data));
+				if (UMaterial* Loaded = UAssetManager::Get().LoadMaterial(DroppedPath))
+				{
+					OnPick(Loaded);
+					bChanged = true;
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		if (bOpen)
+		{
+			if (bAllowClear && ImGui::Selectable("None", !bMixed && Current == nullptr))
+			{
+				if (bMixed || Current != nullptr)
+				{
+					OnPick(nullptr);
+					bChanged = true;
+				}
+			}
+
+			const TArray<FString> AllMaterials = UAssetManager::GetAllMaterialAssetPaths();
+			for (const FString& Path : AllMaterials)
+			{
+				const bool bSelected = !bMixed && Current && !CurrentPath.empty()
+					&& FAssetUtils::GetAssetKey(CurrentPath) == FAssetUtils::GetAssetKey(Path);
+				const FString ItemLabel = fs::path(Path).stem().string();
+				ImGui::PushID(Path.c_str());
+				if (ImGui::Selectable(ItemLabel.c_str(), bSelected))
+				{
+					UMaterial* Picked = UAssetManager::GetAssetByPath<UMaterial>(Path);
+					if (!Picked && MaterialFile::IsMaterialPath(Path))
+					{
+						Picked = UAssetManager::Get().LoadMaterial(Path);
+					}
+					if (Picked && (bMixed || Picked != Current))
+					{
+						OnPick(Picked);
+						bChanged = true;
+					}
+				}
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", Path.c_str());
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+				ImGui::PopID();
+			}
+			ImGui::EndCombo();
+		}
+
+		if (bCanEdit)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button("Edit", ImVec2(EditBtnW, 0.0f)))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
+				}
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Open Material Editor (%s)", CurrentPath.c_str());
+			}
+		}
+
+		return bChanged;
 	}
 
 	bool DrawTextureSlot(UMaterial** MaterialPtr, int32 SlotIndex)
@@ -1273,7 +1397,7 @@ namespace
 
 			if (Override)
 			{
-				ImGui::TextDisabled("Override");
+				ImGui::TextDisabled(Override->bIsInstance ? "Override (Instance)" : "Override");
 				ImGui::SameLine();
 
 				if (ImGui::SmallButton("Reset"))
@@ -1288,12 +1412,103 @@ namespace
 				ImGui::TextDisabled("Default");
 			}
 
+			// 항상 보이는 머티리얼 에셋 할당 줄 (.mat 콤보 + 드래그앤드롭 + Edit)
+			if (DrawMaterialAssetPicker(Effective, "##MaterialAsset",
+				[&](UMaterial* Picked)
+				{
+					MeshComponent->SetMaterial(Slot, Picked);
+					Override = MeshComponent->GetOverrideMaterial(Slot);
+					Effective = MeshComponent->GetMaterial(Slot);
+				}, /*bAllowClear=*/false))
+			{
+				Override = MeshComponent->GetOverrideMaterial(Slot);
+				Effective = MeshComponent->GetMaterial(Slot);
+			}
+
 			if (bOpen)
 			{
 				if (BeginPropertyGridTable("MaterialProperties"))
 				{
 					DrawMaterialTextureSlot(MeshComponent, Slot, 0, "Texture", Effective, Override);
 					DrawMaterialTextureSlot(MeshComponent, Slot, 1, "Normal Map", Effective, Override);
+
+					ImGui::TableNextRow();
+
+					// Shading Model (Lit / Unlit)
+					ImGui::TableSetColumnIndex(0);
+					DrawPropertyGridLabel("Shading Model");
+					ImGui::TableSetColumnIndex(1);
+					ImGui::SetNextItemWidth(-1.0f);
+					const char* ShadingItems[] = { "Default Lit", "Unlit" };
+					int ShadingIndex = Effective ? static_cast<int>(Effective->ShadingModel) : 0;
+					if (ShadingIndex < 0 || ShadingIndex >= IM_ARRAYSIZE(ShadingItems)) ShadingIndex = 0;
+					if (ImGui::Combo("##ShadingModel", &ShadingIndex, ShadingItems, IM_ARRAYSIZE(ShadingItems)))
+					{
+						Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+						if (Override)
+						{
+							Override->ShadingModel = static_cast<EMaterialShadingModel>(ShadingIndex);
+							Effective = Override;
+						}
+					}
+
+					ImGui::TableNextRow();
+
+					// Blend Mode
+					ImGui::TableSetColumnIndex(0);
+					DrawPropertyGridLabel("Blend Mode");
+					ImGui::TableSetColumnIndex(1);
+					ImGui::SetNextItemWidth(-1.0f);
+					const char* BlendItems[] = { "Opaque", "Masked", "Translucent", "Additive" };
+					int BlendIndex = Effective ? static_cast<int>(Effective->BlendMode) : 0;
+					if (BlendIndex < 0 || BlendIndex >= IM_ARRAYSIZE(BlendItems)) BlendIndex = 0;
+					if (ImGui::Combo("##BlendMode", &BlendIndex, BlendItems, IM_ARRAYSIZE(BlendItems)))
+					{
+						Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+						if (Override)
+						{
+							Override->BlendMode = static_cast<EMaterialBlendMode>(BlendIndex);
+							Override->SyncLegacyStates();
+							MeshComponent->MarkRenderStateDirty();
+							Effective = Override;
+						}
+					}
+
+					ImGui::TableNextRow();
+
+					// Two Sided
+					ImGui::TableSetColumnIndex(0);
+					DrawPropertyGridLabel("Two Sided");
+					ImGui::TableSetColumnIndex(1);
+					bool bTempTwoSided = Effective ? Effective->bTwoSided : false;
+					if (ImGui::Checkbox("##TwoSided", &bTempTwoSided))
+					{
+						Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+						if (Override)
+						{
+							Override->bTwoSided = bTempTwoSided;
+							Effective = Override;
+						}
+					}
+
+					if (Effective && Effective->IsMasked())
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						DrawPropertyGridLabel("Mask Clip");
+						ImGui::TableSetColumnIndex(1);
+						ImGui::SetNextItemWidth(-1.0f);
+						float TempClip = Effective->OpacityMaskClipValue;
+						if (ImGui::DragFloat("##MaskClip", &TempClip, 0.01f, 0.0f, 1.0f, "%.3f"))
+						{
+							Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+							if (Override)
+							{
+								Override->OpacityMaskClipValue = TempClip;
+								Effective = Override;
+							}
+						}
+					}
 
 					ImGui::TableNextRow();
 
@@ -1363,51 +1578,29 @@ namespace
 					ImGui::TableSetColumnIndex(1);
 					ImGui::SetNextItemWidth(-1.0f);
 
-					const char* SamplerItems[] = { "Linear Clamp", "Linear Wrap" };
-					int SamplerIndex = Effective ? static_cast<int>(Effective->SamplerState) : static_cast<int>(ESamplerState::LinearClamp);
-					if (ImGui::BeginCombo("##SamplerState", SamplerItems[SamplerIndex]))
+					const char* SamplerItems[] = { "Linear Clamp", "Linear Wrap", "Point Clamp", "Linear Wrap U / Clamp V" };
+					const ESamplerState SamplerValues[] = {
+						ESamplerState::LinearClamp,
+						ESamplerState::LinearWrap,
+						ESamplerState::PointClamp,
+						ESamplerState::LinearWrapUClampV
+					};
+					int SamplerIndex = 0;
+					if (Effective)
 					{
-						for (int i = 0; i < IM_ARRAYSIZE(SamplerItems); ++i)
+						for (int i = 0; i < IM_ARRAYSIZE(SamplerValues); ++i)
 						{
-							if (ImGui::Selectable(SamplerItems[i], SamplerIndex == i))
-							{
-								Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
-								if (Override)
-								{
-									Override->SamplerState = static_cast<ESamplerState>(i);
-									Effective = Override;
-								}
-							}
+							if (Effective->SamplerState == SamplerValues[i]) { SamplerIndex = i; break; }
 						}
-						ImGui::EndCombo();
 					}
-
-					ImGui::TableNextRow();
-
-					// 6: Blend State
-					ImGui::TableSetColumnIndex(0);
-					DrawPropertyGridLabel("Blend Mode");
-
-					ImGui::TableSetColumnIndex(1);
-					ImGui::SetNextItemWidth(-1.0f);
-
-					const char* BlendItems[] = { "Opaque", "Alpha Blend" };
-					int BlendIndex = Effective ? static_cast<int>(Effective->BlendState) : static_cast<int>(EBlendState::Opaque);
-					if (ImGui::BeginCombo("##BlendState", BlendItems[BlendIndex]))
+					if (ImGui::Combo("##SamplerState", &SamplerIndex, SamplerItems, IM_ARRAYSIZE(SamplerItems)))
 					{
-						for (int i = 0; i < IM_ARRAYSIZE(BlendItems); ++i)
+						Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
+						if (Override)
 						{
-							if (ImGui::Selectable(BlendItems[i], BlendIndex == i))
-							{
-								Override = EnsureMaterialOverride(MeshComponent, Slot, Effective, Override);
-								if (Override)
-								{
-									Override->BlendState = static_cast<EBlendState>(i);
-									Effective = Override;
-								}
-							}
+							Override->SamplerState = SamplerValues[SamplerIndex];
+							Effective = Override;
 						}
-						ImGui::EndCombo();
 					}
 
 					EndPropertyGridTable();
@@ -1602,7 +1795,9 @@ namespace
 
 			if (PropertyClass == UMaterial::StaticClass())
 			{
-				return DrawTextureSlot(reinterpret_cast<UMaterial**>(ObjPtr), 0);
+				UMaterial** MatPtr = reinterpret_cast<UMaterial**>(ObjPtr);
+				return DrawMaterialAssetPicker(*MatPtr, Label,
+					[MatPtr](UMaterial* Picked) { *MatPtr = Picked; }, /*bAllowClear=*/true);
 			}
 			else if (PropertyClass == UFont::StaticClass())
 			{
@@ -2899,6 +3094,22 @@ namespace
 				ImGui::TextDisabled("Default");
 			}
 
+			// 다중 선택 시에도 머티리얼 에셋을 한 번에 할당할 수 있다
+			{
+				UMaterial* FirstMat = MeshComps[0]->GetMaterial(Slot);
+				bool bMatMixed = false;
+				for (int32 i = 1; i < MeshComps.Num(); ++i)
+				{
+					if (MeshComps[i]->GetMaterial(Slot) != FirstMat) { bMatMixed = true; break; }
+				}
+				DrawMaterialAssetPicker(FirstMat, "##MultiMatAsset",
+					[&](UMaterial* Picked)
+					{
+						for (UMeshComponent* MC : MeshComps)
+							MC->SetMaterial(Slot, Picked);
+					}, /*bAllowClear=*/false, bMatMixed);
+			}
+
 			if (bOpen)
 			{
 				if (BeginPropertyGridTable("MultiMaterialProperties"))
@@ -3004,46 +3215,99 @@ namespace
 						}
 					}
 
-					const char* SamplerItems[] = { "Linear Clamp", "Linear Wrap" };
+					const char* SamplerItems[] = { "Linear Clamp", "Linear Wrap", "Point Clamp", "Linear Wrap U / Clamp V" };
+					const ESamplerState SamplerValues[] = {
+						ESamplerState::LinearClamp,
+						ESamplerState::LinearWrap,
+						ESamplerState::PointClamp,
+						ESamplerState::LinearWrapUClampV
+					};
+					int FirstSamplerIdx = 0;
+					for (int i = 0; i < IM_ARRAYSIZE(SamplerValues); ++i)
+					{
+						if (FirstEff && FirstEff->SamplerState == SamplerValues[i]) { FirstSamplerIdx = i; break; }
+					}
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
 					DrawPropertyGridLabel("Sampler");
 					ImGui::TableSetColumnIndex(1);
 					ImGui::SetNextItemWidth(-1.0f);
-					if (ImGui::BeginCombo("##MultiSampler", bSamplerMixed ? "Multiple Values" : SamplerItems[FirstSampler]))
+					if (ImGui::BeginCombo("##MultiSampler", bSamplerMixed ? "Multiple Values" : SamplerItems[FirstSamplerIdx]))
 					{
 						for (int i = 0; i < IM_ARRAYSIZE(SamplerItems); ++i)
 						{
-							const bool bSel = !bSamplerMixed && FirstSampler == i;
+							const bool bSel = !bSamplerMixed && FirstSamplerIdx == i;
 							if (ImGui::Selectable(SamplerItems[i], bSel))
 							{
 								for (UMeshComponent* MC : MeshComps)
 								{
 									if (UMaterial* Over = EnsureMaterialOverride(MC, Slot, MC->GetMaterial(Slot), MC->GetOverrideMaterial(Slot)))
-										Over->SamplerState = static_cast<ESamplerState>(i);
+										Over->SamplerState = SamplerValues[i];
 								}
 							}
 						}
 						ImGui::EndCombo();
 					}
 
-					const char* BlendItems[] = { "Opaque", "Alpha Blend" };
+					const char* BlendItems[] = { "Opaque", "Masked", "Translucent", "Additive" };
+					const int FirstBlendMode = FirstEff ? static_cast<int>(FirstEff->BlendMode) : 0;
+					bool bBlendModeMixed = false;
+					for (int32 i = 1; i < MeshComps.Num(); ++i)
+					{
+						UMaterial* E = MeshComps[i]->GetMaterial(Slot);
+						const int BM = E ? static_cast<int>(E->BlendMode) : 0;
+						if (BM != FirstBlendMode) { bBlendModeMixed = true; break; }
+					}
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
 					DrawPropertyGridLabel("Blend Mode");
 					ImGui::TableSetColumnIndex(1);
 					ImGui::SetNextItemWidth(-1.0f);
-					if (ImGui::BeginCombo("##MultiBlend", bBlendMixed ? "Multiple Values" : BlendItems[FirstBlend]))
+					if (ImGui::BeginCombo("##MultiBlend", bBlendModeMixed ? "Multiple Values" : BlendItems[std::clamp(FirstBlendMode, 0, 3)]))
 					{
 						for (int i = 0; i < IM_ARRAYSIZE(BlendItems); ++i)
 						{
-							const bool bSel = !bBlendMixed && FirstBlend == i;
+							const bool bSel = !bBlendModeMixed && FirstBlendMode == i;
 							if (ImGui::Selectable(BlendItems[i], bSel))
 							{
 								for (UMeshComponent* MC : MeshComps)
 								{
 									if (UMaterial* Over = EnsureMaterialOverride(MC, Slot, MC->GetMaterial(Slot), MC->GetOverrideMaterial(Slot)))
-										Over->BlendState = static_cast<EBlendState>(i);
+									{
+										Over->BlendMode = static_cast<EMaterialBlendMode>(i);
+										Over->SyncLegacyStates();
+										MC->MarkRenderStateDirty();
+									}
+								}
+							}
+						}
+						ImGui::EndCombo();
+					}
+
+					const char* ShadingItems[] = { "Default Lit", "Unlit" };
+					const int FirstShading = FirstEff ? static_cast<int>(FirstEff->ShadingModel) : 0;
+					bool bShadingMixed = false;
+					for (int32 i = 1; i < MeshComps.Num(); ++i)
+					{
+						UMaterial* E = MeshComps[i]->GetMaterial(Slot);
+						if ((E ? static_cast<int>(E->ShadingModel) : 0) != FirstShading) { bShadingMixed = true; break; }
+					}
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					DrawPropertyGridLabel("Shading Model");
+					ImGui::TableSetColumnIndex(1);
+					ImGui::SetNextItemWidth(-1.0f);
+					if (ImGui::BeginCombo("##MultiShading", bShadingMixed ? "Multiple Values" : ShadingItems[std::clamp(FirstShading, 0, 1)]))
+					{
+						for (int i = 0; i < IM_ARRAYSIZE(ShadingItems); ++i)
+						{
+							const bool bSel = !bShadingMixed && FirstShading == i;
+							if (ImGui::Selectable(ShadingItems[i], bSel))
+							{
+								for (UMeshComponent* MC : MeshComps)
+								{
+									if (UMaterial* Over = EnsureMaterialOverride(MC, Slot, MC->GetMaterial(Slot), MC->GetOverrideMaterial(Slot)))
+										Over->ShadingModel = static_cast<EMaterialShadingModel>(i);
 								}
 							}
 						}
@@ -3064,6 +3328,11 @@ namespace
 // 보조 함수들이 이 파일의 익명 네임스페이스에 있어 구현은 옮기지 않고 넘겨 준다.
 namespace FPropertyEditor
 {
+	void SetOpenAssetEditorCallback(std::function<void(const FString&)> InCallback)
+	{
+		GetOpenAssetEditorCallback() = std::move(InCallback);
+	}
+
 	void RegisterStructDrawer(const UScriptStruct* Struct, FStructDrawer Drawer)
 	{
 		if (Struct && Drawer)

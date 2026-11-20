@@ -412,13 +412,30 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 					DepthPrograms.Reserve(static_cast<int32>(EVertexFactoryType::Count));
 					for (int32 Index = 0; Index < static_cast<int32>(EVertexFactoryType::Count); ++Index)
 						DepthPrograms.Add(FShaderProgram(nullptr, DepthPipeline->Shader->PixelShader));
+					FShaderProgram* UnlitBase = FRenderResourceManager::GetForwardShaderProgram(ELightingModel::Unlit);
 					TArray<FMeshDrawBatch> DepthBatches = ForwardBatches;
 					for (FMeshDrawBatch& Batch : DepthBatches)
 					{
-						FShaderProgram& Program = DepthPrograms[static_cast<int32>(Batch.VertexFactory->GetType())];
-						Program.VertexShader = Batch.Pipeline.Shader->VertexShader;
-						Batch.Pipeline = *DepthPipeline;
-						Batch.Pipeline.Shader = &Program;
+						const ERasterizerState OriginalRasterizer = Batch.Pipeline.RasterizerState;
+						if (Batch.bIsMasked && UnlitBase)
+						{
+							// Masked 머티리얼은 알파 클립을 실행해 투명 픽셀의 깊이를 기록하지 않는다
+							FShaderProgram* MaskedShader = FRenderResourceManager::ResolveShader(UnlitBase, Batch.VertexFactory->GetType());
+							Batch.Pipeline = *DepthPipeline;
+							Batch.Pipeline.RasterizerState = OriginalRasterizer;
+							if (MaskedShader)
+							{
+								Batch.Pipeline.Shader = MaskedShader;
+							}
+						}
+						else
+						{
+							FShaderProgram& Program = DepthPrograms[static_cast<int32>(Batch.VertexFactory->GetType())];
+							Program.VertexShader = Batch.Pipeline.Shader->VertexShader;
+							Batch.Pipeline = *DepthPipeline;
+							Batch.Pipeline.RasterizerState = OriginalRasterizer;
+							Batch.Pipeline.Shader = &Program;
+						}
 					}
 					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthPrepass);
 					Renderer->DrawMeshes(DepthBatches);
@@ -1029,7 +1046,7 @@ void FSceneRenderer::GatherRenderPackets(FScene& Scene, FSceneRenderData& Data,
 						const FCachedMeshSection& Section = Proxy->GetSection(i);
 						Out.Triangles += Section.IndexCount / 3;
 
-						if (bStaticGroups && Section.Material && Section.Material->PSOType == EPSOType::StaticMesh_Opaque)
+						if (bStaticGroups && Section.Material && Section.Material->IsOpaqueOrMasked() && Section.Material->PSOType != EPSOType::Billboard)
 						{
 							FStaticDrawGroup& Group = FindGroup(Section.Material, Mesh);
 							Group.Items.push_back({ Proxy, Slot, Section.StartIndex, Section.IndexCount });
@@ -1044,6 +1061,11 @@ void FSceneRenderer::GatherRenderPackets(FScene& Scene, FSceneRenderData& Data,
 						Packet.StartIndex = Section.StartIndex;
 						Packet.IndexCount = Section.IndexCount;
 						Packet.Slot = Slot;
+						if (Section.Material && Section.Material->IsTranslucent())
+						{
+							const FVector Delta = Proxy->GetBounds().Center - View.CameraPosition;
+							Packet.CameraToParticleDistance = Delta.Dot(Delta);
+						}
 					}
 				}
 			});

@@ -37,6 +37,7 @@
 #include "Render/RenderResourceManager.h"
 
 #include "Render/RenderCommand.h"
+#include "Editor/Details/PropertyEditor.h"
 #include "Editor/Outliner/OutlinerPanel.h"
 #include "Editor/KurisuEd/EditorFileUtils.h"
 #include "Editor/KurisuEd/EditorHierarchy.h"
@@ -394,10 +395,29 @@ void UEditorEngine::InitPanels()
 			EditorManager->OpenEditor(Path);
 		}
 	});
+	ContentDrawerPanel->SetCreateMaterialCallback([this](const FString& Path)
+	{
+		FString Error;
+		if (UAssetManager::CreateMaterialAsset(Path, Error))
+		{
+			EditorManager->OpenEditor(Path);
+		}
+		else
+		{
+			KRS_LOG(Warning, "Failed to create material '{}': {}", Path, Error);
+		}
+	});
 	ContentDrawerPanel->SetOpenWidgetCallback([this](const FString& Path) { EditorManager->OpenEditor(Path); });
 
-	// StaticMesh / SkeletalMesh Viewer 열기
+	// StaticMesh / SkeletalMesh / Material Viewer 열기
 	ContentDrawerPanel->SetOpenMeshCallback([this](const FString& Path) { EditorManager->OpenEditor(Path); });
+	FPropertyEditor::SetOpenAssetEditorCallback([this](const FString& Path)
+	{
+		if (EditorManager)
+		{
+			EditorManager->OpenEditor(Path);
+		}
+	});
 
 	// .scene 더블클릭 → 레벨 에디터에 그 씬을 연다
 	ContentDrawerPanel->SetOpenSceneCallback([this](const FString& Path) { OpenSceneFromPath(Path); });

@@ -15,7 +15,7 @@ cbuffer MaterialParams : register(b1)
 {
     float4 BaseColor;
     float2 UVOffset;
-    float2 Padding;
+    float2 TextureFlags; // x: 컬러 텍스처 사용 여부
 };
 
 cbuffer TranslucentFogConstants : register(b3)
@@ -90,10 +90,14 @@ PS_INPUT mainVS(FVertexFactoryInput input)
 
 float4 mainPS(PS_INPUT input) : SV_TARGET
 {
-    float4 texColor = g_txColor.Sample(g_Sample, input.uv + UVOffset);
+    float4 texColor = TextureFlags.x > 0.5f
+        ? g_txColor.Sample(g_Sample, input.uv + UVOffset)
+        : float4(1.0f, 1.0f, 1.0f, 1.0f);
 #if VF_MESH_PARTICLE
     // 파티클 Color/Alpha 모듈 값이 인스턴스 색으로 들어온다
     texColor *= input.color * BaseColor;
+#else
+    texColor *= BaseColor;
 #endif
     texColor.a *= FogTransmittance(input.worldPosition);
     return texColor;

@@ -36,7 +36,7 @@ class USkeletalMesh : public URenderAsset
 {
 	GENERATED_BODY()
 public:
-	bool Build(FSkeletalMeshData&& ImportData, FString& OutError);
+	bool Build(FSkeletalMeshData&& ImportData, FString& OutError, const FString& OwnerMeshPath = {});
 
 	const TArray<FBoneInfo>& GetRefSkeleton() const { return RefSkeleton; }
 	int32 GetNumBones() const { return RefSkeleton.Num(); }

@@ -49,7 +49,7 @@ cbuffer MaterialParams : register(b2)
 {
     float4 BaseColor;
     float4 Emissive;
-    float4 SurfaceParams; // x: 노멀맵 Y 반전, y: 예약, z: 컬러 텍스처 사용, w: 노멀맵 인코딩
+    float4 SurfaceParams; // x: 노멀맵 Y 반전, y: Masked 알파 클립 임계값 (< 0이면 비활성), z: 컬러 텍스처 사용, w: 노멀맵 인코딩
     float4 UVTransform; // xy: 이동량, zw: 배율
     float4 SpecularColorShininess; // rgb: 정반사 색상, w: 광택 지수
 };
@@ -388,11 +388,28 @@ VS_OUT Uber_VS(FVertexFactoryInput Input)
     return Output;
 }
 
-FUberOutput Uber_PS(VS_OUT Input)
+FUberOutput Uber_PS(VS_OUT Input, bool bIsFrontFace : SV_IsFrontFace)
 {
     FUberOutput Output;
     float3 ShadingNormal = GetShadingNormal(Input);
+    if (!bIsFrontFace)
+    {
+        ShadingNormal = -ShadingNormal;
+    }
 #if VIEW_MODE_WORLD_NORMAL
+    if (SurfaceParams.y >= 0.0f)
+    {
+        float MaskAlpha = BaseColor.a;
+        if (SurfaceParams.z > 0.5f)
+        {
+            MaskAlpha *= ColorTexture.Sample(ColorSampler, Input.UV).a;
+        }
+        else
+        {
+            MaskAlpha *= Input.Color.a;
+        }
+        clip(MaskAlpha - SurfaceParams.y);
+    }
     Output.LitColor = float4(ShadingNormal * 0.5f + 0.5f, 1.0f);
 #else
     if (ShadowFlags.y > 0.5f)
@@ -429,6 +446,11 @@ FUberOutput Uber_PS(VS_OUT Input)
     {
         SurfaceColor = Input.Color;
     }
+    const float FinalAlpha = SurfaceColor.a * BaseColor.a;
+    if (SurfaceParams.y >= 0.0f)
+    {
+        clip(FinalAlpha - SurfaceParams.y);
+    }
     float3 Albedo = SurfaceColor.rgb * BaseColor.rgb;
     float3 Diffuse;
     float3 Specular = 0.0f;
@@ -449,8 +471,7 @@ FUberOutput Uber_PS(VS_OUT Input)
     Diffuse = 1.0f;
 #endif
 
-    Output.LitColor = float4(Albedo * Diffuse + Specular + Emissive.rgb,
-        SurfaceColor.a * BaseColor.a);
+    Output.LitColor = float4(Albedo * Diffuse + Specular + Emissive.rgb, FinalAlpha);
     Output.NormalRoughness = float4(ShadingNormal, 0.8f);
 #endif
     return Output;
@@ -458,4 +479,4 @@ FUberOutput Uber_PS(VS_OUT Input)
 
 // 현재 리소스 매니저는 .hlsl 파일을 스캔할 때 mainVS/mainPS 진입점을 찾는다.
 VS_OUT mainVS(FVertexFactoryInput Input) { return Uber_VS(Input); }
-FUberOutput mainPS(VS_OUT Input) { return Uber_PS(Input); }
+FUberOutput mainPS(VS_OUT Input, bool bIsFrontFace : SV_IsFrontFace) { return Uber_PS(Input, bIsFrontFace); }

@@ -2,6 +2,7 @@
 #include "AssetManager.h"
 #include "Render/Buffer.h"
 #include "Render/Material.h"
+#include "Render/MaterialFile.h"
 
 #include "Render/Vertex.h"
 #include "Render/Texture2D.h"
@@ -58,6 +59,9 @@ namespace
 			// 파일을 읽지 않고 구분하도록 FFbxImporter의 저장 이름 규칙을 쓴다
 			return Path.ends_with("_Static.fbx.bin") ? EAssetType::StaticMesh : EAssetType::SkeletalMesh;
 		}
+		if (Extension == ".mat") {
+			return EAssetType::Material;
+		}
 		return EAssetType::None;
 	}
 
@@ -69,7 +73,7 @@ namespace
 		return FPaths::EngineContentPrefix + Key;
 	}
 
-	UStaticMesh* CreateStaticMesh(const FStaticMeshData* MeshData)
+	UStaticMesh* CreateStaticMesh(const FStaticMeshData* MeshData, const FString& OwnerMeshPath = {})
 	{
 		if (!MeshData || !MeshData->Vertices.Num() || !MeshData->Indices.Num())
 			return nullptr;
@@ -121,7 +125,7 @@ namespace
 
 		// 빈 슬롯이면 위에서 Default 슬롯을 넣었으므로 원본(MeshData)이 아니라 Mesh->MeshData를 쓴다
 		FLoadStageTimer MaterialTimer{ "Mesh/BuildMaterials (includes texture loads)" };
-		if (!UAssetManager::BuildMaterialsFromSlots(Mesh->MeshData.MaterialSlots, Mesh->Materials))
+		if (!UAssetManager::BuildMaterialsFromSlots(Mesh->MeshData.MaterialSlots, Mesh->Materials, OwnerMeshPath))
 		{
 			return nullptr;
 		}
@@ -238,6 +242,9 @@ void UAssetManager::LoadAsset(const FString& Key, const FString& Path) {
 		break;
 	case EAssetType::StaticMesh:
 		LoadObjStaticMesh(Path);
+		break;
+	case EAssetType::Material:
+		LoadMaterial(Path);
 		break;
 	default:
 		break;
@@ -434,6 +441,11 @@ void UAssetManager::CreateDefaultMaterial() {
 	DefaultMat->Textures.Add(GetAssetByPath<UTexture2D>("FlatNormalTexture"));
 	DefaultMat->ParamLayout = EMaterialParamLayout::StaticMesh;
 	DefaultMat->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
+	DefaultMat->MaterialDomain = EMaterialDomain::Surface;
+	DefaultMat->BlendMode = EMaterialBlendMode::Opaque;
+	DefaultMat->ShadingModel = EMaterialShadingModel::DefaultLit;
+	DefaultMat->bTwoSided = false;
+	DefaultMat->SyncLegacyStates();
 	RegisterAsset("DefaultMaterial", DefaultMat);
 }
 
@@ -442,6 +454,9 @@ void UAssetManager::CreateBillboardMaterial()
 	UMaterial* BillboardMat = NewObject<UMaterial>();
 	BillboardMat->PSOType = EPSOType::Billboard;
 	BillboardMat->Textures.Add(GetAssetByPath<UTexture2D>("WhiteTexture"));
+	BillboardMat->MaterialDomain = EMaterialDomain::Surface;
+	BillboardMat->BlendMode = EMaterialBlendMode::Translucent;
+	BillboardMat->ShadingModel = EMaterialShadingModel::Unlit;
 	BillboardMat->BlendState = EBlendState::AlphaBlend;
 	BillboardMat->DepthStencilState = EDepthStencilState::ReadOnly;
 	BillboardMat->SamplerState = ESamplerState::LinearClamp;
@@ -451,19 +466,23 @@ void UAssetManager::CreateBillboardMaterial()
 
 void UAssetManager::CreateParticleMaterial()
 {
-	auto MakeSpriteMaterial = [this](EPSOType PSOType, EBlendState Blend, const char* Name)
+	auto MakeSpriteMaterial = [this](EPSOType PSOType, EBlendState Blend, EMaterialBlendMode Mode, const char* Name)
 		{
 			UMaterial* Mat = NewObject<UMaterial>();
 			Mat->PSOType = PSOType;
 			Mat->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/ParticleSpriteShader.hlsl");
 			Mat->Textures.Add(GetAssetByPath<UTexture2D>("Engine/SubUV/StarParticle.png"));
+			Mat->MaterialDomain = EMaterialDomain::Particle;
+			Mat->BlendMode = Mode;
+			Mat->ShadingModel = EMaterialShadingModel::Unlit;
+			Mat->bTwoSided = true;
 			Mat->BlendState = Blend;
 			Mat->DepthStencilState = EDepthStencilState::ReadOnly;
 			Mat->SamplerState = ESamplerState::LinearClamp;
 			RegisterAsset(Name, Mat);
 		};
-	MakeSpriteMaterial(EPSOType::Particle_Additive, EBlendState::ParticleAdditive, "ParticleSpriteAdditive");
-	MakeSpriteMaterial(EPSOType::Particle_AlphaBlend, EBlendState::AlphaBlend, "ParticleSpriteAlphaBlend");
+	MakeSpriteMaterial(EPSOType::Particle_Additive, EBlendState::ParticleAdditive, EMaterialBlendMode::Additive, "ParticleSpriteAdditive");
+	MakeSpriteMaterial(EPSOType::Particle_AlphaBlend, EBlendState::AlphaBlend, EMaterialBlendMode::Translucent, "ParticleSpriteAlphaBlend");
 
 	// 빔, 리본용. U(길이 방향)는 반복, V(폭 방향)는 가장자리가 번지지 않게 Clamp
 	// 셰이더는 스프라이트 것을 두어야 Trail 정점 타입일 때 Trail 셰이더로 바뀐다
@@ -471,18 +490,25 @@ void UAssetManager::CreateParticleMaterial()
 	BeamMat->PSOType = EPSOType::Particle_Additive;
 	BeamMat->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/ParticleSpriteShader.hlsl");
 	BeamMat->Textures.Add(GetAssetByPath<UTexture2D>("Engine/Textures/BeamGlow.png"));
+	BeamMat->MaterialDomain = EMaterialDomain::Particle;
+	BeamMat->BlendMode = EMaterialBlendMode::Additive;
+	BeamMat->ShadingModel = EMaterialShadingModel::Unlit;
+	BeamMat->bTwoSided = true;
 	BeamMat->BlendState = EBlendState::ParticleAdditive;
 	BeamMat->DepthStencilState = EDepthStencilState::ReadOnly;
 	BeamMat->SamplerState = ESamplerState::LinearWrapUClampV;
 	RegisterAsset("ParticleBeamAdditive", BeamMat);
 
 	// 메시 에미터의 머티리얼 오버라이드용. 스프라이트 셰이더는 메시 파티클 정점을 받지 못한다
-	auto MakeMeshMaterial = [this](EPSOType PSOType, EBlendState Blend, const char* Name)
+	auto MakeMeshMaterial = [this](EPSOType PSOType, EBlendState Blend, EMaterialBlendMode Mode, const char* Name)
 		{
 			UMaterial* Mat = NewObject<UMaterial>();
 			Mat->PSOType = PSOType;
 			Mat->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/StaticMeshTranslucentShader.hlsl");
 			Mat->Textures.Add(GetAssetByPath<UTexture2D>("WhiteTexture"));
+			Mat->MaterialDomain = EMaterialDomain::Particle;
+			Mat->BlendMode = Mode;
+			Mat->ShadingModel = EMaterialShadingModel::Unlit;
 			Mat->BlendState = Blend;
 			Mat->DepthStencilState = EDepthStencilState::ReadOnly;
 			Mat->SamplerState = ESamplerState::LinearClamp;
@@ -490,8 +516,8 @@ void UAssetManager::CreateParticleMaterial()
 			Mat->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
 			RegisterAsset(Name, Mat);
 		};
-	MakeMeshMaterial(EPSOType::StaticMesh_Translucent, EBlendState::AlphaBlend, "ParticleMeshTranslucent");
-	MakeMeshMaterial(EPSOType::StaticMesh_Additive, EBlendState::ParticleAdditive, "ParticleMeshAdditive");
+	MakeMeshMaterial(EPSOType::StaticMesh_Translucent, EBlendState::AlphaBlend, EMaterialBlendMode::Translucent, "ParticleMeshTranslucent");
+	MakeMeshMaterial(EPSOType::StaticMesh_Additive, EBlendState::ParticleAdditive, EMaterialBlendMode::Additive, "ParticleMeshAdditive");
 }
 
 void UAssetManager::CreateEditorArrowMaterial() {
@@ -520,6 +546,168 @@ void UAssetManager::RegisterAsset(const FString& Key, URenderAsset* Asset)
 	// 경로 표기는 씬 저장 형식이 바뀌지 않도록 받은 그대로 둔다
 	Asset->SetPath(Key);
 	AssetMap[FAssetUtils::GetAssetKey(Key)] = Asset;
+}
+
+void UAssetManager::RegisterAssetPath(const FString& Key, const FString& FullPath)
+{
+	const FString NormalizedKey = FAssetUtils::GetAssetKey(Key);
+	if (!NormalizedKey.empty() && !FullPath.empty())
+	{
+		AssetPathMap[NormalizedKey] = FullPath;
+	}
+}
+
+UMaterial* UAssetManager::LoadMaterial(const FString& InPath)
+{
+	const FString Key = FAssetUtils::GetAssetKey(InPath);
+	if (Key.empty())
+	{
+		return nullptr;
+	}
+	if (URenderAsset** Found = AssetMap.Find(Key))
+	{
+		return Cast<UMaterial>(*Found);
+	}
+
+	const FString ResolvedPath = FAssetUtils::ResolveAssetFilePath(InPath);
+	const fs::path FilePath = FPaths::FromUtf8(ResolvedPath.empty() ? InPath : ResolvedPath);
+
+	UMaterial* Material = NewObject<UMaterial>();
+	Material->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/UberLit.hlsl");
+	Material->ParamLayout = EMaterialParamLayout::StaticMesh;
+	Material->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
+	Material->SamplerState = ESamplerState::LinearWrap;
+
+	FString Error;
+	if (!MaterialFile::Read(FilePath, *Material, Error))
+	{
+		KRS_LOG(Warning, "Failed to load material: {} ({})", InPath, Error);
+		return nullptr;
+	}
+
+	Material->bIsInstance = false;
+	Material->Parent = nullptr;
+	Material->SyncLegacyStates();
+
+	RegisterAsset(Key, Material);
+	RegisterAssetPath(Key, FPaths::ToUtf8(FilePath));
+	return Material;
+}
+
+bool UAssetManager::SaveMaterial(UMaterial* Material, const FString& Path, FString& OutError)
+{
+	if (!Material)
+	{
+		OutError = "Material is null";
+		return false;
+	}
+
+	const FString TargetPath = Path.empty() ? Material->GetPath() : Path;
+	if (TargetPath.empty())
+	{
+		OutError = "Material save path is empty";
+		return false;
+	}
+
+	const FString Key = FAssetUtils::GetAssetKey(TargetPath);
+	fs::path FilePath = FPaths::FromUtf8(TargetPath);
+	if (FilePath.is_relative())
+	{
+		const FString Resolved = FAssetUtils::ResolveAssetFilePath(TargetPath);
+		if (!Resolved.empty())
+		{
+			FilePath = FPaths::FromUtf8(Resolved);
+		}
+		else
+		{
+			FilePath = FPaths::ProjectContentDir() / FPaths::FromUtf8(Key);
+		}
+	}
+
+	Material->SyncLegacyStates();
+	if (!MaterialFile::Write(FilePath, *Material, OutError))
+	{
+		return false;
+	}
+
+	Material->bIsInstance = false;
+	Material->Parent = nullptr;
+	Get().RegisterAsset(Key, Material);
+	Get().RegisterAssetPath(Key, FPaths::ToUtf8(FilePath));
+	return true;
+}
+
+UMaterial* UAssetManager::CreateMaterialAsset(const FString& Path, FString& OutError)
+{
+	OutError.clear();
+	if (Path.empty())
+	{
+		OutError = "Material path is empty";
+		return nullptr;
+	}
+
+	UMaterial* Material = NewObject<UMaterial>();
+	Material->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/UberLit.hlsl");
+	Material->ParamLayout = EMaterialParamLayout::StaticMesh;
+	Material->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
+	Material->MaterialDomain = EMaterialDomain::Surface;
+	Material->BlendMode = EMaterialBlendMode::Opaque;
+	Material->ShadingModel = EMaterialShadingModel::DefaultLit;
+	Material->bTwoSided = false;
+	Material->OpacityMaskClipValue = 0.333f;
+	Material->BaseColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+	Material->SpecularColor = FVector(1.0f, 1.0f, 1.0f);
+	Material->Shininess = 32.0f;
+	Material->SamplerState = ESamplerState::LinearWrap;
+	Material->Textures.Add(nullptr);
+	Material->Textures.Add(nullptr);
+	Material->SyncLegacyStates();
+
+	if (!SaveMaterial(Material, Path, OutError))
+	{
+		return nullptr;
+	}
+
+	return Material;
+}
+
+TArray<FString> UAssetManager::GetAllMaterialAssetPaths()
+{
+	TSet<FString> Seen;
+	TArray<FString> Result;
+
+	// 프로젝트/엔진 콘텐츠의 .mat 파일 (로드됨 + 미로드 모두 포함)
+	for (const auto& [Key, FullPath] : Get().AssetPathMap)
+	{
+		if (GetAssetTypeFromPath(Key) == EAssetType::Material && !Seen.Contains(Key))
+		{
+			Seen.Add(Key);
+			Result.Add(Key);
+		}
+	}
+
+	// 이미 메모리에 등록된 .mat 에셋 및 기본 내장 머티리얼
+	for (const auto& [Key, Asset] : Get().AssetMap)
+	{
+		if (!Asset || !Asset->IsA<UMaterial>()) continue;
+		if (Key == "BillboardMaterial" || Key == "EditorArrowMaterial") continue;
+		if (!Seen.Contains(Key))
+		{
+			Seen.Add(Key);
+			Result.Add(Key);
+		}
+	}
+
+	// .mat 에셋을 먼저, 내장 머티리얼을 뒤에 정렬
+	std::sort(Result.begin(), Result.end(), [](const FString& A, const FString& B)
+	{
+		const bool bAMat = MaterialFile::IsMaterialPath(A);
+		const bool bBMat = MaterialFile::IsMaterialPath(B);
+		if (bAMat != bBMat) return bAMat;
+		return A < B;
+	});
+
+	return Result;
 }
 
 UTexture2D* UAssetManager::LoadTexture(const FString& InPath, bool GenerateMips) {
@@ -620,7 +808,7 @@ UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path)
 	FLoadStageTimer ReadTimer{ "Mesh/ReadBakedOrCook" };
 	TUniquePtr<FStaticMeshData> Data = FObjImporter::LoadStaticMeshData(FAssetUtils::ResolveAssetFilePath(Path));
 	ReadTimer.Stop();
-	UStaticMesh* Mesh = CreateStaticMesh(Data.get());   // Data가 nullptr이면 nullptr 반환
+	UStaticMesh* Mesh = CreateStaticMesh(Data.get(), Key);   // Data가 nullptr이면 nullptr 반환
 	if (!Mesh)
 	{
 		return nullptr;
@@ -643,11 +831,11 @@ URenderAsset* UAssetManager::LoadFbxMesh(const FString& Path, FString& OutError)
 		return nullptr;
 	}
 	URenderAsset* Asset = nullptr;
-	if (Data.Kind == EFbxMeshKind::Static) Asset = CreateStaticMesh(&Data.StaticMesh);
+	if (Data.Kind == EFbxMeshKind::Static) Asset = CreateStaticMesh(&Data.StaticMesh, Key);
 	else
 	{
 		auto* Mesh = NewObject<USkeletalMesh>();
-		if (!Mesh->Build(std::move(Data.SkeletalMesh), OutError)) return nullptr;
+		if (!Mesh->Build(std::move(Data.SkeletalMesh), OutError, Key)) return nullptr;
 		Asset = Mesh;
 	}
 	if (!Asset) { OutError = "FBX binary: mesh resource creation failed: " + Path; return nullptr; }
@@ -726,8 +914,55 @@ void UAssetManager::ForEachObjStaticMesh(const std::function<void(const FString&
 
 namespace
 {
+	FString SanitizeMaterialFileName(const FString& Raw, const FString& Fallback)
+	{
+		FString Out;
+		Out.reserve(Raw.size());
+		for (char C : Raw)
+		{
+			const unsigned char UC = static_cast<unsigned char>(C);
+			if (UC < 32 || C == '\\' || C == '/' || C == ':' || C == '*' || C == '?' || C == '"' || C == '<' || C == '>' || C == '|')
+			{
+				Out.push_back('_');
+			}
+			else
+			{
+				Out.push_back(C);
+			}
+		}
+		while (!Out.empty() && (Out.back() == ' ' || Out.back() == '.'))
+		{
+			Out.pop_back();
+		}
+		return Out.empty() ? Fallback : Out;
+	}
+
+	FString ExtractMeshStemForMaterial(const fs::path& MeshPath)
+	{
+		FString FileName = FPaths::ToUtf8(MeshPath.filename());
+		const auto StripSuffix = [&FileName](const char* Suffix) -> bool
+		{
+			const size_t Len = std::strlen(Suffix);
+			if (FileName.size() <= Len) return false;
+			FString Tail = FileName.substr(FileName.size() - Len);
+			for (char& C : Tail) C = static_cast<char>(std::tolower(static_cast<unsigned char>(C)));
+			if (Tail == Suffix)
+			{
+				FileName.resize(FileName.size() - Len);
+				return true;
+			}
+			return false;
+		};
+
+		if (!StripSuffix("_static.fbx.bin") && !StripSuffix(".fbx.bin") && !StripSuffix(".obj"))
+		{
+			FileName = FPaths::ToUtf8(MeshPath.stem());
+		}
+		return SanitizeMaterialFileName(FileName, "Mesh");
+	}
+
 	template<typename TSlot>
-	bool BuildMaterialsFromSlotsImpl(const TArray<TSlot>& Slots, TArray<UMaterial*>& OutMaterials)
+	bool BuildMaterialsFromSlotsImpl(const TArray<TSlot>& Slots, TArray<UMaterial*>& OutMaterials, const FString& OwnerMeshPath)
 	{
 		// MaterialSlots를 실제 UMaterial로 변환
 		UMaterial* DefaultMaterial = UAssetManager::GetAssetByPath<UMaterial>("DefaultMaterial");
@@ -736,29 +971,130 @@ namespace
 			return false;
 		}
 
-		for (const TSlot& Slot : Slots)
+		// 프로젝트 콘텐츠의 디스크 기반 메시(OBJ/FBX)면 Materials/ 하위에 .mat 에셋을 자동 생성하거나 기존 에셋을 로드한다.
+		bool bUseMaterialAssets = false;
+		fs::path MaterialDir;
+		FString MeshStem;
+		if (!OwnerMeshPath.empty() && !OwnerMeshPath.starts_with(FPaths::EngineContentPrefix))
 		{
+			const FString ResolvedMesh = FAssetUtils::ResolveAssetFilePath(OwnerMeshPath);
+			if (!ResolvedMesh.empty())
+			{
+				const fs::path MeshFsPath = FPaths::FromUtf8(ResolvedMesh);
+				std::error_code ExistsErr;
+				if (fs::exists(MeshFsPath, ExistsErr))
+				{
+					MaterialDir = MeshFsPath.parent_path() / "Materials";
+					MeshStem = ExtractMeshStemForMaterial(MeshFsPath);
+					bUseMaterialAssets = true;
+				}
+			}
+		}
+
+		TSet<FString> UsedNames;
+		for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
+		{
+			const TSlot& Slot = Slots[SlotIndex];
+
+			if (bUseMaterialAssets)
+			{
+				const FString SlotName = SanitizeMaterialFileName(Slot.Name, "Slot_" + std::to_string(SlotIndex));
+				FString BaseName = MeshStem + "_" + SlotName;
+				FString UniqueName = BaseName;
+				int32 Suffix = 1;
+				auto ToLowerStr = [](FString S)
+				{
+					for (char& C : S) C = static_cast<char>(std::tolower(static_cast<unsigned char>(C)));
+					return S;
+				};
+				while (UsedNames.Contains(ToLowerStr(UniqueName)))
+				{
+					UniqueName = BaseName + "_" + std::to_string(Suffix++);
+				}
+				UsedNames.Add(ToLowerStr(UniqueName));
+
+				const fs::path MatFilePath = MaterialDir / FPaths::FromUtf8(UniqueName + ".mat");
+				const FString MatFileUtf8 = FPaths::ToUtf8(MatFilePath);
+				const FString MatKey = FAssetUtils::GetAssetKey(MatFileUtf8);
+
+				// 이미 .mat 에셋이 존재하면 사용자 편집 내용을 보존하기 위해 덮어쓰지 않고 로드한다
+				std::error_code ExistsErr;
+				if (fs::exists(MatFilePath, ExistsErr))
+				{
+					if (UMaterial* Existing = UAssetManager::Get().LoadMaterial(MatFileUtf8))
+					{
+						OutMaterials.Add(Existing);
+						continue;
+					}
+				}
+
+				// 없으면 메시 슬롯 정보로 새 .mat 에셋을 생성하고 디스크에 저장한다
+				UMaterial* Material = NewObject<UMaterial>();
+				Material->CopyPropertiesFrom(*DefaultMaterial);
+				Material->Textures.Reset();
+				Material->Textures.Add(nullptr);
+				Material->Textures.Add(nullptr);
+				Material->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
+				Material->bIsInstance = false;
+				Material->Parent = nullptr;
+				Material->BaseColor = Slot.BaseColor;
+				// 임포트 메쉬의 UV는 0~1 밖의 타일을 쓰는 경우가 많아 반복 샘플링을 기본으로 한다.
+				Material->SamplerState = ESamplerState::LinearWrap;
+				Material->BlendMode = (Material->BaseColor.W < 1.0f)
+					? EMaterialBlendMode::Translucent
+					: EMaterialBlendMode::Opaque;
+				Material->ShadingModel = EMaterialShadingModel::DefaultLit;
+				Material->MaterialDomain = EMaterialDomain::Surface;
+				Material->SyncLegacyStates();
+
+				if (!Slot.DiffuseTexturePath.empty())
+				{
+					if (UTexture2D* Texture = UAssetManager::Get().LoadTexture(Slot.DiffuseTexturePath))
+					{
+						Material->SetBaseColorTexture(Texture);
+					}
+				}
+				if (!Slot.NormalTexturePath.empty())
+				{
+					if (UTexture2D* NormalTexture = UAssetManager::Get().LoadTexture(Slot.NormalTexturePath))
+					{
+						Material->SetNormalTexture(NormalTexture);
+					}
+				}
+
+				FString SaveError;
+				if (!UAssetManager::SaveMaterial(Material, MatFileUtf8, SaveError))
+				{
+					KRS_LOG(Warning, "Auto-save material failed for {}: {}", MatKey, SaveError);
+				}
+				else
+				{
+					KRS_LOG(Info, "Generated material asset: {}", MatKey);
+				}
+
+				OutMaterials.Add(Material);
+				continue;
+			}
+
+			// 내장 기본 메시(Cube, Sphere 등): 디스크에 .mat를 쓰지 않고 메모리 인스턴스 사용
 			UMaterial* Material = UMaterial::CreateInstance(DefaultMaterial);
 			if (!Material)
 			{
 				return false;
 			}
 			Material->BaseColor = Slot.BaseColor;
-			// 임포트 메쉬의 UV는 0~1 밖의 타일을 쓰는 경우가 많아 반복 샘플링을 기본으로 한다.
 			Material->SamplerState = ESamplerState::LinearWrap;
 			if (Material->BaseColor.W < 1.0f)
 			{
-				Material->BlendState = EBlendState::AlphaBlend;
-				Material->DepthStencilState = EDepthStencilState::ReadOnly;
+				Material->BlendMode = EMaterialBlendMode::Translucent;
+				Material->SyncLegacyStates();
 			}
 
 			if (!Slot.DiffuseTexturePath.empty())
 			{
-				UTexture2D* Texture = UAssetManager::Get().LoadTexture(Slot.DiffuseTexturePath);
-
-				if (Texture)
+				if (UTexture2D* Texture = UAssetManager::Get().LoadTexture(Slot.DiffuseTexturePath))
 				{
-					Material->Textures[0] = Texture;
+					Material->SetBaseColorTexture(Texture);
 				}
 			}
 
@@ -766,7 +1102,7 @@ namespace
 			{
 				if (UTexture2D* NormalTexture = UAssetManager::Get().LoadTexture(Slot.NormalTexturePath))
 				{
-					Material->Textures[1] = NormalTexture;
+					Material->SetNormalTexture(NormalTexture);
 				}
 			}
 
@@ -777,14 +1113,14 @@ namespace
 
 }
 
-bool UAssetManager::BuildMaterialsFromSlots(const TArray<FStaticMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials)
+bool UAssetManager::BuildMaterialsFromSlots(const TArray<FStaticMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials, const FString& OwnerMeshPath)
 {
-	return BuildMaterialsFromSlotsImpl(Slots, OutMaterials);
+	return BuildMaterialsFromSlotsImpl(Slots, OutMaterials, OwnerMeshPath);
 }
 
-bool UAssetManager::BuildMaterialsFromSlots(const TArray<FSkeletalMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials)
+bool UAssetManager::BuildMaterialsFromSlots(const TArray<FSkeletalMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials, const FString& OwnerMeshPath)
 {
-	return BuildMaterialsFromSlotsImpl(Slots, OutMaterials);
+	return BuildMaterialsFromSlotsImpl(Slots, OutMaterials, OwnerMeshPath);
 }
 
 UBlendSpace1D* UAssetManager::LoadBlendSpace(const FString& Path)

@@ -27,6 +27,7 @@ public:
 	// .widget 파일을 더블클릭하면 불린다 (UI 에디터가 연다).
 	void SetOpenWidgetCallback(std::function<void(const FString&)> InCallback) { OnOpenWidget = std::move(InCallback); }
 	void SetCreateWidgetCallback(std::function<void(const FString&)> InCallback) { OnCreateWidget = std::move(InCallback); }
+	void SetCreateMaterialCallback(std::function<void(const FString&)> InCallback) { OnCreateMaterial = std::move(InCallback); }
 	// OBJ 또는 베이크된 FBX 메시를 더블클릭하면 Viewer를 엽니다.
 	void SetOpenMeshCallback(std::function<void(const FString&)> InCallback) { OnOpenMesh = std::move(InCallback); }
 	// .scene 파일을 더블클릭하면 레벨 에디터가 그 씬을 연다.
@@ -60,6 +61,7 @@ private:
 
 	std::function<void(const FString&)> OnOpenWidget;
 	std::function<void(const FString&)> OnCreateWidget;
+	std::function<void(const FString&)> OnCreateMaterial;
 	std::function<void(const FString&)> OnOpenMesh;
 	std::function<void(const FString&)> OnOpenScene;
 	std::function<void(EFbxImportMode)> OnImportFbx;
@@ -70,6 +72,7 @@ private:
 	bool bShowPathSearch = false;
 	bool bFocusPathSearch = false;
 	bool bOpenCreateWidget = false;
+	bool bOpenCreateMaterial = false;
 	bool bOpenCreateFolder = false;
 	bool bOpenDeleteModal = false;
 	float FolderTreeWidth = 0.0f;

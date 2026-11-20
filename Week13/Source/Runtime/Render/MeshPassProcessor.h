@@ -56,6 +56,7 @@ struct FMeshDrawBatch
 	bool bUseObjectSlots = true;
 	bool bBindViewConstants = true;
 	bool bForceWireframe = false;
+	bool bIsMasked = false;
 	TArray<FItem> Items;
 };
 

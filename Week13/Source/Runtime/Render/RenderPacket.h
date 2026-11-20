@@ -108,7 +108,16 @@ class FRenderQueue : public TArray<FRenderPacket>
 	// 패킷 정렬 키 생성
 	static uint64 MakeSortKey(const FRenderPacket& Packet)
 	{
-		if (Packet.Material->PSOType != EPSOType::StaticMesh_Opaque)
+		const FVertexFactory* VF = GetPacketVertexFactory(Packet);
+		const EVertexFactoryType VFType = VF ? VF->GetType() : EVertexFactoryType::Local;
+		const bool bIsParticleSpriteOrTrail =
+			VFType == EVertexFactoryType::SpriteParticle || VFType == EVertexFactoryType::Trail;
+		const bool bIsTranslucentPass =
+			Packet.Material->IsTranslucent() ||
+			Packet.Material->PSOType == EPSOType::Billboard ||
+			bIsParticleSpriteOrTrail;
+
+		if (bIsTranslucentPass)
 		{
 			const uint64 DistanceBits = static_cast<uint64>(std::bit_cast<uint32>(Packet.CameraToParticleDistance));
 			return (1ull << 63) | (~DistanceBits & 0xFFFFFFFFull);

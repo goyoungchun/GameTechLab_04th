@@ -17,6 +17,9 @@
 #include "Editor/AnimBlueprintEditor/AnimBlueprintEditor.h"
 #include "Editor/ParticleSystemEditor/ParticleSystemEditor.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Editor/MaterialEditor/MaterialEditor.h"
+#include "Render/Material.h"
+#include "Render/MaterialFile.h"
 
 #include <filesystem>
 #include <commdlg.h>
@@ -38,6 +41,7 @@ namespace
 		{ "Blend Space Editor...", L"Open Blend Space Editor", L"Blend Space (*.blendspace)\0*.blendspace\0" },
 		{ "UI Editor...", L"Open UI Editor", L"Widget (*.widget)\0*.widget\0" },
 		{ "Particle System Editor...", L"Open Particle System Editor", L"Particle System (*.particle)\0*.particle\0" },
+		{ "Material Editor...", L"Open Material Editor", L"Material (*.mat)\0*.mat\0" },
 	};
 }
 
@@ -84,7 +88,9 @@ void FEditorManager::ShowEditorAssetPicker(int32 EditorType)
 		(EditorType == 2 && AnimSequenceFile::IsAnimSequencePath(Path)) ||
 		(EditorType == 3 && AnimBlueprintFile::IsAnimBlueprintPath(Path)) ||
 		(EditorType == 4 && BlendSpaceFile::IsBlendSpacePath(Path)) ||
-		(EditorType == 5 && FUIEditor::IsWidgetPath(Path));
+		(EditorType == 5 && FUIEditor::IsWidgetPath(Path)) ||
+		(EditorType == 6 && ParticleSystemFile::IsParticleSystemPath(Path)) ||
+		(EditorType == 7 && MaterialFile::IsMaterialPath(Path));
 	if (!bMatchesType)
 	{
 		MessageBoxW(Dialog.hwndOwner, L"Select an asset matching the editor type.", Launcher.Title, MB_OK | MB_ICONWARNING);
@@ -233,6 +239,28 @@ void FEditorManager::CreateEditor(const FString& AssetPath)
 			return;
 		}
 		Editors.Add(std::move(Editor));
+		return;
+	}
+
+	// 머티리얼 에셋(.mat)
+	if (MaterialFile::IsMaterialPath(AssetPath))
+	{
+		UMaterial* Material = UAssetManager::Get().LoadMaterial(AssetPath);
+		if (!Material)
+		{
+			KRS_LOG(Warning, "Failed to load material: {}", AssetPath);
+			return;
+		}
+
+		TUniquePtr<FAssetEditor> Editor = MakeUnique<FMaterialEditor>(EditorEngine, *this, AssetPath, *Material);
+		if (!Editor->Initialize())
+		{
+			Editor->Shutdown();
+			KRS_LOG(Warning, "Material editor initialization failed: {}", AssetPath);
+			return;
+		}
+		Editors.Add(std::move(Editor));
+		KRS_LOG(Info, "Opened material editor: {}", AssetPath);
 		return;
 	}
 

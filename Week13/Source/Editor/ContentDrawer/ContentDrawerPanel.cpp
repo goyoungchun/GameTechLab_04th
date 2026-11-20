@@ -16,6 +16,7 @@
 #include "Animation/BlendSpaceFile.h"
 #include "Animation/AnimBlueprintFile.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Render/MaterialFile.h"
 
 namespace
 {
@@ -390,7 +391,7 @@ namespace
 		{
 			return { "Lua Script", IM_COL32(156, 112, 232, 255), true };
 		}
-		if (Ext == ".mtl")
+		if (Ext == ".mat" || Ext == ".mtl")
 		{
 			return { "Material", IM_COL32(76, 185, 128, 255), true };
 		}
@@ -799,11 +800,42 @@ void FContentDrawerPanel::RenderContents()
 				bOpenCreateFolder = true;   // Create Widget과 같은 이유로 다음 줄에서 모달을 연다
 			}
 			ImGui::Separator();
+			if (ImGui::MenuItem("Create Material"))
+			{
+				strcpy_s(NewAssetName, "NewMaterial");
+				bOpenCreateMaterial = true;
+			}
 			if (ImGui::MenuItem("Create Widget"))
 			{
 				strcpy_s(NewAssetName, "NewWidget");
 				bOpenCreateWidget = true;   // 메뉴 팝업 안에서 바로 다른 팝업을 열 수 없어 다음 줄에서 연다
 			}
+			ImGui::EndPopup();
+		}
+		if (bOpenCreateMaterial) { ImGui::OpenPopup("Create Material"); bOpenCreateMaterial = false; }
+
+		if (ImGui::BeginPopupModal("Create Material", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+			const bool bEnter = ImGui::InputText("Name", NewAssetName, sizeof(NewAssetName), ImGuiInputTextFlags_EnterReturnsTrue);
+			const FString MatName = NewAssetName;
+			const bool bInvalidName = MatName.empty() || MatName == "." || MatName == ".."
+				|| MatName.find_first_of("\\/:*?\"<>|") != FString::npos;
+			const fs::path Target = CurrentPath / FPaths::FromUtf8(MatName + ".mat");
+			std::error_code ExistsError;
+			const bool bExists = !bInvalidName && fs::exists(Target, ExistsError);
+			if (bExists) ImGui::TextColored(EditorColor::ToVec4(EditorColor::Error), "A material with this name already exists.");
+			else if (bInvalidName && !MatName.empty()) ImGui::TextColored(EditorColor::ToVec4(EditorColor::Error), "Invalid material name.");
+
+			ImGui::BeginDisabled(bExists || bInvalidName);
+			if ((ImGui::Button("Create") || (bEnter && !bExists && !bInvalidName)) && OnCreateMaterial)
+			{
+				OnCreateMaterial(FPaths::ToUtf8(Target));
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 			ImGui::EndPopup();
 		}
 		if (bOpenCreateWidget) { ImGui::OpenPopup("Create Widget"); bOpenCreateWidget = false; }
@@ -1194,6 +1226,19 @@ void FContentDrawerPanel::RenderContents()
 
 						ImGui::EndDragDropSource();
 					}
+					// 머티리얼(.mat)은 경로를 페이로드로 전달한다
+					if (!bIsDirectory && MaterialFile::IsMaterialPath(PathString) && ImGui::BeginDragDropSource())
+					{
+						ImGui::SetDragDropPayload(EditorDragDrop::Material, PathString.c_str(), PathString.size() + 1);
+
+						if (MeshThumbId != ImTextureID_Invalid)
+						{
+							ImGui::Image(MeshThumbId, { ThumbSize, ThumbSize });
+						}
+						ImGui::TextUnformatted(FilenameString.c_str());
+
+						ImGui::EndDragDropSource();
+					}
 
 					// 더블 클릭 이벤트 처리
 					if (bHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -1220,7 +1265,8 @@ void FContentDrawerPanel::RenderContents()
 							OnOpenMesh(PathString);
 						}
 
-						else if ((BlendSpaceFile::IsBlendSpacePath(PathString) || AnimBlueprintFile::IsAnimBlueprintPath(PathString) ||	ParticleSystemFile::IsParticleSystemPath(PathString)) && OnOpenMesh)
+						else if ((BlendSpaceFile::IsBlendSpacePath(PathString) || AnimBlueprintFile::IsAnimBlueprintPath(PathString)
+							|| ParticleSystemFile::IsParticleSystemPath(PathString) || MaterialFile::IsMaterialPath(PathString)) && OnOpenMesh)
 						{
 							OnOpenMesh(PathString);
 						}

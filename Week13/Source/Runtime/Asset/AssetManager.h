@@ -15,7 +15,8 @@ enum class EAssetType
 	Texture,
 	Font,
 	StaticMesh,
-	SkeletalMesh
+	SkeletalMesh,
+	Material
 };
 
 class UStaticMesh;
@@ -76,11 +77,16 @@ public:
 	static TArray<FString> GetUnloadedAssetPaths(EAssetType Type);
 
 	void RegisterAsset(const FString& Key, URenderAsset* Asset);
+	void RegisterAssetPath(const FString& Key, const FString& FullPath);
 
 	//UStaticMesh* GetMesh(FString InName);
 	//UStaticMesh* GetMesh(EPrimitiveType Type); // 오버로드(수정 중)
 
 	UTexture2D* LoadTexture(const FString& InPath, bool bGenerateMips = true);
+	UMaterial* LoadMaterial(const FString& InPath);
+	static bool SaveMaterial(UMaterial* Material, const FString& Path, FString& OutError);
+	static UMaterial* CreateMaterialAsset(const FString& Path, FString& OutError);
+	static TArray<FString> GetAllMaterialAssetPaths();
 	UFont* LoadFontAtlas(const FString& JsonPath, const FString& AtlasTexturePath);
 	USoundWave* LoadSound(const FString& Path);
 	static UStaticMesh* LoadObjStaticMesh(const FString& Path);
@@ -95,8 +101,8 @@ public:
 
 	// OBJ 스태틱 메시(키가 .obj로 끝나는 것)마다 부른다. 아직 로드되지 않은 메시는 먼저 로드한다. 기본 도형·기즈모 메시는 제외된다.
 	static void ForEachObjStaticMesh(const std::function<void(const FString& Key, UStaticMesh& Mesh)>& Func);
-	static bool BuildMaterialsFromSlots(const TArray<FStaticMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials);
-	static bool BuildMaterialsFromSlots(const TArray<FSkeletalMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials);
+	static bool BuildMaterialsFromSlots(const TArray<FStaticMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials, const FString& OwnerMeshPath = {});
+	static bool BuildMaterialsFromSlots(const TArray<FSkeletalMaterialSlot>& Slots, TArray<UMaterial*>& OutMaterials, const FString& OwnerMeshPath = {});
 
 private:
 	URenderAsset* FindOrLoadAsset(const FString& Path);

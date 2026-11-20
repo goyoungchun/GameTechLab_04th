@@ -289,9 +289,7 @@ namespace
 	// 메시 파티클 정점 변형이 있는 머티리얼만 오버라이드로 쓸 수 있다
 	bool IsMeshParticleMaterial(const UMaterial* Material)
 	{
-		return Material && (Material->PSOType == EPSOType::StaticMesh_Opaque
-			|| Material->PSOType == EPSOType::StaticMesh_Translucent
-			|| Material->PSOType == EPSOType::StaticMesh_Additive);
+		return Material && Material->PSOType != EPSOType::Billboard;
 	}
 }
 

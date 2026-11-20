@@ -31,7 +31,7 @@ namespace
 	}
 }
 
-bool USkeletalMesh::Build(FSkeletalMeshData&& ImportData, FString& OutError)
+bool USkeletalMesh::Build(FSkeletalMeshData&& ImportData, FString& OutError, const FString& OwnerMeshPath)
 {
 	// CreateStaticMesh와 같은 기본값: 슬롯/섹션이 없으면 하나씩 채운다
 	if (ImportData.MaterialSlots.IsEmpty())
@@ -63,7 +63,7 @@ bool USkeletalMesh::Build(FSkeletalMeshData&& ImportData, FString& OutError)
 	}
 
 	TArray<UMaterial*> NewMaterials;
-	if (!UAssetManager::BuildMaterialsFromSlots(ImportData.MaterialSlots, NewMaterials))
+	if (!UAssetManager::BuildMaterialsFromSlots(ImportData.MaterialSlots, NewMaterials, OwnerMeshPath))
 	{
 		OutError = "SkeletalMesh: material creation failed";
 		return false;

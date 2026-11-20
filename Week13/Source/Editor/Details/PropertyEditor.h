@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include "Core/EngineString.h"
+
 struct ImFont;
 class UObject;
 class FProperty;
@@ -28,5 +31,8 @@ namespace FPropertyEditor
 	bool DrawVector3(const char* Label, float* Values, float ResetValue);
 	// FRotator를 Roll=X, Pitch=Y, Yaw=Z 순서로 보여 준다 (레벨 디테일 패널과 같은 축 순서).
 	bool DrawRotator(const char* Label, FRotator& Rotator);
+
+	// 프로퍼티 에디터(머티리얼 슬롯 등)에서 에셋 에디터를 열 때 쓰는 전역 콜백
+	void SetOpenAssetEditorCallback(std::function<void(const FString&)> InCallback);
 }
 // DetailsPanel.cpp는 이 헤더를 include하고 원래 함수 대신 FPropertyEditor::를 부르도록 바꾼다.

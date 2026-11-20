@@ -23,6 +23,8 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Math/BoxSphereBounds.h"
+#include "Render/Material.h"
+#include "Render/MaterialFile.h"
 #include "Render/Mesh.h"
 #include "Render/RenderCommand.h"
 #include "Render/Renderer.h"
@@ -298,8 +300,10 @@ public:
 		EngineShowFlags.SkeletalMeshes = true;
 	}
 
-	void ApplySettings(const FEditorSettings* Settings)
+	void ApplySettings(const FEditorSettings* Settings, bool bTranslucentPreview = false)
 	{
+		bUseCheckerBackground = !bTranslucentPreview;
+		RenderSettings.bUsePreviewSkybox = bTranslucentPreview;
 		if (!Settings)
 		{
 			return;
@@ -310,6 +314,7 @@ public:
 	}
 
 private:
+	bool bUseCheckerBackground = true;
 	// ThumbnailCheckerShader.hlsl의 cbuffer와 같은 배치
 	struct FCheckerConstants
 	{
@@ -326,6 +331,10 @@ private:
 protected:
 	void Draw(const FSceneView* View, FScenePassCallbacks& Callbacks) override
 	{
+		if (!bUseCheckerBackground)
+		{
+			return;
+		}
 		const float TargetWidth = View ? View->ViewRect.Width : static_cast<float>(ThumbnailCheckerFallbackSize);
 		Callbacks.Overlays.EditorGrid = [this, TargetWidth]()
 		{
@@ -379,7 +388,8 @@ bool FMeshThumbnailRenderer::IsSupportedMeshFile(const fs::path& FilePath, const
 		|| FFbxMeshBake::IsBakedPath(Utf8Path)
 		|| AnimSequenceFile::IsAnimSequencePath(Utf8Path)
 		|| BlendSpaceFile::IsBlendSpacePath(Utf8Path)
-		|| AnimBlueprintFile::IsAnimBlueprintPath(Utf8Path);
+		|| AnimBlueprintFile::IsAnimBlueprintPath(Utf8Path)
+		|| MaterialFile::IsMaterialPath(Utf8Path);
 }
 
 ImTextureID FMeshThumbnailRenderer::GetOrRequestThumbnail(
@@ -512,8 +522,25 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 
 	FBox BoundsBox{};
 	bool bValidMesh = false;
+	bool bIsTranslucentPreview = false;
 
-	if (AnimSequenceFile::IsAnimSequencePath(Request.Utf8Path))
+	StaticMeshComp->ClearOverrideMaterials();
+
+	if (MaterialFile::IsMaterialPath(Request.Utf8Path))
+	{
+		UMaterial* Material = UAssetManager::Get().LoadMaterial(Request.Utf8Path);
+		UStaticMesh* Sphere = UAssetManager::GetAssetByPath<UStaticMesh>("Sphere");
+		if (Material && Sphere)
+		{
+			SkeletalMeshComp->SetSkeletalMesh(nullptr);
+			StaticMeshComp->SetStaticMesh(Sphere);
+			StaticMeshComp->SetMaterial(0, Material);
+			BoundsBox = Sphere->GetRenderBounds();
+			bValidMesh = AreBoundsFinite(BoundsBox);
+			bIsTranslucentPreview = Material->IsTranslucent();
+		}
+	}
+	else if (AnimSequenceFile::IsAnimSequencePath(Request.Utf8Path))
 	{
 		UAnimSequence* Sequence = UAssetManager::LoadAnimSequence(Request.Utf8Path);
 		if (Sequence && Sequence->GetDataModel())
@@ -577,12 +604,13 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 
 	if (!bValidMesh)
 	{
+		StaticMeshComp->ClearOverrideMaterials();
 		StaticMeshComp->SetStaticMesh(nullptr);
 		SkeletalMeshComp->SetSkeletalMesh(nullptr);
 		return;
 	}
 
-	static_cast<FThumbnailViewportClient*>(ViewportClient.get())->ApplySettings(Engine.GetEditorSettings());
+	static_cast<FThumbnailViewportClient*>(ViewportClient.get())->ApplySettings(Engine.GetEditorSettings(), bIsTranslucentPreview);
 
 	PreviewScene->Tick(0.0f);
 	if (UWorld* PreviewWorld = PreviewScene->GetWorld())
@@ -600,6 +628,7 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 	ViewportClient->Resize(ThumbnailResolution, ThumbnailResolution);
 	if (!ViewportClient->GetViewTargets().IsValidFor(ThumbnailResolution, ThumbnailResolution))
 	{
+		StaticMeshComp->ClearOverrideMaterials();
 		StaticMeshComp->SetStaticMesh(nullptr);
 		SkeletalMeshComp->SetSkeletalMesh(nullptr);
 		return;
@@ -627,6 +656,7 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 		}
 	}
 
+	StaticMeshComp->ClearOverrideMaterials();
 	StaticMeshComp->SetStaticMesh(nullptr);
 	SkeletalMeshComp->SetSkeletalMesh(nullptr);
 }
