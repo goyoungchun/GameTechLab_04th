@@ -17,6 +17,17 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float VignetteIntensity = 0.0f;
 
+	// ---------- Depth of Field ----------
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldFocalDistance = false;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0))
+	float DepthOfFieldFocalDistance = 10.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldFocusRange = false;
+	// 셰이더에서 분모로 쓰이므로 0이 되지 않게 막는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.01))
+	float DepthOfFieldFocusRange = 5.0f;
+
 	// Src에서 bOverride_가 켜진 값만 Weight(0~1)만큼 이 값 쪽에서 Src 쪽으로 섞는다.
 	void OverrideBlend(const FPostProcessSettings& Src, float Weight);
 };
