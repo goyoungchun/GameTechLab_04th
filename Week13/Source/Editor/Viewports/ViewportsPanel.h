@@ -79,6 +79,13 @@ public:
 	bool IsLocationSnapEnabled() const;
 	void SetLocationSnapEnabled(bool bEnabled);
 	float GetLocationSnapSize() const;
+	// 회전·크기 스냅 드롭다운 메뉴와 버튼 표시용 상태
+	void DrawRotationSnapMenu();
+	void DrawScaleSnapMenu();
+	bool IsRotationSnapEnabled() const;
+	float GetRotationSnapDegrees() const;
+	bool IsScaleSnapEnabled() const;
+	float GetScaleSnapSize() const;
 	void SetActorSpawnedCallback(std::function<void(AActor*)> Callback) { OnActorSpawned = std::move(Callback); }
 	void SetIsPlayingQuery(std::function<bool()> Query) { IsPlayingQuery = std::move(Query); }
 

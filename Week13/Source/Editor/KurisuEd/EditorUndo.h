@@ -76,11 +76,28 @@ public:
 	void Redo(UEditorEngine& Editor);
 	void Clear();
 
+	// 저장 이후 씬이 바뀌었는지. 마지막 저장 시점의 Undo 위치와 지금 위치를 비교한다.
+	// Undo로 저장 시점까지 되돌리면 다시 깨끗한 상태가 된다.
+	bool IsDirty() const { return bForceDirty || GetCurrentStateId() != SavedStateId; }
+	// 씬을 저장했거나 새로 불러온 직후에 부른다.
+	void MarkSaved() { SavedStateId = GetCurrentStateId(); bForceDirty = false; }
+	// Undo 기록 없이 씬을 바꾼 경우(기록이 꺼진 상태 등)에 부른다.
+	void MarkDirty() { bForceDirty = true; }
+
 private:
+	// Undo 스택 맨 위 커맨드의 번호. 비어 있으면 0이다.
+	uint64 GetCurrentStateId() const { return UndoIds.IsEmpty() ? 0 : UndoIds.Last(); }
 	TArray<TUniquePtr<IEditorUndoCommand>> UndoStack;
 	TArray<TUniquePtr<IEditorUndoCommand>> RedoStack;
 	bool bRecordingEnabled = true;
 	bool bSuppressRecording = false;
+
+	// UndoStack, RedoStack과 같은 순서로 커맨드마다 붙이는 번호
+	TArray<uint64> UndoIds;
+	TArray<uint64> RedoIds;
+	uint64 NextStateId = 1;
+	uint64 SavedStateId = 0;
+	bool bForceDirty = false;
 };
 
 namespace EditorUndoUtils

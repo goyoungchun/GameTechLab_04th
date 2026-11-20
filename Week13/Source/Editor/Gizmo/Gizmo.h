@@ -49,7 +49,7 @@ public:
 	void SetSpace(EGizmoSpace InSpace) { if (Space != InSpace) EndDrag(); Space = InSpace; }
 	EGizmoSpace GetSpace() const { return Space; }
 
-	// 켜면 이동과 크기는 Step 단위로, 회전은 고정 각도 단위로 맞춘다.
+	// 켜면 이동을 Step 단위로 맞춘다. 조명 반경(거리)도 이 간격을 쓴다.
 	void SetLocationSnap(bool bEnabled, float Step)
 	{
 		bLocationSnapEnabled = bEnabled && Step > 0.0f;
@@ -57,6 +57,19 @@ public:
 	}
 	bool IsLocationSnapEnabled() const { return bLocationSnapEnabled; }
 	float GetLocationSnapSize() const { return LocationSnapSize; }
+
+	// 켜면 회전을 드래그 시작 자세에서 Degrees 단위로 돌린다.
+	void SetRotationSnap(bool bEnabled, float Degrees)
+	{
+		bRotationSnapEnabled = bEnabled && Degrees > 0.0f;
+		RotationSnapDegrees = bRotationSnapEnabled ? Degrees : 0.0f;
+	}
+	// 켜면 크기를 Step 단위로 맞춘다.
+	void SetScaleSnap(bool bEnabled, float Step)
+	{
+		bScaleSnapEnabled = bEnabled && Step > 0.0f;
+		ScaleSnapSize = bScaleSnapEnabled ? Step : 0.0f;
+	}
 
 	// Active View의 Ray와 행렬만 사용해 Hover·Drag 상태를 갱신한다.
 	void Update(const FRay& MouseRay, const FVector2& MousePos,
@@ -94,6 +107,10 @@ private:
 	EGizmoSpace Space = EGizmoSpace::Local;
 	bool bLocationSnapEnabled = false;
 	float LocationSnapSize = 1.0f;
+	bool bRotationSnapEnabled = false;
+	float RotationSnapDegrees = 5.0f;
+	bool bScaleSnapEnabled = false;
+	float ScaleSnapSize = 0.25f;
 	FTransform Transform = FTransform();
 	USceneComponent* Target = nullptr;
 	bool bUseActorBounds = false;

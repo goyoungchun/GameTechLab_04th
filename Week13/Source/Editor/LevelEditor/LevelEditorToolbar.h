@@ -37,6 +37,18 @@ public:
 		GetLocationSnapSize = std::move(InGetLocationSnapSize);
 		DrawSnapMenu = std::move(InDrawSnapMenu);
 	}
+	// 회전·크기 스냅 드롭다운. 위치 스냅과 같은 방식으로 상태만 보여주고 옵션은 메뉴에서 바꾼다.
+	void SetRotationScaleSnapBinding(std::function<bool()> InGetRotationSnap, std::function<float()> InGetRotationSnapDegrees,
+		std::function<void()> InDrawRotationSnapMenu, std::function<bool()> InGetScaleSnap,
+		std::function<float()> InGetScaleSnapSize, std::function<void()> InDrawScaleSnapMenu)
+	{
+		GetRotationSnap = std::move(InGetRotationSnap);
+		GetRotationSnapDegrees = std::move(InGetRotationSnapDegrees);
+		DrawRotationSnapMenu = std::move(InDrawRotationSnapMenu);
+		GetScaleSnap = std::move(InGetScaleSnap);
+		GetScaleSnapSize = std::move(InGetScaleSnapSize);
+		DrawScaleSnapMenu = std::move(InDrawScaleSnapMenu);
+	}
 	void Draw();
 
 	static constexpr float Height = 40.0f;
@@ -57,6 +69,12 @@ private:
 	std::function<bool()> GetLocationSnap;
 	std::function<float()> GetLocationSnapSize;
 	std::function<void()> DrawSnapMenu;
+	std::function<bool()> GetRotationSnap;
+	std::function<float()> GetRotationSnapDegrees;
+	std::function<void()> DrawRotationSnapMenu;
+	std::function<bool()> GetScaleSnap;
+	std::function<float()> GetScaleSnapSize;
+	std::function<void()> DrawScaleSnapMenu;
 
 
 };

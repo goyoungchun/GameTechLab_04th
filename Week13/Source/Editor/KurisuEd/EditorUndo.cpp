@@ -565,11 +565,14 @@ void FEditorUndoHistory::Push(TUniquePtr<IEditorUndoCommand> Command)
 	}
 
 	UndoStack.Add(std::move(Command));
+	UndoIds.Add(NextStateId++);
 	if (UndoStack.Num() > MaxHistorySteps)
 	{
 		UndoStack.RemoveAt(0);
+		UndoIds.RemoveAt(0);
 	}
 	RedoStack.Empty();
+	RedoIds.Empty();
 }
 
 const char* FEditorUndoHistory::GetUndoDescription() const
@@ -591,12 +594,15 @@ void FEditorUndoHistory::Undo(UEditorEngine& Editor)
 
 	TUniquePtr<IEditorUndoCommand> Command = std::move(UndoStack[UndoStack.Num() - 1]);
 	UndoStack.RemoveAt(UndoStack.Num() - 1);
+	const uint64 CommandId = UndoIds.Last();
+	UndoIds.RemoveAt(UndoIds.Num() - 1);
 
 	{
 		FScopedSuppress Suppress(*this);
 		Command->Undo(Editor);
 	}
 	RedoStack.Add(std::move(Command));
+	RedoIds.Add(CommandId);
 }
 
 void FEditorUndoHistory::Redo(UEditorEngine& Editor)
@@ -608,18 +614,26 @@ void FEditorUndoHistory::Redo(UEditorEngine& Editor)
 
 	TUniquePtr<IEditorUndoCommand> Command = std::move(RedoStack[RedoStack.Num() - 1]);
 	RedoStack.RemoveAt(RedoStack.Num() - 1);
+	const uint64 CommandId = RedoIds.Last();
+	RedoIds.RemoveAt(RedoIds.Num() - 1);
 
 	{
 		FScopedSuppress Suppress(*this);
 		Command->Redo(Editor);
 	}
 	UndoStack.Add(std::move(Command));
+	UndoIds.Add(CommandId);
 }
 
+// 씬을 새로 만들거나 불러올 때 부른다. 그 시점을 저장된 상태로 본다.
 void FEditorUndoHistory::Clear()
 {
 	UndoStack.Empty();
 	RedoStack.Empty();
+	UndoIds.Empty();
+	RedoIds.Empty();
+	SavedStateId = 0;
+	bForceDirty = false;
 }
 
 namespace EditorUndoUtils

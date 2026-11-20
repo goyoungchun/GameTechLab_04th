@@ -14,7 +14,8 @@ class FLevelEditorTab : public IEditorTab
 public:
 	explicit FLevelEditorTab();
 
-	const char* GetTabName() const override { return TabName.c_str(); }
+	// 저장 안 한 변경이 있으면 씬 이름 뒤에 *를 붙인다.
+	const char* GetTabName() const override;
 	bool CanDetach() const override { return false; }
 	bool HasFocusedSubWindow() const override { return BottomBar.IsFocused() || EditorDock::HasFocusedPanel(Panels); }
 	void DrawMenuBar() override;
@@ -77,4 +78,5 @@ private:
 	bool bPassthruCentralNode = false;
 
 	FString TabName;
+	mutable FString DisplayTabName;
 };

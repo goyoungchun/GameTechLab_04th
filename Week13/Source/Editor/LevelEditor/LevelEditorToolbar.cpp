@@ -87,7 +87,7 @@ void FLevelEditorToolbar::DrawPlacementGroup()
 {
 	BeginToolbarGroup();
 
-	EditorStyle::FPopupAnchor AddAnchor{}, SnapAnchor{}, GridAnchor{};
+	EditorStyle::FPopupAnchor AddAnchor{}, SnapAnchor{}, RotSnapAnchor{}, ScaleSnapAnchor{}, GridAnchor{};
 	if (DropdownButton("##AddActor", "AddActor", nullptr))
 		ImGui::OpenPopup("LevelAddPopup");
 	AddAnchor = EditorStyle::LastItemAnchor();
@@ -112,8 +112,42 @@ void FLevelEditorToolbar::DrawPlacementGroup()
 		EditorStyle::PopSelectedButton(bSnapOn);
 		SnapAnchor = EditorStyle::LastItemAnchor();
 		if (ImGui::IsItemHovered() && !ImGui::IsPopupOpen("LevelSnapPopup"))
-			ImGui::SetTooltip(bSnapOn ? "Snap: ON (G to toggle)\nLocation/Scale use the snap size, rotation snaps by 5 degrees."
-				: "Snap: OFF (G to toggle)");
+			ImGui::SetTooltip(bSnapOn ? "Location Snap: ON (G to toggle)"
+				: "Location Snap: OFF (G to toggle)");
+		ImGui::SameLine();
+	}
+
+	// 회전 스냅: 켜져 있으면 각도를, 꺼져 있으면 Off를 보여준다.
+	if (GetRotationSnap && DrawRotationSnapMenu)
+	{
+		const bool bOn = GetRotationSnap();
+		char Label[16];
+		if (bOn) std::snprintf(Label, sizeof(Label), "%g°", GetRotationSnapDegrees ? GetRotationSnapDegrees() : 5.0f);
+		else std::snprintf(Label, sizeof(Label), "Off");
+		EditorStyle::PushSelectedButton(bOn);
+		if (DropdownButton("##RotationSnap", "TransformRotate", Label))
+			ImGui::OpenPopup("LevelRotSnapPopup");
+		EditorStyle::PopSelectedButton(bOn);
+		RotSnapAnchor = EditorStyle::LastItemAnchor();
+		if (ImGui::IsItemHovered() && !ImGui::IsPopupOpen("LevelRotSnapPopup"))
+			ImGui::SetTooltip(bOn ? "Rotation Snap: ON" : "Rotation Snap: OFF");
+		ImGui::SameLine();
+	}
+
+	// 크기 스냅: 켜져 있으면 간격을, 꺼져 있으면 Off를 보여준다.
+	if (GetScaleSnap && DrawScaleSnapMenu)
+	{
+		const bool bOn = GetScaleSnap();
+		char Label[16];
+		if (bOn) std::snprintf(Label, sizeof(Label), "%g", GetScaleSnapSize ? GetScaleSnapSize() : 0.25f);
+		else std::snprintf(Label, sizeof(Label), "Off");
+		EditorStyle::PushSelectedButton(bOn);
+		if (DropdownButton("##ScaleSnap", "TransformScale", Label))
+			ImGui::OpenPopup("LevelScaleSnapPopup");
+		EditorStyle::PopSelectedButton(bOn);
+		ScaleSnapAnchor = EditorStyle::LastItemAnchor();
+		if (ImGui::IsItemHovered() && !ImGui::IsPopupOpen("LevelScaleSnapPopup"))
+			ImGui::SetTooltip(bOn ? "Scale Snap: ON" : "Scale Snap: OFF");
 		ImGui::SameLine();
 	}
 
@@ -135,6 +169,16 @@ void FLevelEditorToolbar::DrawPlacementGroup()
 	if (EditorStyle::BeginButtonPopup("LevelSnapPopup", SnapAnchor))
 	{
 		if (DrawSnapMenu) DrawSnapMenu();
+		ImGui::EndPopup();
+	}
+	if (EditorStyle::BeginButtonPopup("LevelRotSnapPopup", RotSnapAnchor))
+	{
+		if (DrawRotationSnapMenu) DrawRotationSnapMenu();
+		ImGui::EndPopup();
+	}
+	if (EditorStyle::BeginButtonPopup("LevelScaleSnapPopup", ScaleSnapAnchor))
+	{
+		if (DrawScaleSnapMenu) DrawScaleSnapMenu();
 		ImGui::EndPopup();
 	}
 	if (EditorStyle::BeginButtonPopup("LevelGridPopup", GridAnchor))

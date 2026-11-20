@@ -1,10 +1,12 @@
 #include "EnginePCH.h"
+#include "Editor/EditorUI/EditorStyle.h"
 
 #include "Editor/KurisuEd/EditorEngine.h"
 #include "Editor/KurisuEd/Editor.h"
 
 #include "Core/EngineStatics.h"
 #include "Core/EngineTimer.h"
+#include "Core/CoreGlobals.h"
 #include "Launch/LaunchEngineLoop.h"
 #include "Core/StatOverlay.h"
 #include "Input/InputSystem.h"
@@ -320,6 +322,8 @@ void UEditorEngine::InitImGui()
 	EditorTitleBar::Install(*MainWindow, true);
 	// 패널이 겹치거나 잘리지 않는 최소 크기.
 	MainWindow->SetMinSize(1024, 640);
+	// 닫기 버튼(Alt+F4 포함)은 바로 끝내지 않고 요청만 남긴다. 저장 안 한 씬이 있으면 Tick에서 먼저 묻는다.
+	MainWindow->SetQuitOnClose(false);
 	// 엔진 콘텐츠에 로고 이미지가 있으면 제목 표시줄 왼쪽 위 칸에 그린다. 없으면 빈 칸으로 둔다.
 	{
 		const FString LogoPath = "Engine/Icons/KurisuLogoReverse.png";
@@ -589,6 +593,13 @@ void UEditorEngine::InitCommands()
 		[this]() { return ViewportsPanel ? ViewportsPanel->IsLocationSnapEnabled() : false; },
 		[this]() { return ViewportsPanel ? ViewportsPanel->GetLocationSnapSize() : 1.0f; },
 		[this]() { if (ViewportsPanel) ViewportsPanel->DrawSnapMenu(); });
+	LevelEditorToolbar.SetRotationScaleSnapBinding(
+		[this]() { return ViewportsPanel ? ViewportsPanel->IsRotationSnapEnabled() : false; },
+		[this]() { return ViewportsPanel ? ViewportsPanel->GetRotationSnapDegrees() : 5.0f; },
+		[this]() { if (ViewportsPanel) ViewportsPanel->DrawRotationSnapMenu(); },
+		[this]() { return ViewportsPanel ? ViewportsPanel->IsScaleSnapEnabled() : false; },
+		[this]() { return ViewportsPanel ? ViewportsPanel->GetScaleSnapSize() : 0.25f; },
+		[this]() { if (ViewportsPanel) ViewportsPanel->DrawScaleSnapMenu(); });
 	LevelEditorToolbar.SetPlayModeBinding(
 		[this]() { return PlayMode; },
 		[this](EPlayModeType Mode) { PlayMode = Mode; },
@@ -602,6 +613,9 @@ void UEditorEngine::Tick(const float DeltaTime)
 	// PIE 창 닫기 요청 처리
 	if (PIEWindow && PIEWindow->ConsumeCloseRequest())
 		RequestEndPlayMap();
+	// 메인 창 닫기 요청: 저장 안 한 씬이 있으면 확인 창을 띄우고, 없으면 바로 끝낸다.
+	if (MainWindow && MainWindow->ConsumeCloseRequest() && ConfirmSceneChanges(EPendingSceneAction::Exit))
+		RequestEngineExit("main window closed");
 	// 에디터 단축키 (UE와 같은 키: Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Alt+S, Alt+P, Pause).
 	// Stop(Esc)은 PIE 입력 처리에서 따로 받으므로 여기서 빼서 두 번 실행되지 않게 한다.
 	EditorCommandUI::ProcessShortcuts({ &NewScene, &OpenSceneCommand, &Save, &SaveAs, &Play, &Simulate, &Pause, &Resume });
@@ -1066,6 +1080,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 		ImGuiRenderer->Begin();
 
 		EditorManager->DrawEditorUI();
+		DrawUnsavedScenePrompt();
 		// NewFrame과 패널 배치 이후의 입력/좌표를 사용해야 클릭과 기즈모 피킹이 일치한다.
 		UpdateGizmoAndPicking();
 
@@ -1315,6 +1330,8 @@ void UEditorEngine::UpdateGizmoAndPicking()
 	{
 		const FEditorSettings& Settings = EditorSettings->GetSettings();
 		Gizmo->SetLocationSnap(Settings.bLocationSnap, Settings.LocationSnapSize);
+		Gizmo->SetRotationSnap(Settings.bRotationSnap, Settings.RotationSnapDegrees);
+		Gizmo->SetScaleSnap(Settings.bScaleSnap, Settings.ScaleSnapSize);
 	}
 
 	const FVector2 LocalMousePosition = ViewportsPanel->GetLocalMousePosition();
@@ -1946,6 +1963,8 @@ void UEditorEngine::CreateNewScene()
 		KRS_LOG(Warning, "Cannot create a new scene during PIE. Stop the play session first.");
 		return;
 	}
+	if (!ConfirmSceneChanges(EPendingSceneAction::NewScene))
+		return;
 	if (!FEditorFileUtils::NewScene(EditorWorld))
 		return;
 
@@ -1963,6 +1982,8 @@ void UEditorEngine::OpenScene()
 		KRS_LOG(Warning, "Cannot open a scene during PIE. Stop the play session first.");
 		return;
 	}
+	if (!ConfirmSceneChanges(EPendingSceneAction::OpenScene))
+		return;
 	if (!FEditorFileUtils::LoadScene(EditorWorld))
 		return;
 
@@ -1982,6 +2003,8 @@ void UEditorEngine::OpenSceneFromPath(const FString& Path)
 		KRS_LOG(Warning, "Cannot open a scene during PIE. Stop the play session first.");
 		return;
 	}
+	if (!ConfirmSceneChanges(EPendingSceneAction::OpenScenePath, Path))
+		return;
 	if (!FEditorFileUtils::LoadScene(EditorWorld, Path))
 		return;
 
@@ -2001,7 +2024,11 @@ void UEditorEngine::SaveCurrentScene()
 		KRS_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	if (FEditorFileUtils::SaveScene(EditorWorld)) QueueProjectThumbnail();
+	if (FEditorFileUtils::SaveScene(EditorWorld))
+	{
+		UndoHistory.MarkSaved();
+		QueueProjectThumbnail();
+	}
 }
 
 // 공통 파일 유틸리티로 새 경로에 씬을 저장한다.
@@ -2012,7 +2039,92 @@ void UEditorEngine::SaveSceneAs()
 		KRS_LOG(Warning, "Cannot save during PIE. Stop the play session first.");
 		return;
 	}
-	if (FEditorFileUtils::SaveSceneAs(EditorWorld)) QueueProjectThumbnail();
+	if (FEditorFileUtils::SaveSceneAs(EditorWorld))
+	{
+		UndoHistory.MarkSaved();
+		QueueProjectThumbnail();
+	}
+}
+
+// 저장 안 한 변경이 없거나 확인 창의 결정으로 실행 중이면 true. 아니면 Action을 기억하고 확인 창을 띄운 뒤 false.
+bool UEditorEngine::ConfirmSceneChanges(EPendingSceneAction Action, const FString& Path)
+{
+	if (bRunningPendingSceneAction || !UndoHistory.IsDirty())
+		return true;
+	PendingSceneAction = Action;
+	PendingScenePath = Path;
+	bScenePromptRequested = true;
+	return false;
+}
+
+void UEditorEngine::RunPendingSceneAction()
+{
+	const EPendingSceneAction Action = PendingSceneAction;
+	const FString Path = PendingScenePath;
+	PendingSceneAction = EPendingSceneAction::None;
+	PendingScenePath.clear();
+
+	bRunningPendingSceneAction = true;
+	switch (Action)
+	{
+	case EPendingSceneAction::NewScene: CreateNewScene(); break;
+	case EPendingSceneAction::OpenScene: OpenScene(); break;
+	case EPendingSceneAction::OpenScenePath: OpenSceneFromPath(Path); break;
+	case EPendingSceneAction::Exit: RequestEngineExit("main window closed"); break;
+	default: break;
+	}
+	bRunningPendingSceneAction = false;
+}
+
+// 새 씬, 씬 열기, 종료 전에 띄우는 "저장할까요?" 창
+void UEditorEngine::DrawUnsavedScenePrompt()
+{
+	constexpr const char* PopupId = "Unsaved Scene Changes";
+	if (bScenePromptRequested)
+	{
+		bScenePromptRequested = false;
+		ImGui::OpenPopup(PopupId);
+	}
+
+	const ImGuiViewport* Viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(Viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	if (!ImGui::BeginPopupModal(PopupId, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		return;
+
+	const FString SceneName = FEditorFileUtils::CurrentScenePath.empty()
+		? FString("Untitled") : FPaths::ToUtf8(FPaths::FromUtf8(FEditorFileUtils::CurrentScenePath).filename());
+	ImGui::Text("Save changes to %s?", SceneName.c_str());
+	ImGui::TextDisabled("Your changes will be lost if you don't save them.");
+	if (IsPlaying())
+		ImGui::TextColored(EditorColor::ToVec4(EditorColor::Warning), "Stop the play session to save.");
+	ImGui::Spacing();
+
+	ImGui::BeginDisabled(IsPlaying());
+	if (ImGui::Button("Save"))
+	{
+		SaveCurrentScene();
+		// 저장 대화상자를 취소하는 등 저장이 안 됐으면 창을 그대로 둔다.
+		if (!UndoHistory.IsDirty())
+		{
+			ImGui::CloseCurrentPopup();
+			RunPendingSceneAction();
+		}
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Don't Save"))
+	{
+		ImGui::CloseCurrentPopup();
+		RunPendingSceneAction();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+	{
+		PendingSceneAction = EPendingSceneAction::None;
+		PendingScenePath.clear();
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::EndPopup();
 }
 
 void UEditorEngine::QueueProjectThumbnail(bool bOnlyIfMissing)

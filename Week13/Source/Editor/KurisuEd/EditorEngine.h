@@ -195,6 +195,16 @@ private:
 	// 선택이 바뀌면 기즈모와 외곽선을 선택에 맞춘다.
 	void OnSelectionChanged();
 
+	// 저장 안 한 씬 변경이 있을 때 새 씬·씬 열기·종료를 미루고 확인 창으로 묻는다.
+	enum class EPendingSceneAction : uint8 { None, NewScene, OpenScene, OpenScenePath, Exit };
+	bool ConfirmSceneChanges(EPendingSceneAction Action, const FString& Path = {});
+	void RunPendingSceneAction();
+	void DrawUnsavedScenePrompt();
+	EPendingSceneAction PendingSceneAction = EPendingSceneAction::None;
+	FString PendingScenePath;
+	bool bScenePromptRequested = false;
+	bool bRunningPendingSceneAction = false;
+
 
 	FLevelEditorTab* LevelEditorTab = nullptr;
 	FOutputLogPanel* OutputLogPanel = nullptr;

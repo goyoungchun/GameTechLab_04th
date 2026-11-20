@@ -1,6 +1,8 @@
 #include "EnginePCH.h"
 #include "Editor/LevelEditor/LevelEditorTab.h"
 #include "Editor/KurisuEd/EditorFileUtils.h"
+#include "Editor/KurisuEd/EditorEngine.h"
+#include "Editor/KurisuEd/Editor.h"
 #include "Asset/FbxImporter/FbxMeshBake.h"
 #include "Editor/EditorUI/EditorPanel.h"
 #include <algorithm>
@@ -144,6 +146,16 @@ void FLevelEditorTab::SetDockSpaceOptions(bool bEnabled, bool bPassthru)
 {
 	bUseDockSpace = bEnabled;
 	bPassthruCentralNode = bPassthru;
+}
+
+const char* FLevelEditorTab::GetTabName() const
+{
+	// 다른 이름으로 저장하면 경로가 바뀌므로 매번 현재 씬 경로로 만든다. ### 뒤는 그대로라 탭이 같은 창으로 남는다.
+	const FString& Path = FEditorFileUtils::CurrentScenePath;
+	const FString LevelName = Path.empty() ? "EmptyLevel" : std::filesystem::path(Path).filename().string();
+	const bool bDirty = GEditor && GEditor->GetUndoHistory().IsDirty();
+	DisplayTabName = LevelName + (bDirty ? "* (LevelEditor)###LevelEditor" : " (LevelEditor)###LevelEditor");
+	return DisplayTabName.c_str();
 }
 
 void FLevelEditorTab::UpdateTabName(std::string_view InPath)

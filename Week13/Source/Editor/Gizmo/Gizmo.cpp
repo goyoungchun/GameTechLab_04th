@@ -25,8 +25,6 @@ namespace
 		};
 	}
 
-	// 회전 스냅 간격. 지금은 설정 없이 고정한다.
-	constexpr float RotationSnapDegrees = 5.0f;
 
 	// 크기는 0이 되면 안 되므로 0으로 맞춰질 값은 한 칸(SnapStep)으로 둔다. 부호는 유지한다.
 	float SnapScaleValue(float Value, float SnapStep)
@@ -399,8 +397,8 @@ void FGizmo::UpdateDrag(const FRay& MouseRay, const FVector2& MousePos)
 			if (!ApplyScaleToLight(factor)) 	// 조명이면 여기서 radius만 변경하고 return
 			{
 				FVector NewScale = DragStartScale * factor;
-				if (bLocationSnapEnabled && LocationSnapSize > 0.0f)
-					NewScale = SnapScaleVector(NewScale, LocationSnapSize);
+				if (bScaleSnapEnabled && ScaleSnapSize > 0.0f)
+					NewScale = SnapScaleVector(NewScale, ScaleSnapSize);
 				Target->SetRelativeScale3D(NewScale);
 			}
 		}
@@ -412,7 +410,7 @@ void FGizmo::UpdateDrag(const FRay& MouseRay, const FVector2& MousePos)
 		float currentAngle = ComputeAngleOnPlane(current, DraggingAxis);
 		float deltaAngle = currentAngle - DragStartAngle;
 		// 드래그를 시작한 자세에서 돌린 각도를 일정 간격으로 맞춘다.
-		if (bLocationSnapEnabled)
+		if (bRotationSnapEnabled)
 			deltaAngle = SnapValue(deltaAngle, RotationSnapDegrees * PI / 180.0f);
 
 		FQuat delta = FQuat::MakeFromAxisAngle(DragAxisDirection, deltaAngle);
@@ -459,10 +457,10 @@ void FGizmo::UpdateDrag(const FRay& MouseRay, const FVector2& MousePos)
 		else                        NewScale.Z *= factor;
 
 		// 끌고 있는 축의 크기만 맞춘다. 나머지 축은 건드리지 않는다.
-		if (bLocationSnapEnabled && LocationSnapSize > 0.0f)
+		if (bScaleSnapEnabled && ScaleSnapSize > 0.0f)
 		{
 			float& Component = DraggingAxis == 0 ? NewScale.X : (DraggingAxis == 1 ? NewScale.Y : NewScale.Z);
-			Component = SnapScaleValue(Component, LocationSnapSize);
+			Component = SnapScaleValue(Component, ScaleSnapSize);
 		}
 
 		Target->SetRelativeScale3D(NewScale);

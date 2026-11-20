@@ -87,6 +87,10 @@ bool FEditorSettingsManager::SaveSettings() const
 	File << "GridSpacing=" << Settings.GridSpacing << "\n";
 	File << "LocationSnap=" << Settings.bLocationSnap << "\n";
 	File << "LocationSnapSize=" << Settings.LocationSnapSize << "\n";
+	File << "RotationSnap=" << Settings.bRotationSnap << "\n";
+	File << "RotationSnapDegrees=" << Settings.RotationSnapDegrees << "\n";
+	File << "ScaleSnap=" << Settings.bScaleSnap << "\n";
+	File << "ScaleSnapSize=" << Settings.ScaleSnapSize << "\n";
 	File << "\n";
 
 	File << "[MultipleViewports]\n";
@@ -257,6 +261,10 @@ bool FEditorSettingsManager::LoadSettings()
 				else if (Key == "CameraRotateSensitivity") Settings.MouseSensitivity = std::stof(ValueStr);
 				else if (Key == "GridSpacing") Settings.GridSpacing = std::stoi(ValueStr);
 				else if (Key == "LocationSnap") Settings.bLocationSnap = (std::stoi(ValueStr) != 0);
+				else if (Key == "RotationSnap") Settings.bRotationSnap = (std::stoi(ValueStr) != 0);
+				else if (Key == "RotationSnapDegrees") Settings.RotationSnapDegrees = FMath::Clamp(std::stof(ValueStr), 0.1f, 180.0f);
+				else if (Key == "ScaleSnap") Settings.bScaleSnap = (std::stoi(ValueStr) != 0);
+				else if (Key == "ScaleSnapSize") Settings.ScaleSnapSize = FMath::Clamp(std::stof(ValueStr), 0.001f, 100.0f);
 				else if (Key == "LocationSnapSize")
 				{
 					const float Value = std::stof(ValueStr);

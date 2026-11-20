@@ -36,6 +36,11 @@ struct FEditorSettings
 	int32 GridSpacing = 1;
 	bool bLocationSnap = true;
 	float LocationSnapSize = 1.0f;
+	// 회전 스냅(도)과 크기 스냅(배율 단위)
+	bool bRotationSnap = true;
+	float RotationSnapDegrees = 5.0f;
+	bool bScaleSnap = true;
+	float ScaleSnapSize = 0.25f;
 	float MultipleViewportsHorizontal = 0.5f;
 	float MultipleViewportsVertical = 0.5f;
 	int32 ViewportLayout = 1; // ELayoutMode. 기본은 2x2(QuadSplit)
