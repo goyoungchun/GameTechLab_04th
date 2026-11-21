@@ -4,7 +4,87 @@
 #include "PhysXIncludes.h"
 #include "BodyInstance.h"
 #include "PhysXConversions.h"
+#include "PhysXFilterShader.h"
 #include "Components/PrimitiveComponent.h"
+
+namespace
+{
+	// 쿼리 후보 shape마다 불린다. 종류·플래그·제외 컴포넌트를 한곳에서 거른다.
+	class FKurisuQueryFilterCallback : public physx::PxQueryFilterCallback
+	{
+	public:
+		explicit FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams) : Params(InParams) {}
+
+		physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& /*QueryData*/, const physx::PxShape* Shape,
+			const physx::PxRigidActor* Actor, physx::PxHitFlags& /*Flags*/) override
+		{
+			const physx::PxFilterData ShapeData = Shape->getQueryFilterData();
+			if ((ShapeData.word0 & Params.ObjectTypesMask) == 0)
+				return physx::PxQueryHitType::eNONE;
+			if ((ShapeData.word3 & Params.RequiredFlags) != Params.RequiredFlags)
+				return physx::PxQueryHitType::eNONE;
+			if (Params.IgnoreComponent)
+			{
+				const FBodyInstance* Body = FBodyInstance::FromActor(Actor);
+				if (Body && Body->OwnerComponent == Params.IgnoreComponent)
+					return physx::PxQueryHitType::eNONE;
+			}
+			return physx::PxQueryHitType::eBLOCK;
+		}
+
+		physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData&, const physx::PxQueryHit&) override
+		{
+			return physx::PxQueryHitType::eBLOCK;   // ePOSTFILTER를 켜지 않으므로 불리지 않는다
+		}
+
+	private:
+		const FCollisionQueryParams& Params;
+	};
+
+	physx::PxQueryFilterData MakeQueryFilterData()
+	{
+		// 정적·동적 둘 다 보고, 거르기는 preFilter 콜백이 한다.
+		return physx::PxQueryFilterData(physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER);
+	}
+
+	// PhysX 캡슐은 X축으로 눕는다. 엔진 캡슐(Z축)과 맞추려고 Y축 기준 90도 돌린다 (BodyInstance와 같은 규약).
+	physx::PxQuat CapsuleAxisFix() { return physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0)); }
+
+	// 모양 하나와 그 회전을 함께 만든다. 캡슐만 축 보정이 붙는다.
+	physx::PxGeometryHolder MakeGeometry(const FCollisionShape& Shape, physx::PxQuat& InOutRotation)
+	{
+		switch (Shape.Type)
+		{
+		case FCollisionShape::EType::Box:
+			return physx::PxBoxGeometry(K2PVector(Shape.HalfExtent));
+		case FCollisionShape::EType::Capsule:
+			InOutRotation = InOutRotation * CapsuleAxisFix();
+			return physx::PxCapsuleGeometry(Shape.Radius, std::max(Shape.HalfHeight - Shape.Radius, 0.0f));
+		default:
+			return physx::PxSphereGeometry(Shape.Radius);
+		}
+	}
+
+	void FillHitResult(const physx::PxLocationHit& Hit, const FVector& Start, const FVector& End, const FVector& Dir, FHitResult& OutHit)
+	{
+		const float MaxDistance = (End - Start).Size();
+		OutHit = FHitResult();
+		OutHit.TraceStart = Start;
+		OutHit.TraceEnd = End;
+		OutHit.bBlockingHit = true;
+		OutHit.bStartPenetrating = Hit.hadInitialOverlap();
+		OutHit.Distance = Hit.distance;
+		OutHit.Time = MaxDistance > 0.0f ? Hit.distance / MaxDistance : 0.0f;
+		OutHit.ImpactPoint = P2KVector(Hit.position);
+		OutHit.ImpactNormal = P2KVector(Hit.normal);
+		OutHit.Location = Start + Dir * Hit.distance;   // 레이는 ImpactPoint와 같고, 스윕은 모양 중심 위치
+		OutHit.Normal = OutHit.ImpactNormal;
+		OutHit.PenetrationDepth = 0.0f;
+		OutHit.FaceIndex = static_cast<int32>(Hit.faceIndex);
+		const FBodyInstance* Body = FBodyInstance::FromActor(Hit.actor);
+		OutHit.HitComponent = Body ? Body->OwnerComponent : nullptr;
+	}
+}
 
 FPhysScene::FPhysScene(UWorld* InOwningWorld)
 	: OwningWorld(InOwningWorld)
@@ -18,7 +98,7 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 	physx::PxSceneDesc Desc(FPhysicsCore::Get().GetPhysics()->getTolerancesScale());
 	Desc.gravity = physx::PxVec3(0, 0, -9.81f);
 	Desc.cpuDispatcher = FPhysicsCore::Get().GetDispatcher();
-	Desc.filterShader = physx::PxDefaultSimulationFilterShader;
+	Desc.filterShader = KurisuSimulationFilterShader;
 	Desc.flags |= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS | physx::PxSceneFlag::eENABLE_PCM;
 
 	if (!Desc.isValid())
@@ -107,4 +187,76 @@ void FPhysScene::SyncActiveActors()
 		const physx::PxTransform Pose = RigidActor->getGlobalPose();
 		Body->OwnerComponent->SetWorldLocationAndRotation(P2KVector(Pose.p), P2KQuat(Pose.q).ToFRotator(), false);
 	}
+}
+
+bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitResult& OutHit, const FCollisionQueryParams& Params) const
+{
+	const FVector Delta = End - Start;
+	const float Distance = Delta.Size();
+	if (!Scene || Distance <= 0.0f)
+		return false;
+	const FVector Dir = Delta / Distance;
+
+	FKurisuQueryFilterCallback Filter(Params);
+	physx::PxRaycastBuffer Buffer;
+	const bool bHit = Scene->raycast(K2PVector(Start), K2PVector(Dir), Distance, Buffer,
+		physx::PxHitFlag::eDEFAULT, MakeQueryFilterData(), &Filter);
+	if (!bHit || !Buffer.hasBlock)
+		return false;
+
+	FillHitResult(Buffer.block, Start, End, Dir, OutHit);
+	return true;
+}
+
+bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation, const FVector& Start, const FVector& End,
+	FSweepResult& OutHit, const FCollisionQueryParams& Params) const
+{
+	const FVector Delta = End - Start;
+	const float Distance = Delta.Size();
+	if (!Scene || Distance <= 0.0f)
+		return false;
+	const FVector Dir = Delta / Distance;
+
+	physx::PxQuat Rot = K2PQuat(Rotation);
+	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
+
+	FKurisuQueryFilterCallback Filter(Params);
+	physx::PxSweepBuffer Buffer;
+	const bool bHit = Scene->sweep(Geometry.any(), physx::PxTransform(K2PVector(Start), Rot), K2PVector(Dir), Distance, Buffer,
+		physx::PxHitFlag::eDEFAULT, MakeQueryFilterData(), &Filter);
+	if (!bHit || !Buffer.hasBlock)
+		return false;
+
+	FillHitResult(Buffer.block, Start, End, Dir, OutHit);
+	return true;
+}
+
+bool FPhysScene::OverlapMulti(const FCollisionShape& Shape, const FVector& Position, const FQuat& Rotation,
+	TArray<FOverlapResult>& OutOverlaps, const FCollisionQueryParams& Params) const
+{
+	OutOverlaps.Empty();
+	if (!Scene)
+		return false;
+
+	physx::PxQuat Rot = K2PQuat(Rotation);
+	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
+
+	// 겹친 것을 모두 받으려면 eBLOCK이 아닌 eTOUCH로 모아야 한다. 최대 256개까지 받는다.
+	constexpr physx::PxU32 MaxHits = 256;
+	physx::PxOverlapHit Hits[MaxHits];
+	physx::PxOverlapBuffer Buffer(Hits, MaxHits);
+
+	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
+	FilterData.flags |= physx::PxQueryFlag::eNO_BLOCK;   // 모든 후보를 touch로 취급
+
+	FKurisuQueryFilterCallback Filter(Params);
+	Scene->overlap(Geometry.any(), physx::PxTransform(K2PVector(Position), Rot), Buffer, FilterData, &Filter);
+
+	for (physx::PxU32 Index = 0; Index < Buffer.getNbTouches(); ++Index)
+	{
+		const physx::PxOverlapHit& Hit = Buffer.getTouch(Index);
+		const FBodyInstance* Body = FBodyInstance::FromActor(Hit.actor);
+		OutOverlaps.Add(FOverlapResult{ Body ? Body->OwnerComponent : nullptr, static_cast<int32>(Hit.faceIndex) });
+	}
+	return !OutOverlaps.IsEmpty();
 }

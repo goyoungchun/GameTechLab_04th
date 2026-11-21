@@ -5,6 +5,7 @@
 #include "PhysicsCore.h"
 #include "PhysXConversions.h"
 #include "PhysXIncludes.h"
+#include "PhysXFilterShader.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
@@ -30,12 +31,26 @@ namespace
 		}
 		Shape->setLocalPose(LocalPose);
 		Shape->userData = Owner;
+
+		const physx::PxFilterData FilterData = K2PFilterData(Owner->MakeMaskFilter());
+		Shape->setSimulationFilterData(FilterData);   // 바디끼리 충돌 판정 (Filter Shader)
+		Shape->setQueryFilterData(FilterData);        // 레이캐스트·스윕 판정 (A7-2)
 	}
 }
 
 FBodyInstance::~FBodyInstance()
 {
 	TermBody();
+}
+
+FMaskFilter FBodyInstance::MakeMaskFilter() const
+{
+	FMaskFilter Filter;
+	Filter.Category = CategoryBit(ObjectType);
+	Filter.CollidesWith = CollidesWith;
+	Filter.OwnerId = OwnerId;
+	Filter.Flags = bDrivable ? ECollisionFlags::Drivable : 0u;
+	return Filter;
 }
 
 bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform, UPrimitiveComponent* PrimComp, FPhysScene* InScene)

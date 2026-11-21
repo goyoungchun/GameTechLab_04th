@@ -2,6 +2,7 @@
 
 #include "Core/Types.h"
 #include "Math/Transform.h"
+#include "PhysicsFiltering.h"
 #include "BodyInstance.generated.h"
 
 namespace physx
@@ -41,6 +42,17 @@ struct FBodyInstance
 	float LinearDamping = 0.01f;
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
 	float AngularDamping = 0.05f;
+
+	// 충돌 필터 (word0 카테고리, word3 플래그)
+	UPROPERTY(EditAnywhere)
+	ECollisionCategory ObjectType = ECollisionCategory::WorldDynamic;
+	UPROPERTY(EditAnywhere)
+	bool bDrivable = false;          // word3 Drivable. 자동차 바퀴가 올라갈 수 있는 표면
+
+	uint32 CollidesWith = AllCategoriesMask;   // word1. 기본은 모든 종류와 충돌
+	uint32 OwnerId = 0;                        // word2. 랙돌이 InitBody 전에 채운다
+
+	FMaskFilter MakeMaskFilter() const;
 
 	// 실행 중 상태
 	UPrimitiveComponent* OwnerComponent = nullptr;
