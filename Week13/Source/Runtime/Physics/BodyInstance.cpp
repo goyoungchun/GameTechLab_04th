@@ -6,6 +6,7 @@
 #include "PhysXConversions.h"
 #include "PhysXIncludes.h"
 #include "PhysXFilterShader.h"
+#include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
@@ -35,6 +36,16 @@ namespace
 		const physx::PxFilterData FilterData = K2PFilterData(Owner->MakeMaskFilter());
 		Shape->setSimulationFilterData(FilterData);   // 바디끼리 충돌 판정 (Filter Shader)
 		Shape->setQueryFilterData(FilterData);        // 레이캐스트·스윕 판정 (A7-2)
+	}
+
+	// Kinematic에 CCD를 켜면 PhysX가 경고한다. 시뮬레이트 중일 때만 켠다.
+	void ApplyDynamicFlags(physx::PxRigidDynamic& Dynamic, bool bSimulate, bool bUseCCD)
+	{
+		if (!bSimulate)
+			Dynamic.setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_CCD, false);   // KINEMATIC을 켜기 전에 먼저 끈다
+		Dynamic.setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, !bSimulate);
+		if (bSimulate)
+			Dynamic.setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_CCD, bUseCCD);
 	}
 }
 
@@ -79,7 +90,7 @@ bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform
 		{
 			Dynamic->setLinearDamping(LinearDamping);
 			Dynamic->setAngularDamping(AngularDamping);
-			Dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, !bSimulatePhysics);
+			ApplyDynamicFlags(*Dynamic, bSimulatePhysics, bUseCCD);
 		}
 		Actor = Dynamic;
 	}
@@ -115,8 +126,12 @@ bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform
 		AttachShape(*Actor, Capsule, LocalPose, this);
 	}
 
+	// 여기까지는 씬에 들어가기 전이라 락이 필요 없다. 씬을 바꾸는 addActor만 잠근다.
 	UpdateMassProperties();
-	Scene->GetPxScene()->addActor(*Actor);
+	{
+		SCOPED_SCENE_WRITE_LOCK(Scene->GetPxScene());
+		Scene->GetPxScene()->addActor(*Actor);
+	}
 	return true;
 }
 
@@ -125,9 +140,12 @@ void FBodyInstance::TermBody()
 	if (!Actor)
 		return;
 
-	// 씬에서 먼저 뺀다. exclusive shape는 액터와 함께 해제된다.
+	// 씬에서 먼저 뺀다. exclusive shape는 액터와 함께 해제된다. 빠진 뒤의 release는 락이 필요 없다.
 	if (physx::PxScene* PxScene = Actor->getScene())
+	{
+		SCOPED_SCENE_WRITE_LOCK(PxScene);
 		PxScene->removeActor(*Actor);
+	}
 
 	Actor->userData = nullptr;
 	Actor->release();
@@ -144,7 +162,10 @@ bool FBodyInstance::IsDynamic() const
 bool FBodyInstance::IsSimulatingPhysics() const
 {
 	const physx::PxRigidDynamic* Dynamic = Actor ? Actor->is<physx::PxRigidDynamic>() : nullptr;
-	return Dynamic && !(Dynamic->getRigidBodyFlags() & physx::PxRigidBodyFlag::eKINEMATIC);
+	if (!Dynamic)
+		return false;
+	SCOPED_SCENE_READ_LOCK(Dynamic->getScene());
+	return !(Dynamic->getRigidBodyFlags() & physx::PxRigidBodyFlag::eKINEMATIC);
 }
 
 void FBodyInstance::SetSimulatePhysics(bool bSimulate)
@@ -154,7 +175,8 @@ void FBodyInstance::SetSimulatePhysics(bool bSimulate)
 	if (!Dynamic)
 		return;   // Static 바디는 바꿀 수 없다. 아직 InitBody 전이면 설정값만 바뀐다.
 
-	Dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, !bSimulate);
+	SCOPED_SCENE_WRITE_LOCK(Dynamic->getScene());
+	ApplyDynamicFlags(*Dynamic, bSimulate, bUseCCD);
 	if (bSimulate)
 		Dynamic->wakeUp();   // 잠든 채로 전환하면 그 자리에 굳어 있는다
 }
@@ -171,6 +193,8 @@ void FBodyInstance::UpdateMassProperties()
 	if (!Dynamic)
 		return;
 
+	// InitBody 중(씬에 들어가기 전)에는 getScene()이 null이라 잠그지 않는다.
+	SCOPED_SCENE_WRITE_LOCK(Dynamic->getScene());
 	// 호출하지 않으면 질량 1, 관성 (1,1,1)로 남아 회전이 이상해진다.
 	if (MassInKgOverride > 0.0f)
 		physx::PxRigidBodyExt::setMassAndUpdateInertia(*Dynamic, MassInKgOverride);
@@ -182,6 +206,7 @@ FTransform FBodyInstance::GetWorldTransform() const
 {
 	if (!Actor)
 		return FTransform::Identity;
+	SCOPED_SCENE_READ_LOCK(Actor->getScene());
 	return P2KTransform(Actor->getGlobalPose(), Scale3D);
 }
 
@@ -193,6 +218,7 @@ void FBodyInstance::SetWorldTransform(const FTransform& NewTransform, bool bTele
 	physx::PxRigidDynamic* Dynamic = Actor->is<physx::PxRigidDynamic>();
 	const physx::PxTransform Pose = K2PTransform(NewTransform);
 
+	SCOPED_SCENE_WRITE_LOCK(Actor->getScene());
 	// Kinematic은 target으로 옮겨야 다음 simulate에서 부딪힌 물체를 밀어낸다. teleport면 즉시 옮긴다.
 	if (Dynamic && !bTeleport && (Dynamic->getRigidBodyFlags() & physx::PxRigidBodyFlag::eKINEMATIC))
 		Dynamic->setKinematicTarget(Pose);

@@ -6,6 +6,7 @@
 #include "PhysXConversions.h"
 #include "PhysXFilterShader.h"
 #include "PhysXSimulationEventCallback.h"
+#include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
@@ -100,7 +101,10 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 	Desc.gravity = physx::PxVec3(0, 0, -9.81f);
 	Desc.cpuDispatcher = FPhysicsCore::Get().GetDispatcher();
 	Desc.filterShader = KurisuSimulationFilterShader;
-	Desc.flags |= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS | physx::PxSceneFlag::eENABLE_PCM;
+	Desc.flags	|= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS 
+				| physx::PxSceneFlag::eENABLE_PCM
+				| physx::PxSceneFlag::eENABLE_CCD
+				| physx::PxSceneFlag::eREQUIRE_RW_LOCK;
 	EventCallback = MakeUnique<FPhysXSimulationEventCallback>(*this);
 	Desc.simulationEventCallback = EventCallback.get();
 
@@ -119,11 +123,14 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 
 	Scene->userData = this;
 
-	if (physx::PxPvdSceneClient* PvdClient = Scene->getScenePvdClient())
 	{
-		PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
-		PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
-		PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
+		SCOPED_SCENE_WRITE_LOCK(Scene);
+		if (physx::PxPvdSceneClient* PvdClient = Scene->getScenePvdClient())
+		{
+			PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
+			PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
+			PvdClient->setScenePvdFlag(physx::PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
+		}
 	}
 
 	FPhysicsCore::Get().OnSceneCreated();
@@ -134,10 +141,14 @@ FPhysScene::~FPhysScene()
 	if(!Scene)
 		return;
 
-	const physx::PxU32 NumActors = Scene->getNbActors(physx::PxActorTypeFlag::eRIGID_STATIC | physx::PxActorTypeFlag::eRIGID_DYNAMIC);
-	if (NumActors != 0)
 	{
-		KRS_LOG(Warning, "[Physics] FPhysScene destroyed with {} actors still in the scene.", NumActors);
+		// release() 전에 락을 풀어야 하므로 블록으로 감싼다.
+		SCOPED_SCENE_READ_LOCK(Scene);
+		const physx::PxU32 NumActors = Scene->getNbActors(physx::PxActorTypeFlag::eRIGID_STATIC | physx::PxActorTypeFlag::eRIGID_DYNAMIC);
+		if (NumActors != 0)
+		{
+			KRS_LOG(Warning, "[Physics] FPhysScene destroyed with {} actors still in the scene.", NumActors);
+		}
 	}
 
 	Scene->release();
@@ -157,8 +168,13 @@ void FPhysScene::Tick(float DeltaTime)
 	{
 		// 동기 실행: simulate가 워커 스레드에 일을 나누고, fetchResults(true)가 끝날 때까지 기다린다.
 		// 이 둘 사이에는 씬을 건드리는 API(InitBody, setGlobalPose 등)를 부르면 안 된다.
-		Scene->simulate(FixedTimeStep);
-		Scene->fetchResults(true);
+		// eREQUIRE_RW_LOCK 씬에서는 simulate·fetchResults도 쓰기 호출이라 쓰기 락이 필요하다.
+		// fetchResults 안에서 불리는 이벤트 콜백은 이 락 안에서 돌므로 콜백에서 락을 다시 잡지 않는다.
+		{
+			SCOPED_SCENE_WRITE_LOCK(Scene);
+			Scene->simulate(FixedTimeStep);
+			Scene->fetchResults(true);
+		}
 		TimeAccumulator -= FixedTimeStep;
 		++Steps;
 	}
@@ -179,19 +195,35 @@ void FPhysScene::Tick(float DeltaTime)
 
 void FPhysScene::SyncActiveActors()
 {
-	// eENABLE_ACTIVE_ACTORS 덕분에 이번 스텝에 움직인(깨어 있는) 액터만 돌아온다. 잠든 바디는 건너뛴다.
-	physx::PxU32 NumActive = 0;
-	physx::PxActor** ActiveActors = Scene->getActiveActors(NumActive);
-
-	for (physx::PxU32 Index = 0; Index < NumActive; ++Index)
+	// 읽기 락 안에서 결과만 모으고, 컴포넌트 갱신은 락을 푼 뒤 한다.
+	// 컴포넌트를 옮기면 자식 컴포넌트의 OnTransformDirty가 Kinematic 바디에 쓰기 락을 잡는데,
+	// 읽기 락 안에서 쓰기 락을 잡으면 데드락이다.
+	struct FPendingPose
 	{
-		physx::PxRigidActor* RigidActor = ActiveActors[Index]->is<physx::PxRigidActor>();
-		FBodyInstance* Body = FBodyInstance::FromActor(RigidActor);
-		if (!Body || !Body->OwnerComponent || !Body->IsSimulatingPhysics())
-			continue;   // Kinematic은 컴포넌트가 주인이다. 물리 결과로 덮어쓰지 않는다
+		UPrimitiveComponent* Component;
+		physx::PxTransform Pose;
+	};
+	TArray<FPendingPose> Poses;
+	{
+		SCOPED_SCENE_READ_LOCK(Scene);
+		// eENABLE_ACTIVE_ACTORS 덕분에 이번 스텝에 움직인(깨어 있는) 액터만 돌아온다. 잠든 바디는 건너뛴다.
+		physx::PxU32 NumActive = 0;
+		physx::PxActor** ActiveActors = Scene->getActiveActors(NumActive);
 
-		const physx::PxTransform Pose = RigidActor->getGlobalPose();
-		Body->OwnerComponent->SetWorldLocationAndRotation(P2KVector(Pose.p), P2KQuat(Pose.q).ToFRotator(), false);
+		for (physx::PxU32 Index = 0; Index < NumActive; ++Index)
+		{
+			physx::PxRigidActor* RigidActor = ActiveActors[Index]->is<physx::PxRigidActor>();
+			FBodyInstance* Body = FBodyInstance::FromActor(RigidActor);
+			if (!Body || !Body->OwnerComponent || !Body->IsSimulatingPhysics())
+				continue;   // Kinematic은 컴포넌트가 주인이다. 물리 결과로 덮어쓰지 않는다
+
+			Poses.Add(FPendingPose{ Body->OwnerComponent, RigidActor->getGlobalPose() });
+		}
+	}
+
+	for (const FPendingPose& Pending : Poses)
+	{
+		Pending.Component->SetWorldLocationAndRotation(P2KVector(Pending.Pose.p), P2KQuat(Pending.Pose.q).ToFRotator(), false);
 	}
 }
 
@@ -202,6 +234,8 @@ bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitRes
 	if (!Scene || Distance <= 0.0f)
 		return false;
 	const FVector Dir = Delta / Distance;
+
+	SCOPED_SCENE_READ_LOCK(Scene);
 
 	FKurisuQueryFilterCallback Filter(Params);
 	physx::PxRaycastBuffer Buffer;
@@ -223,6 +257,8 @@ bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation
 		return false;
 	const FVector Dir = Delta / Distance;
 
+	SCOPED_SCENE_READ_LOCK(Scene);
+
 	physx::PxQuat Rot = K2PQuat(Rotation);
 	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
 
@@ -243,6 +279,8 @@ bool FPhysScene::OverlapMulti(const FCollisionShape& Shape, const FVector& Posit
 	OutOverlaps.Empty();
 	if (!Scene)
 		return false;
+
+	SCOPED_SCENE_READ_LOCK(Scene);
 
 	physx::PxQuat Rot = K2PQuat(Rotation);
 	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);

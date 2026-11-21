@@ -49,6 +49,9 @@ struct FBodyInstance
 	UPROPERTY(EditAnywhere)
 	bool bDrivable = false;          // word3 Drivable. 자동차 바퀴가 올라갈 수 있는 표면
 
+	UPROPERTY(EditAnywhere)
+	bool bUseCCD = false;              // 연속 충돌 검사. 빠르게 움직이는 작은 바디가 통과하는 것을 막는다.
+
 	uint32 CollidesWith = AllCategoriesMask;   // word1. 기본은 모든 종류와 충돌
 	uint32 OwnerId = 0;                        // word2. 랙돌이 InitBody 전에 채운다
 
