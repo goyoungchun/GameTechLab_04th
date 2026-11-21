@@ -15,4 +15,7 @@ public:
 	float GetScaledSphereRadius() const;
 	virtual FBox CalcLocalBounds() const override;
 	virtual void DrawDebug(FLineBatcher*, const FVector4&) const override;
+
+protected:
+	virtual void UpdateBodySetup() override;
 };

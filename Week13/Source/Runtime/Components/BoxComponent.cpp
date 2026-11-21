@@ -2,6 +2,7 @@
 #include "BoxComponent.h"
 #include "Physics/Collision.h"
 #include "Render/LineBatcher.h"
+#include "Physics/BodySetup.h"
 
 FVector UBoxComponent::GetScaledBoxExtent() const
 {
@@ -18,4 +19,12 @@ void UBoxComponent::DrawDebug(FLineBatcher* LineBatcher, const FVector4& Color) 
 {
 	// 엔진에 이미 있는 함수. 로컬 박스의 8꼭짓점을 월드 행렬(회전·스케일 포함)로 옮겨 그린다
 	LineBatcher->AddOrientedBox(FBox{ BoxExtent * -1.0f, BoxExtent }, GetWorldMatrix(), Color);
+}
+
+void UBoxComponent::UpdateBodySetup()
+{
+	FKAggregateGeom& Geom = ShapeBodySetup->AggGeom;
+	Geom = FKAggregateGeom();
+	FKBoxElem& Box = Geom.BoxElems.Emplace_GetRef();
+	Box.Extent = BoxExtent;   // 반 크기. 월드 스케일은 InitBody가 곱한다
 }
