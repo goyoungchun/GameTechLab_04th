@@ -23,7 +23,6 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Math/BoxSphereBounds.h"
-#include "Physics/PhysicalMaterialFile.h"
 #include "Render/Material.h"
 #include "Render/MaterialFile.h"
 #include "Render/Mesh.h"
@@ -390,59 +389,7 @@ bool FMeshThumbnailRenderer::IsSupportedMeshFile(const fs::path& FilePath, const
 		|| AnimSequenceFile::IsAnimSequencePath(Utf8Path)
 		|| BlendSpaceFile::IsBlendSpacePath(Utf8Path)
 		|| AnimBlueprintFile::IsAnimBlueprintPath(Utf8Path)
-		|| MaterialFile::IsMaterialPath(Utf8Path)
-		|| PhysicalMaterialFile::IsPhysicalMaterialPath(Utf8Path);
-}
-
-void FMeshThumbnailRenderer::DrawPhysicalMaterialBadge(ImDrawList* DL, const ImVec2& ThumbMin, const ImVec2& ThumbMax)
-{
-	if (!DL)
-	{
-		return;
-	}
-
-	const float Width = ThumbMax.x - ThumbMin.x;
-	const float Height = ThumbMax.y - ThumbMin.y;
-	const float RefSize = (std::min)(Width, Height);
-	if (RefSize < 12.0f)
-	{
-		return;
-	}
-
-	const float BadgeSize = (std::max)(10.0f, RefSize * 0.42f);
-	const float Margin = (std::max)(1.5f, RefSize * 0.055f);
-	const ImVec2 BadgeMax(ThumbMax.x - Margin, ThumbMax.y - Margin);
-	const ImVec2 BadgeMin(BadgeMax.x - BadgeSize, BadgeMax.y - BadgeSize);
-	const float Rounding = (std::max)(2.0f, BadgeSize * 0.16f);
-
-	DL->AddRectFilled(BadgeMin, BadgeMax, IM_COL32(36, 38, 42, 232), Rounding);
-	DL->AddRect(BadgeMin, BadgeMax, IM_COL32(100, 104, 112, 165), Rounding, 0, 1.0f);
-
-	const float Cx = (BadgeMin.x + BadgeMax.x) * 0.5f;
-	const float LoopRadius = BadgeSize * 0.115f;
-	const float LoopCy = BadgeMin.y + BadgeSize * 0.27f;
-	const float LoopStroke = (std::max)(1.2f, BadgeSize * 0.068f);
-	DL->AddCircle(ImVec2(Cx, LoopCy), LoopRadius, IM_COL32(165, 170, 178, 255), 16, LoopStroke);
-
-	const float BallRadius = BadgeSize * 0.285f;
-	const float BallCy = BadgeMin.y + BadgeSize * 0.61f;
-	DL->AddCircleFilled(ImVec2(Cx, BallCy), BallRadius, IM_COL32(95, 99, 106, 255), 24);
-	DL->AddCircleFilled(
-		ImVec2(Cx - BallRadius * 0.14f, BallCy - BallRadius * 0.14f),
-		BallRadius * 0.80f,
-		IM_COL32(158, 162, 170, 255),
-		24);
-	DL->AddCircleFilled(
-		ImVec2(Cx - BallRadius * 0.28f, BallCy - BallRadius * 0.28f),
-		BallRadius * 0.36f,
-		IM_COL32(236, 239, 244, 255),
-		16);
-	DL->AddCircle(
-		ImVec2(Cx, BallCy),
-		BallRadius,
-		IM_COL32(48, 50, 56, 220),
-		24,
-		(std::max)(0.8f, BadgeSize * 0.03f));
+		|| MaterialFile::IsMaterialPath(Utf8Path);
 }
 
 ImTextureID FMeshThumbnailRenderer::GetOrRequestThumbnail(
@@ -604,65 +551,6 @@ bool FMeshThumbnailRenderer::EnsurePreviewScene(UEditorEngine& Engine)
 	return true;
 }
 
-UMaterial* FMeshThumbnailRenderer::GetOrCreatePhysicalPreviewMaterial()
-{
-	if (PhysicalPreviewMaterial)
-	{
-		return PhysicalPreviewMaterial;
-	}
-
-	// 2:1 비율의 구(Sphere) UV(U: 0..2pi, V: 0..pi)에서 정사각형에 가까운 체커가 나오도록 8x4 셀로 생성한다.
-	constexpr uint32 TexWidth = 512;
-	constexpr uint32 TexHeight = 256;
-	constexpr uint32 CellsX = 8;
-	constexpr uint32 CellsY = 4;
-	constexpr uint32 CellWidth = TexWidth / CellsX;
-	constexpr uint32 CellHeight = TexHeight / CellsY;
-	constexpr uint32 LightCell = 0xFFE6E6E6;
-	constexpr uint32 DarkCell = 0xFF525252;
-
-	std::vector<uint32> Pixels(TexWidth * TexHeight);
-	for (uint32 y = 0; y < TexHeight; ++y)
-	{
-		const uint32 CellY = y / CellHeight;
-		for (uint32 x = 0; x < TexWidth; ++x)
-		{
-			const uint32 CellX = x / CellWidth;
-			Pixels[y * TexWidth + x] = ((CellX + CellY) & 1) ? DarkCell : LightCell;
-		}
-	}
-
-	FTextureDesc Desc{};
-	Desc.Width = TexWidth;
-	Desc.Height = TexHeight;
-	Desc.Format = ETextureFormat::R8G8B8A8_UNorm;
-	Desc.Usage = ETextureUsage::Immutable;
-	Desc.BindFlags = ETextureBindFlags::ShaderResource;
-
-	PhysicalCheckerTexture = UAssetManager::CreateTransientTexture(Desc, Pixels.data());
-	if (!PhysicalCheckerTexture)
-	{
-		return nullptr;
-	}
-
-	PhysicalPreviewMaterial = NewObject<UMaterial>();
-	PhysicalPreviewMaterial->Shader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/UberLit.hlsl");
-	PhysicalPreviewMaterial->Textures.Add(PhysicalCheckerTexture);
-	PhysicalPreviewMaterial->Textures.Add(UAssetManager::GetAssetByPath<UTexture2D>("FlatNormalTexture"));
-	PhysicalPreviewMaterial->ParamLayout = EMaterialParamLayout::StaticMesh;
-	PhysicalPreviewMaterial->ParamBuffer = RenderCommand::CreateConstantBuffer(sizeof(FStaticMeshMaterialParams));
-	PhysicalPreviewMaterial->MaterialDomain = EMaterialDomain::Surface;
-	PhysicalPreviewMaterial->BlendMode = EMaterialBlendMode::Opaque;
-	PhysicalPreviewMaterial->ShadingModel = EMaterialShadingModel::DefaultLit;
-	PhysicalPreviewMaterial->SamplerState = ESamplerState::LinearWrap;
-	PhysicalPreviewMaterial->BaseColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
-	PhysicalPreviewMaterial->SpecularColor = FVector(1.0f, 1.0f, 1.0f);
-	PhysicalPreviewMaterial->Shininess = 48.0f;
-	PhysicalPreviewMaterial->SyncLegacyStates();
-
-	return PhysicalPreviewMaterial;
-}
-
 void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, UEditorEngine& Engine, FRenderer* Renderer)
 {
 	FThumbnailEntry& Entry = Cache[Request.Utf8Path];
@@ -731,19 +619,6 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 			BoundsBox = Sphere->GetRenderBounds();
 			bValidMesh = AreBoundsFinite(BoundsBox);
 			bIsTranslucentPreview = Material->IsTranslucent();
-		}
-	}
-	else if (PhysicalMaterialFile::IsPhysicalMaterialPath(Request.Utf8Path))
-	{
-		UMaterial* Material = GetOrCreatePhysicalPreviewMaterial();
-		UStaticMesh* Sphere = UAssetManager::GetAssetByPath<UStaticMesh>("Sphere");
-		if (Material && Sphere)
-		{
-			SkeletalMeshComp->SetSkeletalMesh(nullptr);
-			StaticMeshComp->SetStaticMesh(Sphere);
-			StaticMeshComp->SetMaterial(0, Material);
-			BoundsBox = Sphere->GetRenderBounds();
-			bValidMesh = AreBoundsFinite(BoundsBox);
 		}
 	}
 	else if (AnimSequenceFile::IsAnimSequencePath(Request.Utf8Path))
@@ -926,12 +801,6 @@ void FMeshThumbnailRenderer::Release()
 	Cache.clear();
 	StaticMeshComp = nullptr;
 	SkeletalMeshComp = nullptr;
-	if (PhysicalPreviewMaterial)
-	{
-		PhysicalPreviewMaterial->ParamBuffer.reset();
-		PhysicalPreviewMaterial = nullptr;
-	}
-	PhysicalCheckerTexture = nullptr;
 	ViewportClient.reset();
 	if (PreviewScene)
 	{

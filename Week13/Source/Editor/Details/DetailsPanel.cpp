@@ -2,7 +2,6 @@
 #include "Editor/KurisuEd/EditorHierarchy.h"
 #include "Editor/KurisuEd/EditorSelection.h"
 #include "Editor/EditorUI/EditorStyle.h"
-#include "Editor/ContentDrawer/MeshThumbnailRenderer.h"
 #include "Editor/Details/DetailsPanel.h"
 #include "Editor/Details/PropertyEditor.h"
 #include "Core/Misc/Paths.h"
@@ -620,17 +619,39 @@ namespace
 		DrawAssetThumbnailVisual(Min, Size, ThumbId, IM_COL32(76, 185, 128, 255), FallbackMat, bHovered);
 	}
 
-	void DrawPhysicalMaterialThumbnailVisual(const ImVec2& Min, float Size, ImTextureID ThumbId, bool bShowBadge, bool bHovered)
+	ImTextureID GetPhysicalMaterialIconTextureId()
+	{
+		if (UTexture2D* Icon = UAssetManager::GetAssetByPath<UTexture2D>("Engine/Icons/PhysicalMaterial.png"))
+		{
+			if (Icon->GetResource() && Icon->GetResource()->GetSRV())
+			{
+				return reinterpret_cast<ImTextureID>(Icon->GetResource()->GetSRV());
+			}
+		}
+		return ImTextureID_Invalid;
+	}
+
+	void DrawPhysicalMaterialThumbnailVisual(const ImVec2& Min, float Size, bool bShowIcon, bool bHovered)
 	{
 		constexpr ImU32 PhysicalMaterialAccent = IM_COL32(232, 148, 64, 255);
-		DrawAssetThumbnailVisual(Min, Size, ThumbId, PhysicalMaterialAccent, nullptr, bHovered);
-		if (bShowBadge)
+		DrawAssetThumbnailVisual(Min, Size, ImTextureID_Invalid, PhysicalMaterialAccent, nullptr, bHovered);
+		if (bShowIcon)
 		{
-			const float StripeH = std::max(2.0f, EditorStyle::Scale(Size >= 40.0f ? 3.0f : 2.0f));
-			FMeshThumbnailRenderer::DrawPhysicalMaterialBadge(
-				ImGui::GetWindowDrawList(),
-				Min,
-				ImVec2(Min.x + Size, Min.y + Size - StripeH));
+			const ImTextureID IconId = GetPhysicalMaterialIconTextureId();
+			if (IconId != ImTextureID_Invalid)
+			{
+				const float StripeH = std::max(2.0f, EditorStyle::Scale(Size >= 40.0f ? 3.0f : 2.0f));
+				const float Rounding = EditorStyle::Scale(3.0f);
+				ImGui::GetWindowDrawList()->AddImageRounded(
+					IconId,
+					Min,
+					ImVec2(Min.x + Size, Min.y + Size - StripeH),
+					ImVec2(0.0f, 0.0f),
+					ImVec2(1.0f, 1.0f),
+					IM_COL32_WHITE,
+					Rounding,
+					ImDrawFlags_RoundCornersTop);
+			}
 		}
 	}
 
@@ -1732,12 +1753,11 @@ namespace
 
 		ImGui::PushID(Id);
 
-		// ── 좌측: 물리 머티리얼 3D 썸네일 타일 ──
+		// ── 좌측: 물리 머티리얼 고정 썸네일 타일 ──
 		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
 		ImGui::InvisibleButton("##PmatThumb", ImVec2(ThumbSize, ThumbSize));
 		const bool bThumbHovered = ImGui::IsItemHovered();
-		const ImTextureID MainThumb = (!bMixed && !CurrentPath.empty()) ? QueryMaterialThumbnail(CurrentPath) : ImTextureID_Invalid;
-		DrawPhysicalMaterialThumbnailVisual(ThumbMin, ThumbSize, MainThumb, !bMixed && Current != nullptr, bThumbHovered);
+		DrawPhysicalMaterialThumbnailVisual(ThumbMin, ThumbSize, !bMixed && Current != nullptr, bThumbHovered);
 
 		if (bThumbHovered && !bMixed && Current)
 		{
@@ -1816,7 +1836,7 @@ namespace
 				const bool bNoneSelected = !bMixed && Current == nullptr;
 				const ImVec2 NoneMin = ImGui::GetCursorScreenPos();
 				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
-				DrawPhysicalMaterialThumbnailVisual(NoneMin, ItemThumbSize, ImTextureID_Invalid, false, false);
+				DrawPhysicalMaterialThumbnailVisual(NoneMin, ItemThumbSize, false, false);
 				ImGui::SameLine();
 				if (ImGui::Selectable("None", bNoneSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
@@ -1843,7 +1863,7 @@ namespace
 
 				const ImVec2 ItemThumbMin = ImGui::GetCursorScreenPos();
 				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
-				DrawPhysicalMaterialThumbnailVisual(ItemThumbMin, ItemThumbSize, QueryMaterialThumbnail(Path), true, bSelected);
+				DrawPhysicalMaterialThumbnailVisual(ItemThumbMin, ItemThumbSize, true, bSelected);
 
 				ImGui::SameLine();
 				if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))

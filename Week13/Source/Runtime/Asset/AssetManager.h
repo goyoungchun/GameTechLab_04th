@@ -83,7 +83,6 @@ public:
 	//UStaticMesh* GetMesh(EPrimitiveType Type); // 오버로드(수정 중)
 
 	UTexture2D* LoadTexture(const FString& InPath, bool bGenerateMips = true);
-	static UTexture2D* CreateTransientTexture(const FTextureDesc& Desc, const void* InitialData = nullptr);
 	UMaterial* LoadMaterial(const FString& InPath);
 	static bool SaveMaterial(UMaterial* Material, const FString& Path, FString& OutError);
 	static UMaterial* CreateMaterialAsset(const FString& Path, FString& OutError);
