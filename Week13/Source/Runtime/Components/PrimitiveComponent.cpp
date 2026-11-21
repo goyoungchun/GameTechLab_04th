@@ -122,6 +122,13 @@ void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 	}
 
 	// 디테일 창은 구조체 멤버가 바뀌어도 바깥 프로퍼티(BodyInstance)를 알린다.
+	// Static 바디는 시뮬레이트할 수 없으므로, Simulate Physics가 켜져 있으면 Movable로 바꾼다 (UE 에디터와 같은 동작).
+	// 어느 멤버가 바뀌었는지는 알 수 없으므로 둘 다 켜진 상태면 시뮬레이트 쪽을 따른다.
+	if (Property.Name == "BodyInstance" && BodyInstance.bSimulatePhysics && BodyInstance.Mobility == EBodyMobility::Static)
+	{
+		BodyInstance.Mobility = EBodyMobility::Movable;
+	}
+
 	// Mobility(Static↔Movable)는 액터 종류가 달라지므로 바디를 새로 만든다.
 	if (Property.Name == "BodyInstance" && IsPhysicsStateCreated())
 	{
@@ -269,6 +276,9 @@ bool UPrimitiveComponent::ShouldCreatePhysicsState() const
 {
 	UWorld* World = GetWorld();
 	FPhysScene* Scene = World ? World->GetPhysicsScene() : nullptr;
+	// NoCollision은 바디를 만들지 않는다 (렌더링만 한다).
+	if (BodyInstance.CollisionEnabled == ECollisionEnabled::NoCollision)
+		return false;
 	// GetBodySetup은 const가 아니다 (형상을 지연 생성하는 컴포넌트가 있다).
 	return Scene && Scene->IsValid() && const_cast<UPrimitiveComponent*>(this)->GetBodySetup() != nullptr;
 }

@@ -44,6 +44,10 @@ struct FBodyInstance
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
 	float AngularDamping = 0.05f;
 
+	// 어떤 충돌에 참여할지. NoCollision이면 바디를 만들지 않는다.
+	UPROPERTY(EditAnywhere)
+	ECollisionEnabled CollisionEnabled = ECollisionEnabled::QueryAndPhysics;
+
 	// 충돌 필터 (word0 카테고리, word3 플래그)
 	UPROPERTY(EditAnywhere)
 	ECollisionCategory ObjectType = ECollisionCategory::WorldDynamic;
@@ -90,6 +94,9 @@ struct FBodyInstance
 
 	FTransform GetWorldTransform() const;          // 스케일은 Scale3D
 	void SetWorldTransform(const FTransform& NewTransform, bool bTeleport);
+
+	// 시뮬레이트 중인 바디에만 적용된다. Impulse 단위는 kg·m/s (질량 1kg를 1m/s 바꾸는 양이 1).
+	void AddImpulseAtLocation(const FVector& Impulse, const FVector& WorldLocation);
 
 	// PxRigidActor::userData에서 되찾는다. userData가 없거나 다른 것이면 nullptr. 
 	static FBodyInstance* FromActor(const physx::PxRigidActor* InActor);

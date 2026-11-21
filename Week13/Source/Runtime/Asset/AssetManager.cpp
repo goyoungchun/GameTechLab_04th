@@ -362,6 +362,19 @@ void UAssetManager::CreateDefaultTextures() {
 	AssetMap["FlatNormalTexture"] = FlatNormalTexture;
 }
 
+UTexture2D* UAssetManager::CreateTransientTexture(const FTextureDesc& Desc, const void* InitialData)
+{
+	TUniquePtr<FTexture2D> Resource{ RenderCommand::CreateTexture2D(Desc, InitialData) };
+	if (!Resource)
+	{
+		return nullptr;
+	}
+
+	UTexture2D* Texture{ NewObject<UTexture2D>() };
+	Texture->SetResource(std::move(Resource));
+	return Texture;
+}
+
 void UAssetManager::CreateDefaultMeshes()
 {
 	// 메시 데이터 업로드

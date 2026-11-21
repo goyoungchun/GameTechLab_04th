@@ -50,7 +50,7 @@ bool FPhysicsCore::Init()
 	// PVD는 Physics보다 먼저 만들어 PxCreatePhysics에 넘긴다. 연결 실패는 Init 실패가 아니다.
 	InitPvd();
 
-	// 엔진 월드 단위가 m이므로 기본 스케일(length 1, speed 10)을 그대로 쓴다.
+	// 엔진 월드 단위가 m이므로 기본 스케일을 그대로 쓴다.
 	// Debug에서는 할당을 추적해 Foundation 해제 때 남은 객체를 에러 콜백으로 보고받는다.
 #if defined(_DEBUG)
 	constexpr bool bTrackAllocations = true;
@@ -79,6 +79,14 @@ bool FPhysicsCore::Init()
 	if (!bVehicleSDKInitialized)
 	{
 		KRS_LOG(Error, "PxInitVehicleSDK failed!");
+		Shutdown();
+		return false;
+	}
+
+	Cooking = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, physx::PxCookingParams(Physics->getTolerancesScale()));
+	if (!Cooking)
+	{
+		KRS_LOG(Error, "PxCreateCooking failed!");
 		Shutdown();
 		return false;
 	}
@@ -157,6 +165,11 @@ void FPhysicsCore::Shutdown()
 	{
 		PxCloseExtensions();
 		bExtensionsInitialized = false;
+	}
+	if (Cooking)
+	{
+		Cooking->release();
+		Cooking = nullptr;
 	}
 	if (Physics)
 	{

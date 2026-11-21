@@ -16,6 +16,7 @@ namespace physx
 	class PxPvdTransport;
 	class PxMaterial;
 	class PxDefaultCpuDispatcher;
+	class PxCooking;
 }
 
 class FPhysicsCore
@@ -31,6 +32,7 @@ public:
 	physx::PxMaterial* GetDefaultMaterial() const { return DefaultMaterial; }
 	physx::PxDefaultCpuDispatcher* GetDispatcher() const { return Dispatcher; }
 	physx::PxPvd* GetPvd() const { return Pvd; }
+	physx::PxCooking* GetCooking() const { return Cooking; }
 
 	// 종료 순서 검증용. FPhysScene 생성자·소멸자가 올리고 내린다.
 	void OnSceneCreated() { ++LiveSceneCount; }
@@ -57,6 +59,7 @@ private:
 	physx::PxPhysics* Physics = nullptr;
 	physx::PxMaterial* DefaultMaterial = nullptr;
 	physx::PxDefaultCpuDispatcher* Dispatcher = nullptr;
+	physx::PxCooking* Cooking = nullptr;
 
 	bool bExtensionsInitialized = false;   // PxInitExtensions 성공 여부 (Shutdown에서 PxCloseExtensions 짝)
 	bool bVehicleSDKInitialized = false;   // PxInitVehicleSDK 성공 여부 (PxCloseVehicleSDK 짝)

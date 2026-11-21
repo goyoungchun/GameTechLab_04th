@@ -6,6 +6,7 @@
 #include "PhysicsFiltering.h"
 
 class UPrimitiveComponent;
+class AActor;
 
 // PxSweepHit 대응. Raycast와 같은 정보(위치·법선·거리 + 시작 겹침)라 FHitResult를 그대로 쓴다.
 using FSweepResult = FHitResult;
@@ -38,4 +39,9 @@ struct FCollisionQueryParams
 	uint32 ObjectTypesMask = AllCategoriesMask;   // 맞힐 ECollisionCategory (CategoryBit OR)
 	uint32 RequiredFlags = 0;                     // shape의 word3에 모두 있어야 맞는다 (예: Drivable)
 	const UPrimitiveComponent* IgnoreComponent = nullptr;   // 자기 자신(차체 등) 제외
+	const AActor* IgnoreActor = nullptr;                    // 이 액터의 모든 바디 제외 (이동하는 캐릭터 자신)
+
+	// Sweep 전용. 시작부터 닿아 있던 면 중 이동 방향과 마주하지 않는 것(바닥을 딛고 옆으로 걷기 등)은 막힘으로 치지 않는다.
+	// 켜면 겹침 깊이·방향(MTD)을 계산하므로 조금 더 비싸다.
+	bool bIgnoreTouchesMovingAway = false;
 };

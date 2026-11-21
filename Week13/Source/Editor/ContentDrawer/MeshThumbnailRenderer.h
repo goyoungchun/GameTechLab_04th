@@ -16,10 +16,11 @@ class FPreviewScene;
 class FEditorViewportClient;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
+class UMaterial;
 class UEditorEngine;
 class FRenderer;
 
-// 콘텐츠 드로어의 .obj / .fbx.bin / .anim.bin / .blendspace / .animblueprint / .mat 에셋용 오프스크린 3D 썸네일 렌더러·캐시.
+// 콘텐츠 드로어의 .obj / .fbx.bin / .anim.bin / .blendspace / .animblueprint / .mat / .pmat 에셋용 오프스크린 3D 썸네일 렌더러·캐시.
 // 프레임 드랍을 막기 위해 미생성 썸네일은 큐에 넣고 프레임당 1개씩 렌더한다.
 class FMeshThumbnailRenderer
 {
@@ -32,13 +33,16 @@ public:
 
 	static bool IsSupportedMeshFile(const fs::path& FilePath, const FString& Utf8Path);
 
+	// 물리 머티리얼 썸네일 우측 하단의 추(질량) 배지 오버레이를 그린다.
+	static void DrawPhysicalMaterialBadge(ImDrawList* DL, const ImVec2& ThumbMin, const ImVec2& ThumbMax);
+
 	// 썸네일 배경 체커의 가로 칸 수. 콘텐츠 브라우저의 아이콘 타일도 같은 칸 수로 그린다.
 	static constexpr int CheckerCellsAcross = 8;
 
 	// 캐시된 썸네일 SRV를 돌려준다. 아직 없거나 파일이 갱신됐으면 렌더 큐에 넣고 Invalid를 반환한다.
 	ImTextureID GetOrRequestThumbnail(const fs::path& FilePath, const FString& Utf8Path, fs::file_time_type LastWriteTime);
 
-	// .mat / .obj / .fbx.bin 에셋 경로 또는 내장 에셋 키("DefaultMaterial", "Cube" 등)의 3D 썸네일을 조회/요청한다.
+	// .mat / .pmat / .obj / .fbx.bin 에셋 경로 또는 내장 에셋 키("DefaultMaterial", "Cube" 등)의 3D 썸네일을 조회/요청한다.
 	ImTextureID GetOrRequestAssetThumbnail(const FString& AssetPathOrKey);
 	ImTextureID GetOrRequestMaterialThumbnail(const FString& MaterialPathOrKey) { return GetOrRequestAssetThumbnail(MaterialPathOrKey); }
 
@@ -68,6 +72,7 @@ private:
 	};
 
 	bool EnsurePreviewScene(UEditorEngine& Engine);
+	UMaterial* GetOrCreatePhysicalPreviewMaterial();
 	void RenderMeshToCache(const FPendingRequest& Request, UEditorEngine& Engine, FRenderer* Renderer);
 
 	static constexpr uint32 ThumbnailResolution = 128;
@@ -76,6 +81,8 @@ private:
 	TUniquePtr<FEditorViewportClient> ViewportClient;
 	UStaticMeshComponent* StaticMeshComp = nullptr;
 	USkeletalMeshComponent* SkeletalMeshComp = nullptr;
+	UTexture2D* PhysicalCheckerTexture = nullptr;
+	UMaterial* PhysicalPreviewMaterial = nullptr;
 	bool bPreviewInitFailed = false;
 
 	std::unordered_map<std::string, FThumbnailEntry> Cache;

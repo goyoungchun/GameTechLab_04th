@@ -59,6 +59,12 @@ public:
 	UPROPERTY(EditAnywhere)
 	float TerminalVelocity = 4000.0f;
 
+	// 부딪힌 물리 바디를 민다 (UE의 bEnablePhysicsInteraction / PushForceFactor)
+	UPROPERTY(EditAnywhere)
+	bool bEnablePhysicsInteraction = true;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=1))
+	float PushForceFactor = 60.0f;   // kg. 이 질량의 물체가 밀고 들어오는 만큼의 충격량을 준다
+
 	FVector GetCurrentAcceleration() const { return Acceleration; }
 
 	ECharacterMovementMode GetMovementMode() const { return MovementMode; }
@@ -70,6 +76,9 @@ public:
 	bool DoJump();
 
 protected:
+	// 이동이 막혔을 때 부딪힌 대상이 시뮬레이트 중인 바디면 민다 (UE의 ApplyImpactPhysicsForces)
+	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice = 0.0f, const FVector& MoveDelta = FVector::ZeroVector) override;
+
 	// UE: 입력 벡터를 가속도로 바꾼 뒤 PerformMovement
 	void ControlledCharacterMove(const FVector& InputVector, float DeltaTime);
 	// 걷기 중에는 Z 입력을 버린다

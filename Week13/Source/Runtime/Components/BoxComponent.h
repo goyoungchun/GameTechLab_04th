@@ -13,6 +13,7 @@ public:
 	FVector BoxExtent = FVector(0.5f, 0.5f, 0.5f);
 
 	FVector GetScaledBoxExtent() const;
+	virtual FCollisionShape GetCollisionShape() const override { return FCollisionShape::MakeBox(GetScaledBoxExtent()); }
 	virtual FBox CalcLocalBounds() const override;
 	virtual void DrawDebug(FLineBatcher*, const FVector4&) const override;
 

@@ -5,6 +5,12 @@
 #include "Math/Quat.h"
 #include "BodySetup.generated.h"
 
+namespace physx 
+{ 
+	class PxConvexMesh;
+	class PxTriangleMesh;
+}
+
 // 충돌 형상 하나. Center/Rotation은 바디(컴포넌트 또는 본) 로컬 공간 기준이다.
 struct FKShapeElem
 {
@@ -29,14 +35,19 @@ struct FKSphylElem : FKShapeElem
 	float Length = 1.0f;
 };
 
-// 바디 하나를 이루는 형상 묶음. Convex는 Cooking이 필요해 이후에 추가한다.
+struct FKConvexElem : FKShapeElem
+{
+	TArray<FVector> VertexData;
+};
+
 struct FKAggregateGeom
 {
 	TArray<FKSphereElem> SphereElems;
 	TArray<FKBoxElem> BoxElems;
 	TArray<FKSphylElem> SphylElems;
+	TArray<FKConvexElem> ConvexElems;
 
-	int32 GetElementCount() const { return SphereElems.Num() + BoxElems.Num() + SphylElems.Num(); }
+	int32 GetElementCount() const { return SphereElems.Num() + BoxElems.Num() + SphylElems.Num() + ConvexElems.Num(); }
 };
 
 // 바디의 형상 정의. StaticMesh는 하나, PhysicsAsset은 본마다 하나 갖는다.
@@ -45,6 +56,30 @@ class UBodySetup : public UObject
 {
 	GENERATED_BODY()
 public:
+	virtual ~UBodySetup() override;   // Cooking한 PxConvexMesh·PxTriangleMesh를 해제한다
+
 	FName BoneName;            // PhysicsAsset에서 이 바디가 붙는 본. StaticMesh에서는 비워 둔다.
 	FKAggregateGeom AggGeom;
+
+	// ConvexElems를 Cooking해 PxConvexMesh로 만든다. 이미 있으면 그대로 둔다. 하나라도 실패하면 false.
+	bool CreatePhysicsMeshes();
+	// Cooking 결과를 버린다. VertexData를 바꿨으면 부른 뒤 다시 CreatePhysicsMeshes한다.
+	void ClearPhysicsMeshes();
+	// ConvexElems[Index]의 Cooking 결과. 실패했거나 아직 안 만들었으면 nullptr.
+	physx::PxConvexMesh* GetConvexMesh(int32 Index) const;
+
+	// 삼각형 그대로의 충돌(Complex). Static 바디만 쓴다. PhysX는 동적 시뮬레이션에 TriangleMesh를 허용하지 않는다.
+	TArray<FVector> TriMeshVertices;
+	TArray<uint32> TriMeshIndices;          // 3개씩 삼각형
+	bool bFlipTriMeshNormals = false;       // 엔진 감김 순서가 PhysX와 반대면 true (메시를 넣는 쪽이 판정한다)
+
+	// 처음 불릴 때 Cooking한다. 데이터가 없거나 실패하면 nullptr.
+	physx::PxTriangleMesh* GetOrCreateTriMesh();
+
+private:
+	// ConvexElems와 인덱스가 같다. 같은 BodySetup을 쓰는 모든 바디가 이 메시를 공유한다 (PhysX 참조 수).
+	TArray<physx::PxConvexMesh*> CookedConvexMeshes;
+
+	physx::PxTriangleMesh* CookedTriMesh = nullptr;
+	bool bTriMeshCookAttempted = false;     // 실패한 메시를 매번 다시 Cooking하지 않는다
 };

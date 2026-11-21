@@ -24,6 +24,16 @@ namespace ECollisionFlags
 	constexpr uint32 Drivable = 1u << 0;   // 차량 서스펜션 레이캐스트가 바퀴를 올릴 수 있는 표면
 }
 
+// 이 바디가 어떤 충돌에 참여하는지. UE의 ECollisionEnabled와 같다.
+UENUM()
+enum class ECollisionEnabled : uint8
+{
+	NoCollision,       // 바디를 만들지 않는다. 렌더링만 한다 (장식용 소품, 먼 배경)
+	QueryOnly,         // 레이캐스트·스윕·오버랩에만 걸린다. 물리로 밀거나 밀리지 않는다 (트리거, 클릭 판정)
+	PhysicsOnly,       // 물리로 부딪히지만 쿼리에는 걸리지 않는다 (파편)
+	QueryAndPhysics,   // 둘 다 (기본)
+};
+
 // PxFilterData 대응. 팀 규칙: word0 카테고리, word1 마스크, word2 랙돌 소유자 ID, word3 플래그.
 // PhysX 타입이 필요한 변환·Filter Shader 선언은 PhysXFilterShader.h(cpp 전용)에 있다.
 struct FMaskFilter

@@ -982,6 +982,7 @@ void FContentDrawerPanel::RenderContents()
 				bool bIsDirectory,
 				bool bIsRenderedMeshThumb,
 				bool bIsFullImageThumb,
+				bool bIsPhysicalMaterial,
 				ImTextureID TileTextureId,
 				const FAssetCardStyle& CardStyle,
 				const std::string& DisplayName,
@@ -1059,6 +1060,11 @@ void FContentDrawerPanel::RenderContents()
 					}
 				}
 
+				if (bIsPhysicalMaterial)
+				{
+					FMeshThumbnailRenderer::DrawPhysicalMaterialBadge(DL, ThumbMin, ThumbMax);
+				}
+
 				DL->AddRectFilled(StripeMin, StripeMax, CardStyle.AccentColor);
 
 				const ImU32 FooterCol = bIsSelected
@@ -1107,7 +1113,7 @@ void FContentDrawerPanel::RenderContents()
 					: ImTextureID_Invalid;
 				bool bDummyNameTrunc = false;
 				bool bDummyTypeTrunc = false;
-				DrawCardVisuals(CardMin, bHovered, false, true, false, false,
+				DrawCardVisuals(CardMin, bHovered, false, true, false, false, false,
 					FolderTexId, { "Folder", IM_COL32(56, 60, 68, 255), false },
 					"..", true, bDummyNameTrunc, bDummyTypeTrunc);
 				ImGui::PopID();
@@ -1281,6 +1287,15 @@ void FContentDrawerPanel::RenderContents()
 					{
 						ImGui::SetDragDropPayload(EditorDragDrop::PhysicalMaterial, PathString.c_str(), PathString.size() + 1);
 
+						if (MeshThumbId != ImTextureID_Invalid)
+						{
+							const ImVec2 DragThumbMin = ImGui::GetCursorScreenPos();
+							ImGui::Image(MeshThumbId, { ThumbSize, ThumbSize });
+							FMeshThumbnailRenderer::DrawPhysicalMaterialBadge(
+								ImGui::GetWindowDrawList(),
+								DragThumbMin,
+								ImVec2(DragThumbMin.x + ThumbSize, DragThumbMin.y + ThumbSize));
+						}
 						ImGui::TextUnformatted(FilenameString.c_str());
 
 						ImGui::EndDragDropSource();
@@ -1357,8 +1372,9 @@ void FContentDrawerPanel::RenderContents()
 
 				bool bNameTruncated = false;
 				bool bTypeTruncated = false;
+				const bool bIsPhysicalMaterial = !bIsDirectory && PhysicalMaterialFile::IsPhysicalMaterialPath(PathString);
 				DrawCardVisuals(CardMin, bHovered, bIsSelected, bIsDirectory,
-					bIsRenderedMeshThumb, bIsFullImageThumb, TileTextureId, CardStyle,
+					bIsRenderedMeshThumb, bIsFullImageThumb, bIsPhysicalMaterial, TileTextureId, CardStyle,
 					FilenameString, !bRenamingThis, bNameTruncated, bTypeTruncated);
 
 				if (bHovered && (bNameTruncated || bTypeTruncated))

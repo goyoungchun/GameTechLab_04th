@@ -2,6 +2,7 @@
 #include "Editor/KurisuEd/EditorHierarchy.h"
 #include "Editor/KurisuEd/EditorSelection.h"
 #include "Editor/EditorUI/EditorStyle.h"
+#include "Editor/ContentDrawer/MeshThumbnailRenderer.h"
 #include "Editor/Details/DetailsPanel.h"
 #include "Editor/Details/PropertyEditor.h"
 #include "Core/Misc/Paths.h"
@@ -617,6 +618,20 @@ namespace
 	void DrawMaterialThumbnailVisual(const ImVec2& Min, float Size, ImTextureID ThumbId, const UMaterial* FallbackMat, bool bHovered)
 	{
 		DrawAssetThumbnailVisual(Min, Size, ThumbId, IM_COL32(76, 185, 128, 255), FallbackMat, bHovered);
+	}
+
+	void DrawPhysicalMaterialThumbnailVisual(const ImVec2& Min, float Size, ImTextureID ThumbId, bool bShowBadge, bool bHovered)
+	{
+		constexpr ImU32 PhysicalMaterialAccent = IM_COL32(232, 148, 64, 255);
+		DrawAssetThumbnailVisual(Min, Size, ThumbId, PhysicalMaterialAccent, nullptr, bHovered);
+		if (bShowBadge)
+		{
+			const float StripeH = std::max(2.0f, EditorStyle::Scale(Size >= 40.0f ? 3.0f : 2.0f));
+			FMeshThumbnailRenderer::DrawPhysicalMaterialBadge(
+				ImGui::GetWindowDrawList(),
+				Min,
+				ImVec2(Min.x + Size, Min.y + Size - StripeH));
+		}
 	}
 
 	FString GetMaterialDisplayName(const UMaterial* Material)
@@ -1670,7 +1685,7 @@ namespace
 			[Owner, TemplatePtr](UParticleSystem* Picked) { ApplyParticleTemplate(Owner, TemplatePtr, Picked); });
 	}
 
-	// .pmat 선택 콤보. 콘텐츠 폴더를 훑어 목록을 만들고, 콘텐츠 드로어에서 끌어다 놓아도 된다.
+	// .pmat 선택 피커: 좌측 3D 썸네일(더블클릭 편집·드롭) + 우측 검색/썸네일 드롭다운 + 하단 Edit/Clear 버튼
 	bool DrawPhysicalMaterialPicker(UPhysicalMaterial* Current, bool bMixed, const char* Id, const std::function<void(UPhysicalMaterial*)>& OnPick)
 	{
 		static std::vector<FString> Paths;
@@ -1683,106 +1698,212 @@ namespace
 		const FString CurrentPath = Current ? Current->GetAssetPath() : "";
 		const FString CurrentName = bMixed ? "Multiple Values"
 			: (Current ? (CurrentPath.empty() ? Current->GetName() : GetAssetDisplayName(CurrentPath)) : "None");
+		const bool bCanEdit = !bMixed && Current && !CurrentPath.empty() && PhysicalMaterialFile::IsPhysicalMaterialPath(CurrentPath);
 
 		bool bChanged = false;
 		auto Apply = [&](UPhysicalMaterial* NewMaterial)
 		{
+			if (!bMixed && NewMaterial == Current)
+			{
+				return;
+			}
 			OnPick(NewMaterial);
 			bChanged = true;
 		};
 
+		auto AcceptDrop = [&]()
+		{
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::PhysicalMaterial))
+				{
+					const FString DroppedPath(static_cast<const char*>(Payload->Data));
+					if (UPhysicalMaterial* Dropped = UAssetManager::LoadPhysicalMaterial(DroppedPath))
+					{
+						Apply(Dropped);
+					}
+				}
+				ImGui::EndDragDropTarget();
+			}
+		};
+
+		const float ThumbSize = EditorStyle::Scale(50.0f);
+		const float ItemThumbSize = EditorStyle::Scale(24.0f);
+
+		ImGui::PushID(Id);
+
+		// ── 좌측: 물리 머티리얼 3D 썸네일 타일 ──
+		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
+		ImGui::InvisibleButton("##PmatThumb", ImVec2(ThumbSize, ThumbSize));
+		const bool bThumbHovered = ImGui::IsItemHovered();
+		const ImTextureID MainThumb = (!bMixed && !CurrentPath.empty()) ? QueryMaterialThumbnail(CurrentPath) : ImTextureID_Invalid;
+		DrawPhysicalMaterialThumbnailVisual(ThumbMin, ThumbSize, MainThumb, !bMixed && Current != nullptr, bThumbHovered);
+
+		if (bThumbHovered && !bMixed && Current)
+		{
+			if (!CurrentPath.empty())
+			{
+				ImGui::SetTooltip("%s%s", CurrentPath.c_str(), bCanEdit ? "\nDouble-click to open Physical Material Editor" : "");
+			}
+			if (bCanEdit && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
+				}
+			}
+		}
+		AcceptDrop();
+
+		ImGui::SameLine(0.0f, EditorStyle::Scale(8.0f));
+
+		// ── 우측: 1행 드롭다운 리스트 / 2행 Edit·Clear 버튼 ──
+		ImGui::BeginGroup();
+
 		ImGui::SetNextItemWidth(-1.0f);
-		const bool bOpen = ImGui::BeginCombo(Id, CurrentName.c_str());
+		const bool bOpen = ImGui::BeginCombo("##PmatCombo", CurrentName.c_str(), ImGuiComboFlags_HeightLarge);
 		if (ImGui::IsItemHovered() && !CurrentPath.empty() && !ImGui::GetDragDropPayload())
 		{
 			ImGui::SetTooltip("%s", CurrentPath.c_str());
 		}
+		AcceptDrop();
 
-		if (ImGui::BeginDragDropTarget())
+		if (bOpen)
 		{
-			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::PhysicalMaterial))
+			static char SearchBuf[128] = {};
+			if (ImGui::IsWindowAppearing())
 			{
-				const FString DroppedPath(static_cast<const char*>(Payload->Data));
-				if (UPhysicalMaterial* Dropped = UAssetManager::LoadPhysicalMaterial(DroppedPath))
-				{
-					Apply(Dropped);
-				}
-			}
-			ImGui::EndDragDropTarget();
-		}
+				SearchBuf[0] = '\0';
+				ImGui::SetKeyboardFocusHere();
 
-		if (!bOpen)
-		{
-			return bChanged;
-		}
-
-		if (ImGui::IsWindowAppearing())
-		{
-			Paths.clear();
-			ScanMessage.clear();
-			std::error_code Error;
-			std::filesystem::recursive_directory_iterator It(FPaths::ProjectContentDir(), Error);
-			const std::filesystem::recursive_directory_iterator End;
-			while (!Error && It != End)
-			{
-				if (It->is_regular_file(Error))
+				Paths.clear();
+				ScanMessage.clear();
+				std::error_code Error;
+				std::filesystem::recursive_directory_iterator It(FPaths::ProjectContentDir(), Error);
+				const std::filesystem::recursive_directory_iterator End;
+				while (!Error && It != End)
 				{
-					const FString Path = FPaths::ToUtf8(It->path());
-					if (PhysicalMaterialFile::IsPhysicalMaterialPath(Path))
+					if (It->is_regular_file(Error))
 					{
-						Paths.push_back(FAssetUtils::GetAssetKey(Path));
+						const FString Path = FPaths::ToUtf8(It->path());
+						if (PhysicalMaterialFile::IsPhysicalMaterialPath(Path))
+						{
+							Paths.push_back(FAssetUtils::GetAssetKey(Path));
+						}
+					}
+					if (!Error)
+					{
+						It.increment(Error);
 					}
 				}
-				if (!Error)
+				std::sort(Paths.begin(), Paths.end());
+				if (Error)
 				{
-					It.increment(Error);
+					ScanMessage = "Cannot read the asset folder: " + Error.message();
 				}
 			}
-			std::sort(Paths.begin(), Paths.end());
-			if (Error)
-			{
-				ScanMessage = "Cannot read the asset folder: " + Error.message();
-			}
-		}
 
-		if (ImGui::Selectable("None", !bMixed && Current == nullptr))
-		{
-			Apply(nullptr);
-		}
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##PmatSearch", "Search physical materials...", SearchBuf, sizeof(SearchBuf));
+			ImGui::Separator();
 
-		const FString CurrentKey = CurrentPath.empty() ? FString() : FAssetUtils::GetAssetKey(CurrentPath);
-		for (const FString& Path : Paths)
-		{
-			ImGui::PushID(Path.c_str());
-			const bool bSelected = !CurrentKey.empty() && CurrentKey == Path;
-			if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected))
+			FString FilterLower(SearchBuf);
+			std::transform(FilterLower.begin(), FilterLower.end(), FilterLower.begin(),
+				[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+
+			if (FilterLower.empty())
 			{
-				if (UPhysicalMaterial* Picked = UAssetManager::LoadPhysicalMaterial(Path))
+				const bool bNoneSelected = !bMixed && Current == nullptr;
+				const ImVec2 NoneMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawPhysicalMaterialThumbnailVisual(NoneMin, ItemThumbSize, ImTextureID_Invalid, false, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable("None", bNoneSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
-					Apply(Picked);
+					Apply(nullptr);
+				}
+			}
+
+			const FString CurrentKey = CurrentPath.empty() ? FString() : FAssetUtils::GetAssetKey(CurrentPath);
+			for (const FString& Path : Paths)
+			{
+				if (!FilterLower.empty())
+				{
+					FString PathLower = Path;
+					std::transform(PathLower.begin(), PathLower.end(), PathLower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (PathLower.find(FilterLower) == FString::npos)
+					{
+						continue;
+					}
+				}
+
+				ImGui::PushID(Path.c_str());
+				const bool bSelected = !CurrentKey.empty() && CurrentKey == Path;
+
+				const ImVec2 ItemThumbMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawPhysicalMaterialThumbnailVisual(ItemThumbMin, ItemThumbSize, QueryMaterialThumbnail(Path), true, bSelected);
+
+				ImGui::SameLine();
+				if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+				{
+					if (UPhysicalMaterial* Picked = UAssetManager::LoadPhysicalMaterial(Path))
+					{
+						Apply(Picked);
+					}
+				}
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", Path.c_str());
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+				ImGui::PopID();
+			}
+
+			if (!ScanMessage.empty())
+			{
+				ImGui::TextWrapped("%s", ScanMessage.c_str());
+			}
+			else if (Paths.empty())
+			{
+				ImGui::TextUnformatted("No physical material files in Assets.");
+			}
+
+			ImGui::EndCombo();
+		}
+
+		bool bHasPrevItem = false;
+		if (bCanEdit)
+		{
+			if (ImGui::SmallButton("Edit"))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
 				}
 			}
 			if (ImGui::IsItemHovered())
 			{
-				ImGui::SetTooltip("%s", Path.c_str());
+				ImGui::SetTooltip("Open Physical Material Editor (%s)", CurrentPath.c_str());
 			}
-			if (bSelected)
+			bHasPrevItem = true;
+		}
+
+		if (!bMixed && Current != nullptr)
+		{
+			if (bHasPrevItem) ImGui::SameLine();
+			if (ImGui::SmallButton("Clear"))
 			{
-				ImGui::SetItemDefaultFocus();
+				Apply(nullptr);
 			}
-			ImGui::PopID();
 		}
 
-		if (!ScanMessage.empty())
-		{
-			ImGui::TextWrapped("%s", ScanMessage.c_str());
-		}
-		else if (Paths.empty())
-		{
-			ImGui::TextUnformatted("No physical material files in Assets.");
-		}
-
-		ImGui::EndCombo();
+		ImGui::EndGroup();
+		ImGui::PopID();
 		return bChanged;
 	}
 

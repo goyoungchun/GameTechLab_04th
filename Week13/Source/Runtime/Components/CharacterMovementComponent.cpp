@@ -4,6 +4,8 @@
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Physics/PhysScene.h"
 #include "Collision/HitResult.h"
 #include "Engine/World.h"
 #include "UObject/Casts.h"
@@ -150,10 +152,22 @@ bool UCharacterMovementComponent::FindFloor(float ExtraDistance, FHitResult& Out
 {
 	if (!CanUseFloor()) return false;
 
-	// 반지름 0 Sweep = 아래 방향 레이. 메시는 AABB 윗면, 스킨드 메시는 삼각형에 닿는다
+	// 캡슐 중심에서 아래로 레이를 쏜다. Distance가 중심~바닥 거리다.
 	const FVector Start = UpdatedComponent->GetWorldLocation();
 	const float TraceLength = GetCapsuleHalfHeight() + std::max(ExtraDistance, 0.0f);
-	return GetOwner()->GetWorld()->SweepSingle(FRay(Start, FVector(0.0f, 0.0f, -1.0f)), TraceLength, 0.0f, OutHit, GetOwner());
+	UWorld* World = GetOwner()->GetWorld();
+
+	FPhysScene* PhysicsScene = World ? World->GetPhysicsScene() : nullptr;
+	if (PhysicsScene && PhysicsScene->IsValid())
+	{
+		// 이동 스윕과 같은 물리 씬 형상을 본다 (Static 메시는 삼각형, Movable은 볼록 껍질).
+		FCollisionQueryParams Params;
+		Params.IgnoreActor = GetOwner();
+		return PhysicsScene->RaycastSingle(Start, Start + FVector(0.0f, 0.0f, -TraceLength), OutHit, Params);
+	}
+
+	// PhysX가 꺼져 있으면 예전 판정 (메시는 AABB 윗면, 스킨드 메시는 삼각형)
+	return World->SweepSingle(FRay(Start, FVector(0.0f, 0.0f, -1.0f)), TraceLength, 0.0f, OutHit, GetOwner());
 }
 
 float UCharacterMovementComponent::GetCapsuleHalfHeight() const
@@ -316,4 +330,23 @@ void UCharacterMovementComponent::SafeMoveWithSlide(const FVector& Delta, const 
 	const FVector Slide = ComputeSlideVector(Delta, 1.0f - Hit.Time, Normal, Hit);
 	if (Slide.SizeSquared() > SMALL_NUMBER)
 		MoveUpdatedComponent(Slide, NewRotation, true, &Hit);
+}
+
+void UCharacterMovementComponent::HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta)
+{
+	Super::HandleImpact(Hit, TimeSlice, MoveDelta);
+	if (!bEnablePhysicsInteraction || !Hit.bBlockingHit || !Hit.HitComponent)
+		return;
+
+	FBodyInstance& Body = Hit.HitComponent->BodyInstance;
+	if (!Body.IsSimulatingPhysics())
+		return;   // 벽·바닥·Kinematic은 밀지 않는다
+
+	// 부딪힌 면 안쪽으로 들어가던 속도만큼만 민다. 옆으로 스치면 거의 안 민다.
+	const FVector PushDir = Hit.ImpactNormal * -1.0f;
+	const float PushSpeed = std::max(Velocity.Dot(PushDir), 0.0f);   // m/s
+	if (PushSpeed <= KINDA_SMALL_NUMBER)
+		return;
+
+	Body.AddImpulseAtLocation(PushDir * (PushSpeed * PushForceFactor), Hit.ImpactPoint);
 }

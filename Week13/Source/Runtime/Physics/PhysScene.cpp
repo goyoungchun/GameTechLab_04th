@@ -8,6 +8,7 @@
 #include "PhysXSimulationEventCallback.h"
 #include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Actor.h"
 
 namespace
 {
@@ -15,7 +16,8 @@ namespace
 	class FKurisuQueryFilterCallback : public physx::PxQueryFilterCallback
 	{
 	public:
-		explicit FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams) : Params(InParams) {}
+		explicit FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams, const physx::PxVec3& InSweepDir = physx::PxVec3(0.0f))
+			: Params(InParams), SweepDir(InSweepDir) {}
 
 		physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& /*QueryData*/, const physx::PxShape* Shape,
 			const physx::PxRigidActor* Actor, physx::PxHitFlags& /*Flags*/) override
@@ -25,22 +27,36 @@ namespace
 				return physx::PxQueryHitType::eNONE;
 			if ((ShapeData.word3 & Params.RequiredFlags) != Params.RequiredFlags)
 				return physx::PxQueryHitType::eNONE;
-			if (Params.IgnoreComponent)
+
+			const FBodyInstance* Body = FBodyInstance::FromActor(Actor);
+			const UPrimitiveComponent* Component = Body ? Body->OwnerComponent : nullptr;
+			if (Component)
 			{
-				const FBodyInstance* Body = FBodyInstance::FromActor(Actor);
-				if (Body && Body->OwnerComponent == Params.IgnoreComponent)
+				if (Params.IgnoreComponent && Component == Params.IgnoreComponent)
+					return physx::PxQueryHitType::eNONE;
+				const AActor* Owner = Component->GetOwner();
+				if (Params.IgnoreActor && Owner == Params.IgnoreActor)
+					return physx::PxQueryHitType::eNONE;
+				// 액터 단위로 충돌을 끈 경우(SetActorEnableCollision(false))도 쿼리에서 뺀다.
+				if (Owner && !Owner->GetActorEnableCollision())
 					return physx::PxQueryHitType::eNONE;
 			}
 			return physx::PxQueryHitType::eBLOCK;
 		}
 
-		physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData&, const physx::PxQueryHit&) override
+		// bIgnoreTouchesMovingAway일 때만 불린다 (ePOSTFILTER). 시작부터 닿아 있던 면이 이동 방향을 막지 않으면 버린다.
+		physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData&, const physx::PxQueryHit& Hit) override
 		{
-			return physx::PxQueryHitType::eBLOCK;   // ePOSTFILTER를 켜지 않으므로 불리지 않는다
+			const physx::PxSweepHit& SweepHit = static_cast<const physx::PxSweepHit&>(Hit);
+			// eMTD를 켰으므로 시작 겹침이면 normal은 빠져나가는 방향이다. 이동 방향과 마주보지 않으면(>= 0) 막지 않는다.
+			if (SweepHit.hadInitialOverlap() && SweepHit.normal.dot(SweepDir) >= 0.0f)
+				return physx::PxQueryHitType::eNONE;
+			return physx::PxQueryHitType::eBLOCK;
 		}
 
 	private:
 		const FCollisionQueryParams& Params;
+		physx::PxVec3 SweepDir;
 	};
 
 	physx::PxQueryFilterData MakeQueryFilterData()
@@ -75,13 +91,15 @@ namespace
 		OutHit.TraceEnd = End;
 		OutHit.bBlockingHit = true;
 		OutHit.bStartPenetrating = Hit.hadInitialOverlap();
-		OutHit.Distance = Hit.distance;
-		OutHit.Time = MaxDistance > 0.0f ? Hit.distance / MaxDistance : 0.0f;
+		// MTD를 켠 스윕이 시작부터 겹쳐 있으면 distance는 -(겹친 깊이)다.
+		const float HitDistance = std::max(Hit.distance, 0.0f);
+		OutHit.Distance = HitDistance;
+		OutHit.Time = MaxDistance > 0.0f ? HitDistance / MaxDistance : 0.0f;
 		OutHit.ImpactPoint = P2KVector(Hit.position);
 		OutHit.ImpactNormal = P2KVector(Hit.normal);
-		OutHit.Location = Start + Dir * Hit.distance;   // 레이는 ImpactPoint와 같고, 스윕은 모양 중심 위치
+		OutHit.Location = Start + Dir * HitDistance;   // 레이는 ImpactPoint와 같고, 스윕은 모양 중심 위치
 		OutHit.Normal = OutHit.ImpactNormal;
-		OutHit.PenetrationDepth = 0.0f;
+		OutHit.PenetrationDepth = Hit.distance < 0.0f ? -Hit.distance : 0.0f;
 		OutHit.FaceIndex = static_cast<int32>(Hit.faceIndex);
 		const FBodyInstance* Body = FBodyInstance::FromActor(Hit.actor);
 		OutHit.HitComponent = Body ? Body->OwnerComponent : nullptr;
@@ -262,10 +280,18 @@ bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation
 	physx::PxQuat Rot = K2PQuat(Rotation);
 	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
 
-	FKurisuQueryFilterCallback Filter(Params);
+	FKurisuQueryFilterCallback Filter(Params, K2PVector(Dir));
+	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
+	physx::PxHitFlags HitFlags = physx::PxHitFlag::eDEFAULT;
+	if (Params.bIgnoreTouchesMovingAway)
+	{
+		FilterData.flags |= physx::PxQueryFlag::ePOSTFILTER;
+		HitFlags |= physx::PxHitFlag::eMTD;   // 시작 겹침의 빠져나갈 방향(법선)과 깊이를 계산한다
+	}
+
 	physx::PxSweepBuffer Buffer;
 	const bool bHit = Scene->sweep(Geometry.any(), physx::PxTransform(K2PVector(Start), Rot), K2PVector(Dir), Distance, Buffer,
-		physx::PxHitFlag::eDEFAULT, MakeQueryFilterData(), &Filter);
+		HitFlags, FilterData, &Filter);
 	if (!bHit || !Buffer.hasBlock)
 		return false;
 

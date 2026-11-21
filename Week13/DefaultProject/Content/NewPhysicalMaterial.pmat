@@ -3,8 +3,8 @@
         "Density": 1000.0,
         "Friction": 0.699999988079071,
         "FrictionCombineMode": "Average",
-        "Restitution": 0.8999999761581421,
-        "RestitutionCombineMode": "Max",
+        "Restitution": 0.30000001192092896,
+        "RestitutionCombineMode": "Average",
         "StaticFriction": 0.699999988079071
     }
 }
