@@ -13,6 +13,7 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Render/PostProcess/HeightFogRenderer.h"
 #include "Render/PostProcess/CameraOverlayRenderer.h"
+#include "Render/PostProcess/DepthOfFieldRenderer.h"
 #include "Render/PostProcess/FXAARenderer.h"
 #include "Render/PostProcess/ToneMapData.h"
 #include "Render/DecalData.h"
@@ -776,6 +777,40 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	if (!Options.ShowFlags.VisualizeWorldNormal && Callbacks.SceneText &&
 		!Graph.AddRasterPass(MakeViewportPass("SceneText", SceneColor, Depth), Callbacks.SceneText))
 		return false;
+
+	// 렌즈 앞 세상(SceneText까지)은 흐려지고, CameraOverlay·FXAA·에디터 오버레이는 선명해야 하므로 이 자리에 둔다
+	if (Options.ShowFlags.DepthOfField && Options.ShowFlags.VisualizeDepthOfField && View.bIsPerspective &&
+		!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeSceneDepth)
+	{
+		const uint32 Width = Targets.SceneColor->GetWidth();
+		const uint32 Height = Targets.SceneColor->GetHeight();
+		// 음수(near)를 담아야 하므로 실수 포맷을 쓴다
+		const FRenderGraphTextureRef CoC = Graph.CreateTexture({ Width, Height, ETextureFormat::R16_Float }, "DOFCoC");
+		// CopyTexture는 크기와 포맷이 같아야 하므로 SceneColor와 맞춘다
+		const FRenderGraphTextureRef SceneCopy = Graph.CreateTexture({ Width, Height, ETextureFormat::R8G8B8A8_UNorm }, "DOFSceneColorCopy");
+		if (!CoC || !SceneCopy) return false;
+
+		FRenderGraphRasterPassDesc Setup{};
+		Setup.Name = "DOFSetup";
+		Setup.ReadTextures = { Depth };
+		Setup.ColorAttachments = { { CoC, ERenderGraphLoadAction::Clear,{ 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(Setup), [this, Renderer, &Graph, Depth]
+			{
+				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+					DOF->RenderSetup(View, Graph.Resolve(Depth));
+			})) return false;
+
+		FRenderGraphRasterPassDesc Visualize = MakeViewportPass("DOFVisualize", SceneColor);
+		// SceneColor는 이 패스의 출력이라 같은 텍스처를 읽을 수 없어서 복사본을 읽는다
+		Visualize.ReadTextures = { CoC, SceneCopy };
+		if (!Graph.AddRasterPass(std::move(Visualize), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
+			{
+				FTexture2D* Copy = Graph.Resolve(SceneCopy);
+				RenderCommand::CopyTexture(Copy, SceneColorTarget);
+				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+					DOF->RenderVisualize(Graph.Resolve(CoC), Copy);
+			})) return false;
+	}
 
 	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.VisualizeSceneDepth && Callbacks.DepthVisualization)
 	{
