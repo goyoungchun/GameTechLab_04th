@@ -9,6 +9,26 @@ namespace physx
 }
 
 class UWorld;
+class UPrimitiveComponent;
+class FPhysXSimulationEventCallback;
+
+// onContact에서 모은 충돌 한 건. 디스패치 때 양쪽에 DispatchHit을 보낸다.
+struct FCollisionNotifyInfo
+{
+	UPrimitiveComponent* ComponentA = nullptr;
+	UPrimitiveComponent* ComponentB = nullptr;
+	FVector ImpactPoint;
+	FVector Normal;          // A가 B에서 빠져나가는 방향
+	float ImpulseSize = 0.0f;
+};
+
+// onTrigger에서 모은 들어옴/나감 한 건.
+struct FTriggerNotifyInfo
+{
+	UPrimitiveComponent* TriggerComponent = nullptr;
+	UPrimitiveComponent* OtherComponent = nullptr;
+	bool bBegin = true;
+};
 
 // UWorld 하나가 소유하는 PhysX 씬. 생성자에서 PxScene을 만들고 소멸자에서 해제한다.
 class FPhysScene
@@ -35,7 +55,17 @@ public:
 	bool OverlapMulti(const FCollisionShape& Shape, const FVector& Position, const FQuat& Rotation,
 		TArray<FOverlapResult>& OutOverlaps, const FCollisionQueryParams& Params = FCollisionQueryParams()) const;
 
+	// 시뮬레이션 이벤트 콜백이 fetchResults 도중 쌓는다. 디스패치는 Tick이 fetchResults 뒤에 한다.
+	void AddCollisionNotify(const FCollisionNotifyInfo& Info) { PendingCollisionNotifies.Add(Info); }
+	void AddTriggerNotify(const FTriggerNotifyInfo& Info) { PendingTriggerNotifies.Add(Info); }
+
 private:
+	void DispatchPendingNotifies();
+
+	TUniquePtr<FPhysXSimulationEventCallback> EventCallback;
+	TArray<FCollisionNotifyInfo> PendingCollisionNotifies;
+	TArray<FTriggerNotifyInfo> PendingTriggerNotifies;
+
 	void SyncActiveActors();
 
 	static constexpr float FixedTimeStep = 1.0f / 60.0f;

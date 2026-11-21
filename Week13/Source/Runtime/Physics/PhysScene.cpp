@@ -5,6 +5,7 @@
 #include "BodyInstance.h"
 #include "PhysXConversions.h"
 #include "PhysXFilterShader.h"
+#include "PhysXSimulationEventCallback.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
@@ -100,6 +101,8 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 	Desc.cpuDispatcher = FPhysicsCore::Get().GetDispatcher();
 	Desc.filterShader = KurisuSimulationFilterShader;
 	Desc.flags |= physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS | physx::PxSceneFlag::eENABLE_PCM;
+	EventCallback = MakeUnique<FPhysXSimulationEventCallback>(*this);
+	Desc.simulationEventCallback = EventCallback.get();
 
 	if (!Desc.isValid())
 	{
@@ -165,7 +168,10 @@ void FPhysScene::Tick(float DeltaTime)
 		TimeAccumulator = 0.0f;
 
 	if (Steps > 0)
+	{
 		SyncActiveActors();
+		DispatchPendingNotifies();
+	}
 
 	// simulate 중 워커 스레드에서 쌓인 PhysX 로그를 메인 스레드에서 내보낸다.
 	FPhysicsCore::Get().FlushPendingLogs();
@@ -259,4 +265,39 @@ bool FPhysScene::OverlapMulti(const FCollisionShape& Shape, const FVector& Posit
 		OutOverlaps.Add(FOverlapResult{ Body ? Body->OwnerComponent : nullptr, static_cast<int32>(Hit.faceIndex) });
 	}
 	return !OutOverlaps.IsEmpty();
+}
+
+void FPhysScene::DispatchPendingNotifies()
+{
+	// 디스패치 중 게임 코드가 액터를 지우거나 새 바디를 만들 수 있으므로 큐를 먼저 꺼내 온다.
+	TArray<FCollisionNotifyInfo> Collisions = std::move(PendingCollisionNotifies);
+	TArray<FTriggerNotifyInfo> Triggers = std::move(PendingTriggerNotifies);
+	PendingCollisionNotifies.Empty();
+	PendingTriggerNotifies.Empty();
+
+	for (const FCollisionNotifyInfo& Info : Collisions)
+	{
+		// 앞선 이벤트 처리에서 컴포넌트가 등록 해제됐을 수 있다.
+		if (!Info.ComponentA->IsRegistered() || !Info.ComponentB->IsRegistered())
+			continue;
+		Info.ComponentA->DispatchHit(Info.ComponentB);
+		if (Info.ComponentB->IsRegistered())
+			Info.ComponentB->DispatchHit(Info.ComponentA);
+	}
+
+	for (const FTriggerNotifyInfo& Info : Triggers)
+	{
+		if (!Info.TriggerComponent->IsRegistered() || !Info.OtherComponent->IsRegistered())
+			continue;
+		if (Info.bBegin)
+		{
+			Info.TriggerComponent->BeginComponentOverlap(Info.OtherComponent);
+			Info.OtherComponent->BeginComponentOverlap(Info.TriggerComponent);
+		}
+		else
+		{
+			Info.TriggerComponent->EndComponentOverlap(Info.OtherComponent);
+			Info.OtherComponent->EndComponentOverlap(Info.TriggerComponent);
+		}
+	}
 }
