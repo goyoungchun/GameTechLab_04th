@@ -887,7 +887,8 @@ bool FSceneRenderer::Render(FRenderer* Renderer, FSceneViewTargets& Targets, con
 
 	FFXAARenderer* FXAA = Renderer->GetFXAA();
 	const bool bUseFXAA = Options.ShowFlags.AntiAliasing && !Options.ShowFlags.VisualizeSceneDepth &&
-		!Options.ShowFlags.VisualizeWorldNormal && FXAA && FXAA->PrepareOutput(ColorTarget);
+		!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeDepthOfField &&
+		FXAA && FXAA->PrepareOutput(ColorTarget);
 	if (bUseFXAA)
 	{
 		Callbacks.FXAAOutput = FXAA->GetOutputTarget().get();
