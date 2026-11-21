@@ -8,6 +8,8 @@
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Engine/Scene.h"
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
+#include "Physics/BodySetup.h"
 
 namespace
 {
@@ -244,4 +246,31 @@ void UPrimitiveComponent::DispatchHit(UPrimitiveComponent* OtherComp)
 	{
 		Owner->NotifyHit(OtherActor);
 	}
+}
+
+bool UPrimitiveComponent::ShouldCreatePhysicsState() const
+{
+	UWorld* World = GetWorld();
+	FPhysScene* Scene = World ? World->GetPhysicsScene() : nullptr;
+	// GetBodySetup은 const가 아니다 (형상을 지연 생성하는 컴포넌트가 있다).
+	return Scene && Scene->IsValid() && const_cast<UPrimitiveComponent*>(this)->GetBodySetup() != nullptr;
+}
+
+void UPrimitiveComponent::OnCreatePhysicsState()
+{
+	Super::OnCreatePhysicsState();
+
+	const FTransform WorldTransform(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+	BodyInstance.InitBody(GetBodySetup(), WorldTransform, this, GetWorld()->GetPhysicsScene());
+}
+
+void UPrimitiveComponent::OnDestroyPhysicsState()
+{
+	BodyInstance.TermBody();
+	Super::OnDestroyPhysicsState();
+}
+
+void UPrimitiveComponent::SetSimulatePhysics(bool bSimulate)
+{
+	BodyInstance.SetSimulatePhysics(bSimulate);
 }
