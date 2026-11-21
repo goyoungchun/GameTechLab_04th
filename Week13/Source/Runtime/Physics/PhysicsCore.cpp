@@ -45,8 +45,63 @@ bool FPhysicsCore::Init()
 		KRS_LOG(Error, "PxCreateFoundation failed!");
 		return false;
 	}
-
 	KRS_LOG(Info, "PhysX Foundation created.");
+
+	// PVD는 Physics보다 먼저 만들어 PxCreatePhysics에 넘긴다. 연결 실패는 Init 실패가 아니다.
+	InitPvd();
+
+	// 엔진 월드 단위가 m이므로 기본 스케일(length 1, speed 10)을 그대로 쓴다.
+	// Debug에서는 할당을 추적해 Foundation 해제 때 남은 객체를 에러 콜백으로 보고받는다.
+#if defined(_DEBUG)
+	constexpr bool bTrackAllocations = true;
+#else
+	constexpr bool bTrackAllocations = false;
+#endif
+	Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *Foundation, physx::PxTolerancesScale(), bTrackAllocations, Pvd);
+	if (!Physics)
+	{
+		KRS_LOG(Error, "PxCreatePhysics failed!");
+		Shutdown();
+		return false;
+	}
+
+	// D6 Joint 등 조인트와 PVD 조인트 시각화가 Extensions에 있다.
+	bExtensionsInitialized = PxInitExtensions(*Physics, Pvd);
+	if (!bExtensionsInitialized)
+	{
+		KRS_LOG(Error, "PxInitExtensions failed!");
+		Shutdown();
+		return false;
+	}
+
+	// 자동차(PxVehicleDrive4W 등)는 이 초기화가 필요하다. 프로세스당 한 번만 부른다.
+	bVehicleSDKInitialized = physx::PxInitVehicleSDK(*Physics);
+	if (!bVehicleSDKInitialized)
+	{
+		KRS_LOG(Error, "PxInitVehicleSDK failed!");
+		Shutdown();
+		return false;
+	}
+
+	DefaultMaterial = Physics->createMaterial(0.5f, 0.5f, 0.1f);
+	if (!DefaultMaterial)
+	{
+		KRS_LOG(Error, "Failed to create default PhysX material!");
+		Shutdown();
+		return false;
+	}
+
+	// 월드(에디터/PIE/프리뷰)마다 만들지 않고 모든 씬이 공유한다.
+	Dispatcher = physx::PxDefaultCpuDispatcherCreate(4);
+	if (!Dispatcher)
+	{
+		KRS_LOG(Error, "PxDefaultCpuDispatcherCreate failed!");
+		Shutdown();
+		return false;
+	}
+
+	KRS_LOG(Info, "PhysX initialized.");
+
 	return true;
 }
 
@@ -93,6 +148,16 @@ void FPhysicsCore::Shutdown()
 		DefaultMaterial->release();
 		DefaultMaterial = nullptr;
 	}
+	if (bVehicleSDKInitialized)
+	{
+		physx::PxCloseVehicleSDK();
+		bVehicleSDKInitialized = false;
+	}
+	if (bExtensionsInitialized)
+	{
+		PxCloseExtensions();
+		bExtensionsInitialized = false;
+	}
 	if (Physics)
 	{
 		Physics->release();
@@ -121,5 +186,26 @@ void FPhysicsCore::Shutdown()
 
 bool FPhysicsCore::InitPvd()
 { 
-	return false;
+	Pvd = PxCreatePvd(*Foundation);
+	if (!Pvd)
+	{
+		KRS_LOG(Warning, "PxCreatePvd failed!");
+		return false;
+	}
+
+	PvdTransport = physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+	if (!PvdTransport)
+	{
+		KRS_LOG(Warning, "PxDefaultPvdSocketTransportCreate failed!");
+		return false;
+	}
+
+	// PVD 프로그램이 꺼져 있으면 연결이 안 될 뿐이다. 에러가 아니다.
+	if (!Pvd->connect(*PvdTransport, physx::PxPvdInstrumentationFlag::eALL))
+	{
+		KRS_LOG(Info, "PhysX PVD not running (127.0.0.1:5425). Continuing without PVD.");
+		return false;
+	}
+	KRS_LOG(Info, "PhysX PVD connected.");
+	return true;
 }

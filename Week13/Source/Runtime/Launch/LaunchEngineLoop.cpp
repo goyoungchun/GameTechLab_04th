@@ -26,6 +26,7 @@
 #include "Core/Stats/LightweightStats.h"
 #include "Core/Async/TaskPool.h"
 #include "Tasks/Tasks.h"
+#include "Physics/PhysicsCore.h"
 
 #include "Render/RealtimeGPUProfiler.h"
 
@@ -199,6 +200,13 @@ bool FEngineLoop::Init()
 	// 워커 스레드는 에셋 로드가 끝난 뒤, 엔진이 생기기 전에 켠다. 끄는 것도 이 클래스의 Exit가 한다.
 	Tasks::FTaskScheduler::Get().Initialize();
 
+	// PhysX SDK도 엔진이 생기기 전에 켜고 이 클래스의 Exit가 끈다. 월드(FPhysScene)보다 먼저여야 한다.
+	// 실패해도 엔진은 물리 없이 계속 돈다.
+	if (!FPhysicsCore::Get().Init())
+	{
+		KRS_LOG(Error, "[Physics] PhysX init failed. Physics disabled.");
+	}
+
 	GEngine = NewObject<UEngine>(nullptr, PendingEngineClass);
 	if (!GEngine)
 	{
@@ -313,6 +321,7 @@ void FEngineLoop::Exit()
 	FRenderResourceManager::Shutdown();
 
 	DestroyAllObjectsExceptEngine();
+	FPhysicsCore::Get().Shutdown();
 	delete GEngine;
 	GEngine = nullptr;
 
