@@ -30,6 +30,7 @@ SHOWFLAG(DepthOfField,    true,  true,  PostProcess, "Camera",     "Depth of Fie
 SHOWFLAG(CascadeBounds,   false, false, Developer, "Cascade",      "Cascade Bounds")
 SHOWFLAG(ObjectUUID,      false, false, Developer, "Pivot",        "Object UUID")
 SHOWFLAG(RootBone,        false, false, Developer, "SkeletalMesh", "Root Bone")
+SHOWFLAG(VisualizeDepthOfField, false, false, Developer, "Camera", "Visualize Depth of Field")
 
 // ---------- Render: Show 메뉴 대신 Render 메뉴가 바꾼다 ----------
 SHOWFLAG(AntiAliasing,          false, false, Render, nullptr, "Anti-Aliasing (FXAA)")
