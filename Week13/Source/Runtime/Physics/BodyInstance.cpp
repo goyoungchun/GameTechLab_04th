@@ -7,6 +7,7 @@
 #include "PhysXIncludes.h"
 #include "PhysXFilterShader.h"
 #include "PhysicsLock.h"
+#include "PhysicalMaterial.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
@@ -24,6 +25,11 @@ namespace
 	void AttachShape(physx::PxRigidActor& Actor, const physx::PxGeometry& Geometry, const physx::PxTransform& LocalPose, FBodyInstance* Owner)
 	{
 		physx::PxMaterial* Material = FPhysicsCore::Get().GetDefaultMaterial();
+		if (Owner->PhysMaterialOverride)
+		{
+			if (physx::PxMaterial* Override = Owner->PhysMaterialOverride->GetPxMaterial())
+				Material = Override;
+		}
 		physx::PxShape* Shape = physx::PxRigidActorExt::createExclusiveShape(Actor, Geometry, *Material);
 		if (!Shape)
 		{
@@ -62,6 +68,11 @@ FMaskFilter FBodyInstance::MakeMaskFilter() const
 	Filter.OwnerId = OwnerId;
 	Filter.Flags = bDrivable ? ECollisionFlags::Drivable : 0u;
 	return Filter;
+}
+
+float FBodyInstance::GetEffectiveDensity() const
+{
+	return PhysMaterialOverride ? PhysMaterialOverride->Density : Density;
 }
 
 bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform, UPrimitiveComponent* PrimComp, FPhysScene* InScene)
@@ -199,7 +210,7 @@ void FBodyInstance::UpdateMassProperties()
 	if (MassInKgOverride > 0.0f)
 		physx::PxRigidBodyExt::setMassAndUpdateInertia(*Dynamic, MassInKgOverride);
 	else
-		physx::PxRigidBodyExt::updateMassAndInertia(*Dynamic, Density);
+		physx::PxRigidBodyExt::updateMassAndInertia(*Dynamic, GetEffectiveDensity());
 }
 
 FTransform FBodyInstance::GetWorldTransform() const

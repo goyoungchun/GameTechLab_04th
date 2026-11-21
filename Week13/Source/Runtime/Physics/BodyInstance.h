@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Math/Transform.h"
 #include "PhysicsFiltering.h"
+#include "PhysicalMaterial.h"   // UPROPERTY 객체 포인터는 리플렉션 등록 코드가 완전한 타입을 요구한다
 #include "BodyInstance.generated.h"
 
 namespace physx
@@ -55,7 +56,12 @@ struct FBodyInstance
 	uint32 CollidesWith = AllCategoriesMask;   // word1. 기본은 모든 종류와 충돌
 	uint32 OwnerId = 0;                        // word2. 랙돌이 InitBody 전에 채운다
 
+	// 표면 물성 에셋(.pmat). 없으면 FPhysicsCore의 기본 머티리얼과 이 바디의 Density를 쓴다.
+	UPROPERTY(EditAnywhere)
+	UPhysicalMaterial* PhysMaterialOverride = nullptr;
+
 	FMaskFilter MakeMaskFilter() const;
+	float GetEffectiveDensity() const;
 
 	// 실행 중 상태
 	UPrimitiveComponent* OwnerComponent = nullptr;

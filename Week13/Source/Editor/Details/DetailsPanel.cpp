@@ -28,6 +28,8 @@
 #include "Components/ParticleSystemComponent.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Animation/AnimSequence.h"
@@ -1668,6 +1670,122 @@ namespace
 			[Owner, TemplatePtr](UParticleSystem* Picked) { ApplyParticleTemplate(Owner, TemplatePtr, Picked); });
 	}
 
+	// .pmat 선택 콤보. 콘텐츠 폴더를 훑어 목록을 만들고, 콘텐츠 드로어에서 끌어다 놓아도 된다.
+	bool DrawPhysicalMaterialPicker(UPhysicalMaterial* Current, bool bMixed, const char* Id, const std::function<void(UPhysicalMaterial*)>& OnPick)
+	{
+		static std::vector<FString> Paths;
+		static FString ScanMessage;
+
+		if (bMixed)
+		{
+			Current = nullptr;
+		}
+		const FString CurrentPath = Current ? Current->GetAssetPath() : "";
+		const FString CurrentName = bMixed ? "Multiple Values"
+			: (Current ? (CurrentPath.empty() ? Current->GetName() : GetAssetDisplayName(CurrentPath)) : "None");
+
+		bool bChanged = false;
+		auto Apply = [&](UPhysicalMaterial* NewMaterial)
+		{
+			OnPick(NewMaterial);
+			bChanged = true;
+		};
+
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo(Id, CurrentName.c_str());
+		if (ImGui::IsItemHovered() && !CurrentPath.empty() && !ImGui::GetDragDropPayload())
+		{
+			ImGui::SetTooltip("%s", CurrentPath.c_str());
+		}
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::PhysicalMaterial))
+			{
+				const FString DroppedPath(static_cast<const char*>(Payload->Data));
+				if (UPhysicalMaterial* Dropped = UAssetManager::LoadPhysicalMaterial(DroppedPath))
+				{
+					Apply(Dropped);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		if (!bOpen)
+		{
+			return bChanged;
+		}
+
+		if (ImGui::IsWindowAppearing())
+		{
+			Paths.clear();
+			ScanMessage.clear();
+			std::error_code Error;
+			std::filesystem::recursive_directory_iterator It(FPaths::ProjectContentDir(), Error);
+			const std::filesystem::recursive_directory_iterator End;
+			while (!Error && It != End)
+			{
+				if (It->is_regular_file(Error))
+				{
+					const FString Path = FPaths::ToUtf8(It->path());
+					if (PhysicalMaterialFile::IsPhysicalMaterialPath(Path))
+					{
+						Paths.push_back(FAssetUtils::GetAssetKey(Path));
+					}
+				}
+				if (!Error)
+				{
+					It.increment(Error);
+				}
+			}
+			std::sort(Paths.begin(), Paths.end());
+			if (Error)
+			{
+				ScanMessage = "Cannot read the asset folder: " + Error.message();
+			}
+		}
+
+		if (ImGui::Selectable("None", !bMixed && Current == nullptr))
+		{
+			Apply(nullptr);
+		}
+
+		const FString CurrentKey = CurrentPath.empty() ? FString() : FAssetUtils::GetAssetKey(CurrentPath);
+		for (const FString& Path : Paths)
+		{
+			ImGui::PushID(Path.c_str());
+			const bool bSelected = !CurrentKey.empty() && CurrentKey == Path;
+			if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected))
+			{
+				if (UPhysicalMaterial* Picked = UAssetManager::LoadPhysicalMaterial(Path))
+				{
+					Apply(Picked);
+				}
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("%s", Path.c_str());
+			}
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+			ImGui::PopID();
+		}
+
+		if (!ScanMessage.empty())
+		{
+			ImGui::TextWrapped("%s", ScanMessage.c_str());
+		}
+		else if (Paths.empty())
+		{
+			ImGui::TextUnformatted("No physical material files in Assets.");
+		}
+
+		ImGui::EndCombo();
+		return bChanged;
+	}
+
 	UMaterial* EnsureMaterialOverride(UMeshComponent* MeshComponent, int32 Slot, UMaterial* Effective, UMaterial* Override)
 	{
 		// 이 컴포넌트 전용 인스턴스가 아니면 지금 적용 중인 머티리얼을 복제해서 덮어쓰기로 만든다.
@@ -2280,6 +2398,12 @@ namespace
 			else if (PropertyClass == UParticleSystem::StaticClass())
 			{
 				return DrawParticleSystemSlot(Object, reinterpret_cast<UParticleSystem**>(ObjPtr));
+			}
+			else if (PropertyClass == UPhysicalMaterial::StaticClass())
+			{
+				UPhysicalMaterial** MaterialPtr = reinterpret_cast<UPhysicalMaterial**>(ObjPtr);
+				return DrawPhysicalMaterialPicker(*MaterialPtr, false, "##PhysicalMaterial",
+					[MaterialPtr](UPhysicalMaterial* Picked) { *MaterialPtr = Picked; });
 			}
 			else if (PropertyClass == UTexture2D::StaticClass())
 			{
@@ -3276,6 +3400,17 @@ namespace
 						{
 							ApplyParticleTemplate(Objects[i],
 								reinterpret_cast<UParticleSystem**>(&ObjectProp->GetPropertyValue(ValuePtrs[i])), Picked);
+						}
+					});
+			}
+			else if (PropertyClass == UPhysicalMaterial::StaticClass())
+			{
+				return DrawPhysicalMaterialPicker(Cast<UPhysicalMaterial>(First), bMixed, "##MultiPhysicalMaterial",
+					[&](UPhysicalMaterial* Picked)
+					{
+						for (void* Ptr : ValuePtrs)
+						{
+							ObjectProp->GetPropertyValue(Ptr) = Picked;
 						}
 					});
 			}

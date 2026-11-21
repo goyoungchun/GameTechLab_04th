@@ -74,6 +74,7 @@ private:
 	bool bFocusPathSearch = false;
 	bool bOpenCreateWidget = false;
 	bool bOpenCreateMaterial = false;
+	bool bOpenCreatePhysicalMaterial = false;
 	bool bOpenCreateFolder = false;
 	bool bOpenDeleteModal = false;
 	float FolderTreeWidth = 0.0f;

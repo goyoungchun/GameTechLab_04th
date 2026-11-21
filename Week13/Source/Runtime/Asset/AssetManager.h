@@ -94,6 +94,7 @@ public:
 	static UAnimSequence* LoadAnimSequence(const FString& Path);
 	static UBlendSpace1D* LoadBlendSpace(const FString& Path);
 	static UParticleSystem* LoadParticleSystem(const FString& Path);
+	static class UPhysicalMaterial* LoadPhysicalMaterial(const FString& Path);
 
 	// 원본 좌표축이 엔진과 다른 메시를 로드 후 돌린다 (정점·법선·AABB·삼각형 BVH·GPU 정점 버퍼를 다시 만든다).
 	// Rotate는 회전(길이·손잡이 보존)이어야 한다.
@@ -114,6 +115,7 @@ private:
 	TMap<FString, UAnimSequence*> AnimSequenceMap;
 	TMap<FString, UBlendSpace1D*> BlendSpaceMap;
 	TMap<FString, UParticleSystem*> ParticleSystemMap;
+	TMap<FString, class UPhysicalMaterial*> PhysicalMaterialMap;
 
 	//TMap<FString, UStaticMesh*> MeshMap;	// KEY: FILE NAME OR 쉐입 첫글자 대문자
 	TMap<FString, TUniquePtr<FShader>> ShaderMap;	// KEY: FILE NAME

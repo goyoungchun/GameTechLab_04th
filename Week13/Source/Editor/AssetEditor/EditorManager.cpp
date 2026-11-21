@@ -20,6 +20,9 @@
 #include "Editor/MaterialEditor/MaterialEditor.h"
 #include "Render/Material.h"
 #include "Render/MaterialFile.h"
+#include "Editor/PhysicalMaterialEditor/PhysicalMaterialEditor.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 
 #include <filesystem>
 #include <commdlg.h>
@@ -181,6 +184,26 @@ void FEditorManager::CreateEditor(const FString& AssetPath)
         Editors.Add(std::move(Editor));
         return;
     }
+
+	if (PhysicalMaterialFile::IsPhysicalMaterialPath(AssetPath))
+	{
+		UPhysicalMaterial* Material = UAssetManager::LoadPhysicalMaterial(AssetPath);
+		if (!Material)
+		{
+			return;     // 경고는 LoadPhysicalMaterial이 남긴다
+		}
+
+		TUniquePtr<FAssetEditor> Editor = MakeUnique<FPhysicalMaterialEditor>(EditorEngine, *this, AssetPath, *Material);
+		if (!Editor->Initialize())
+		{
+			Editor->Shutdown();
+			KRS_LOG(Warning, "Physical material editor initialization failed: {}", AssetPath.c_str());
+			return;
+		}
+
+		Editors.Add(std::move(Editor));
+		return;
+	}
 
 	if (ParticleSystemFile::IsParticleSystemPath(AssetPath))
 	{

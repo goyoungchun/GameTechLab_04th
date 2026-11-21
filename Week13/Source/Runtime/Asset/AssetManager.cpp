@@ -25,6 +25,8 @@
 #include "Animation/BlendSpaceFile.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 #include "Asset/AssetUtils.h"
 
 #include "Render/ImageLoader.h"
@@ -538,6 +540,12 @@ void UAssetManager::Shutdown()
 		delete Pair.second;
 	}
 	Get().ParticleSystemMap.Empty();
+	// PhysX SDK 정리(FPhysicsCore::Shutdown)보다 먼저 불리므로 PxMaterial도 여기서 안전하게 풀린다.
+	for (auto& Pair : Get().PhysicalMaterialMap)
+	{
+		delete Pair.second;
+	}
+	Get().PhysicalMaterialMap.Empty();
 }
 
 
@@ -1167,4 +1175,27 @@ UParticleSystem* UAssetManager::LoadParticleSystem(const FString& Path)
 
 	Get().ParticleSystemMap[Key] = ParticleSystem;
 	return ParticleSystem;
+}
+
+UPhysicalMaterial* UAssetManager::LoadPhysicalMaterial(const FString& Path)
+{
+	const FString Key = FAssetUtils::GetAssetKey(Path);
+	if (UPhysicalMaterial** Found = Get().PhysicalMaterialMap.Find(Key))
+	{
+		return *Found;
+	}
+
+	const FString FilePath = FAssetUtils::ResolveAssetFilePath(Path);
+	UPhysicalMaterial* Material = NewObject<UPhysicalMaterial>();
+
+	FString Error;
+	if (!PhysicalMaterialFile::Read(std::filesystem::path(FilePath.empty() ? Path : FilePath), *Material, Error))
+	{
+		KRS_LOG(Warning, "Failed to load PhysicalMaterial: {} ({})", Path, Error);
+		delete Material;
+		return nullptr;
+	}
+
+	Get().PhysicalMaterialMap[Key] = Material;
+	return Material;
 }

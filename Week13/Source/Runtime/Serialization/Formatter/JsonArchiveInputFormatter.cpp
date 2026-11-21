@@ -7,6 +7,8 @@
 #include "Animation/AnimSequenceFile.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 
 
 FJsonArchiveInputFormatter::FJsonArchiveInputFormatter(FArchive& InInner)
@@ -251,6 +253,19 @@ void FJsonArchiveInputFormatter::Serialize(UObject*& Value)
         else
         {
             KRS_LOG(Warning, "Load: particle system '{}' not found, keeping default", AssetPath);
+        }
+        return;
+    }
+
+    if (PhysicalMaterialFile::IsPhysicalMaterialPath(AssetPath))
+    {
+        if (UPhysicalMaterial* Material = UAssetManager::LoadPhysicalMaterial(AssetPath))
+        {
+            Value = Material;
+        }
+        else
+        {
+            KRS_LOG(Warning, "Load: physical material '{}' not found, keeping default", AssetPath);
         }
         return;
     }
