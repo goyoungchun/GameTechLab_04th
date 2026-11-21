@@ -22,6 +22,9 @@ public:
 	UStaticMesh* GetStaticMesh() const { return StaticMesh; }
 	virtual UStaticMesh* GetRenderMesh() const override { return StaticMesh; }
 
+	// 메시 에셋의 충돌 형상을 쓴다. 에디터 아이콘(디버그 화살표 등)은 물리 바디를 만들지 않는다.
+	virtual UBodySetup* GetBodySetup() override { return (StaticMesh && !bEditorIcon) ? StaticMesh->GetBodySetup() : nullptr; }
+
 	virtual int32 GetNumMaterials() const override;
 	virtual FString GetMaterialSlotName(int32 SlotIndex) const override;
 	virtual UMaterial* GetDefaultMaterial(int32 SlotIndex) const override;

@@ -95,6 +95,15 @@ void UPrimitiveComponent::OnTransformDirty()
 {
 	if (SceneProxy)
 		SceneProxy->GetScene()->MarkDirty(SceneProxy);
+
+	// 시뮬레이트 중인 바디는 물리가 주인이다. 여기서 되돌려 보내면 SyncActiveActors와 서로 덮어써 속도가 망가진다.
+	if (BodyInstance.IsValidBodyInstance() && !BodyInstance.IsSimulatingPhysics())
+	{
+		const FTransform WorldTransform(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+		// 게임 월드에서는 Kinematic target으로 옮겨 부딪힌 물체를 밀어낸다. 시뮬레이트하지 않는 월드(에디터)는 즉시 옮긴다.
+		const bool bTeleport = !(GetWorld() && GetWorld()->IsGameWorld());
+		BodyInstance.SetWorldTransform(WorldTransform, bTeleport);
+	}
 }
 
 bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
@@ -110,6 +119,14 @@ void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 		Property.Name == "bReceivesDecals")
 	{
 		MarkRenderStateDirty();
+	}
+
+	// 디테일 창은 구조체 멤버가 바뀌어도 바깥 프로퍼티(BodyInstance)를 알린다.
+	// Mobility(Static↔Movable)는 액터 종류가 달라지므로 바디를 새로 만든다.
+	if (Property.Name == "BodyInstance" && IsPhysicsStateCreated())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
 	}
 }
 

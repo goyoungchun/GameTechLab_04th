@@ -10,6 +10,7 @@
 #include "Mesh.generated.h"
 
 class FPrimitiveSceneProxy;
+class UBodySetup;
 
 UCLASS()
 class UStaticMesh : public URenderAsset
@@ -46,8 +47,13 @@ public:
     void RegisterProxy(FPrimitiveSceneProxy* Proxy);
     void UnregisterProxy(FPrimitiveSceneProxy* Proxy);
 
+    // 충돌 형상. 처음 불릴 때 MeshData.AABB로 박스 하나를 만든다. 메시 데이터가 바뀌면 InvalidateBodySetup으로 버린다.
+    UBodySetup* GetBodySetup();
+    void InvalidateBodySetup() { BodySetup = nullptr; }
+
     const uint16 SortID;
 private:
+    UBodySetup* BodySetup = nullptr;   // 메시 데이터로 다시 만들 수 있으므로 저장하지 않는다
     static inline uint16 NextSortID = 0;
     struct FMaterialSlotsHash
     {

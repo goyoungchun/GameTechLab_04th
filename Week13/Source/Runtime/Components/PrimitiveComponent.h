@@ -111,7 +111,8 @@ public:
 	void EndComponentOverlap(UPrimitiveComponent* OtherComp);
 	void DispatchHit(UPrimitiveComponent* OtherComp);
 
-	// 이 컴포넌트의 물리 바디. PIE 복제·직렬화 대상이 아니다 (PhysX 액터를 소유한다).
+	// 이 컴포넌트의 물리 바디. 설정(UPROPERTY)만 저장·복제되고 PhysX 액터 포인터는 컴포넌트마다 새로 만든다.
+	UPROPERTY(EditAnywhere)
 	FBodyInstance BodyInstance;
 
 	// 바디를 만들 형상. 없으면 물리 바디를 만들지 않는다. StaticMesh·Shape 컴포넌트가 오버라이드한다.

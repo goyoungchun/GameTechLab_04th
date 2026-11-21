@@ -2,6 +2,7 @@
 
 #include "Core/Types.h"
 #include "Math/Transform.h"
+#include "BodyInstance.generated.h"
 
 namespace physx
 {
@@ -13,6 +14,7 @@ class UBodySetup;
 class UPrimitiveComponent;
 class FPhysScene;
 
+UENUM()
 enum class EBodyMobility : uint8
 {
 	Static,     // PxRigidStatic. 움직이지 않는다 (바닥, 벽).
@@ -20,14 +22,24 @@ enum class EBodyMobility : uint8
 };
 
 // 컴포넌트(또는 본) 하나가 PhysX에 가진 바디. PxRigidActor의 userData가 이 객체를 가리킨다.
+// 설정은 UPROPERTY라 디테일 창에서 편집되고 레벨에 저장된다. 실행 중 상태(포인터)는 저장·복제하지 않는다.
+USTRUCT()
 struct FBodyInstance
 {
-	// 설정 (InitBody 전에 채운다)
+	GENERATED_BODY()
+
+	// 설정 (InitBody 전에 채운다. 바꾸면 컴포넌트가 바디를 다시 만든다)
+	UPROPERTY(EditAnywhere)
 	EBodyMobility Mobility = EBodyMobility::Movable;
+	UPROPERTY(EditAnywhere)
 	bool bSimulatePhysics = false;     // false면 Movable은 Kinematic이 된다.
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.1))
 	float MassInKgOverride = 0.0f;     // 0 이하면 형상 부피 × 밀도로 계산한다.
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, Delta=10))
 	float Density = 1000.0f;           // kg/m³. MassInKgOverride가 없을 때 쓴다.
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
 	float LinearDamping = 0.01f;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
 	float AngularDamping = 0.05f;
 
 	// 실행 중 상태
