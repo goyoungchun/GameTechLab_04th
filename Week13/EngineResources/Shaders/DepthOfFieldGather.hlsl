@@ -34,7 +34,7 @@ struct PSOutput
 PSOutput mainPS(VSOutput Input)
 {
     static const float MaxCoCRadiusPx = 32.f;
-    static const int SampleCount = 32;
+    static const int SampleCount = 64;
 
     int3 HalfPixel = int3(int2(Input.Position.xy), 0);
     float4 CenterSample = HalfResTexture.Load(HalfPixel);
@@ -44,6 +44,25 @@ PSOutput mainPS(VSOutput Input)
     HalfResTexture.GetDimensions(HalfWidth, HalfHeight);
     float2 HalfTexelSize = 1.0 / float2(HalfWidth, HalfHeight);
     float2 CenterUV = Input.Position.xy * HalfTexelSize;
+
+    // 최대 반경 원판을 한 번 훑어, 나까지 닿는 near 이웃의 CoC로 GatherRadiusHalfPx를 키운다
+    const float SearchRadiusHalfPx = MaxCoCRadiusPx * 0.5f; // 탐색은 항상 최대 반경으로
+    float DilatedRadiusHalfPx = GatherRadiusHalfPx; // 루프 중에 원본 반경을 건드리지 않게 따로 둔다
+    for (int s = 0; s < SampleCount; ++s)
+    {
+        float SearchDistHalfPx = sqrt((s + 0.5) / SampleCount) * SearchRadiusHalfPx;
+        float SearchAngle = s * 2.39996;
+        float2 SearchOffsetHalfPx = float2(cos(SearchAngle), sin(SearchAngle)) * SearchDistHalfPx;
+        float4 Neighbor = HalfResTexture.SampleLevel(LinearClampSampler, CenterUV + SearchOffsetHalfPx * HalfTexelSize, 0);
+
+        if (Neighbor.a < 0)
+        {
+            float NeighborNearHalfPx = min(abs(Neighbor.a) * 0.5f, MaxCoCRadiusPx * 0.5f);
+            if (SearchDistHalfPx < NeighborNearHalfPx)
+                DilatedRadiusHalfPx = max(DilatedRadiusHalfPx, NeighborNearHalfPx);
+        }
+    }
+    GatherRadiusHalfPx = DilatedRadiusHalfPx;
     
     float3 FarColorSum = 0, NearColorSum = 0;
     float FarWeightSum = 0, NearWeightSum = 0;
