@@ -19,8 +19,8 @@ try {
     foreach ($path in @($stage, $output)) {
         if ((Split-Path -Parent $path) -ne $distributionRoot) { throw 'Invalid distribution output path.' }
     }
-    # Both the editor and the game launcher load these PhysX DLLs.
-    $physXDlls = @('PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll', 'PhysXCooking_64.dll')
+    # Both the editor and the game launcher load these PhysX and NvCloth DLLs.
+    $physXDlls = @('PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll', 'PhysXCooking_64.dll', 'NvCloth_x64.dll')
     $binaries = @('KurisuEditor.exe', 'libfbxsdk.dll') + $physXDlls
     foreach ($name in $binaries) {
         if (-not (Test-Path -LiteralPath (Join-Path $bin $name) -PathType Leaf)) {
