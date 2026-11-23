@@ -27,27 +27,31 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
 
 float4 mainPS(VSOutput Input) : SV_Target
 {
-    // A의 CoC는 풀해상도 픽셀 반경이고, Visualize와 같은 최대 반경으로 자른다
     static const float MaxCoCRadiusPx = 32.f;
     static const int SampleCount = 32;
-    
-    int3 HalfPixel = int3(int2(Input.Position.xy), 0);
-    float4 Center = HalfResTexture.Load(HalfPixel);
-    float Radius = clamp(Center.a, -MaxCoCRadiusPx, MaxCoCRadiusPx) * 0.5f;
-    
-    float W, H;
-    HalfResTexture.GetDimensions(W, H);
-    float2 InvSize = 1.0 / float2(W, H);
-    float2 UV = Input.Position.xy * InvSize;
 
-    // 반해상도 기준 반경 안에서 SampleCount개를 원판으로 모아 평균 색 반환
-    float3 Sum = 0;
+    int3 HalfPixel = int3(int2(Input.Position.xy), 0);
+    float4 CenterSample = HalfResTexture.Load(HalfPixel);
+    float GatherRadiusHalfPx = min(abs(CenterSample.a), MaxCoCRadiusPx) * 0.5f;
+
+    float HalfWidth, HalfHeight;
+    HalfResTexture.GetDimensions(HalfWidth, HalfHeight);
+    float2 HalfTexelSize = 1.0 / float2(HalfWidth, HalfHeight);
+    float2 CenterUV = Input.Position.xy * HalfTexelSize;
+    
+    float3 ColorSum = CenterSample.rgb;
+    float WeightSum = 1.f;
     for (int i = 0; i < SampleCount; ++i)
     {
-        float r = sqrt((i + 0.5) / SampleCount) * Radius; // 0~Radius, 면적 균등
-        float a = i * 2.39996; // 황금각
-        float2 Offset = float2(cos(a), sin(a)) * r;
-        Sum += HalfResTexture.SampleLevel(LinearClampSampler, UV + Offset * InvSize, 0).rgb;
+        float SampleDistHalfPx = sqrt((i + 0.5) / SampleCount) * GatherRadiusHalfPx; // 면적 균등
+        float SampleAngle = i * 2.39996; // 황금각
+        float2 SampleOffsetHalfPx = float2(cos(SampleAngle), sin(SampleAngle)) * SampleDistHalfPx;
+        float4 Neighbor = HalfResTexture.SampleLevel(LinearClampSampler, CenterUV + SampleOffsetHalfPx * HalfTexelSize, 0);
+
+        float NeighborCoCHalfPx = abs(Neighbor.a) * 0.5f;
+        float ReachWeight = saturate(NeighborCoCHalfPx - SampleDistHalfPx + 1.f); // 이웃 원판이 나까지 닿는가
+        ColorSum += Neighbor.rgb * ReachWeight;
+        WeightSum += ReachWeight;
     }
-    return float4(Sum / SampleCount, Center.a);
+    return float4(ColorSum / WeightSum, CenterSample.a);
 }
