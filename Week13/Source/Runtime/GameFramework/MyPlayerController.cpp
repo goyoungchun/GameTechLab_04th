@@ -2,6 +2,78 @@
 #include "GameFramework/MyPlayerController.h"
 #include "GameFramework/Actor/MyCharacter.h"
 #include "GameFramework/Actor/KurisuCharacter.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraModifier_Photo.h"
+
+namespace
+{
+	constexpr float PhotoZoomSpeedMm = 40.0f; // Z/X를 누르고 있을 때 초당 렌즈 길이 변화
+	constexpr float WheelNotch = 120.0f;      // WM_MOUSEWHEEL 한 칸
+}
+
+void AMyPlayerController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (!IsPhotoModeActive()) return;
+	const float Zoom = static_cast<float>(IsKeyDown(static_cast<int32>(EKeyCode::X))) -
+		static_cast<float>(IsKeyDown(static_cast<int32>(EKeyCode::Z)));
+	if (Zoom != 0.0f)
+		GetPhotoModifier(false)->AdjustZoom(Zoom * PhotoZoomSpeedMm * DeltaTime);
+}
+
+void AMyPlayerController::InputAxis(EGameInputAxis Axis, float Delta)
+{
+	Super::InputAxis(Axis, Delta);
+
+	if (Axis == EGameInputAxis::MouseWheel && Delta != 0.0f && IsPhotoModeActive())
+		GetPhotoModifier(false)->AdjustFocus(Delta / WheelNotch);
+}
+
+UCameraModifier_Photo* AMyPlayerController::GetPhotoModifier(bool bCreate)
+{
+	APlayerCameraManager* PCM = GetCameraManager();
+	if (!PCM) return nullptr;
+
+	auto* Modifier = static_cast<UCameraModifier_Photo*>(
+		PCM->FindCameraModifierByClass(UCameraModifier_Photo::StaticClass()));
+	if (!Modifier && bCreate)
+	{
+		Modifier = NewObject<UCameraModifier_Photo>(PCM);
+		PCM->AddCameraModifier(Modifier);
+	}
+	return Modifier;
+}
+
+bool AMyPlayerController::IsPhotoModeActive()
+{
+	UCameraModifier_Photo* Photo = GetPhotoModifier(false);
+	return Photo && Photo->IsPhotoModeActive();
+}
+
+bool AMyPlayerController::HandlePhotoKey(int32 Key)
+{
+	if (Key == static_cast<int32>(EKeyCode::C))
+	{
+		if (UCameraModifier_Photo* Photo = GetPhotoModifier(true))
+			Photo->TogglePhotoMode();
+		return true;
+	}
+
+	if (!IsPhotoModeActive()) return false;
+	UCameraModifier_Photo* Photo = GetPhotoModifier(false);
+
+	// 위/아래: 조리개를 조이고 연다. 오른쪽/왼쪽: 셔터를 빠르게/느리게
+	if (Key == static_cast<int32>(EKeyCode::Up))    { Photo->StepAperture(+1); return true; }
+	if (Key == static_cast<int32>(EKeyCode::Down))  { Photo->StepAperture(-1); return true; }
+	if (Key == static_cast<int32>(EKeyCode::Right)) { Photo->StepShutter(+1);  return true; }
+	if (Key == static_cast<int32>(EKeyCode::Left))  { Photo->StepShutter(-1);  return true; }
+
+	// 카메라를 들고 있는 동안 좌클릭은 셔터(6단계)라서 공격으로 넘기지 않는다
+	if (Key == static_cast<int32>(EKeyCode::LButton) || Key == static_cast<int32>(EKeyCode::RButton))
+		return true;
+	return false;
+}
 
 void AMyPlayerController::InputKey(int32 Key, bool bDown)
 {
@@ -10,6 +82,7 @@ void AMyPlayerController::InputKey(int32 Key, bool bDown)
 	Super::InputKey(Key, bDown);
 
 	if (!bJustPressed) return;
+	if (HandlePhotoKey(Key)) return;
 
 	if (Key == static_cast<int32>(EKeyCode::LButton))
 	{

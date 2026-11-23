@@ -154,6 +154,7 @@ void UGameEngine::DispatchInput(FGameViewportClient& Viewport, float DeltaTime)
 
 	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseX, static_cast<float>(FInputSystem::GetMouseDeltaX()), DeltaTime);
 	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseY, static_cast<float>(FInputSystem::GetMouseDeltaY()), DeltaTime);
+	Viewport.InputAxis(nullptr, 0, EGameInputAxis::MouseWheel, static_cast<float>(FInputSystem::GetWheelDelta()), DeltaTime);
 }
 
 // 게임 뷰포트를 다시 그린다. UE의 UGameEngine::RedrawViewports와 같은 자리다.
