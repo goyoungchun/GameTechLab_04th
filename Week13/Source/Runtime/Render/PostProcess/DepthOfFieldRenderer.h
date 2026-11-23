@@ -31,11 +31,26 @@ public:
 	// CoC와 장면 복사본을 읽어 현재 바인딩된 렌더 타깃에 CoC 맵을 칠한다.
 	bool RenderVisualize(FTexture2D* CoCTexture, FTexture2D* SceneColorCopy);
 
+	// 장면 복사본 + CoC → 현재 바인딩된 반해상도 타깃(RGB=색, A=CoC)
+	bool RenderDownsample(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture);
+	// 반해상도 (색, CoC) → 현재 바인딩된 반해상도 블러 타깃
+	bool RenderGather(FTexture2D* HalfResTexture);
+	// 원본 + CoC + 블러 → 현재 바인딩된 SceneColor
+	bool RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* BlurTexture);
+
 private:
+	bool DrawFullscreen(const FPipelineState& Pipeline, std::initializer_list<FTexture2D*> Textures);
+
 	FRenderer* Renderer = nullptr;
 	FShaderProgram* SetupShader = nullptr;
 	FShaderProgram* VisualizeShader = nullptr;
+	FShaderProgram* DownsampleShader = nullptr;
+	FShaderProgram* GatherShader = nullptr;
+	FShaderProgram* CompositeShader = nullptr;
 	FPipelineState SetupPipelineState;
 	FPipelineState VisualizePipelineState;
+	FPipelineState DownsamplePipelineState;
+	FPipelineState GatherPipelineState;
+	FPipelineState CompositePipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
 };

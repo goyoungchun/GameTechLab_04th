@@ -779,7 +779,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		return false;
 
 	// 렌즈 앞 세상(SceneText까지)은 흐려지고, CameraOverlay·FXAA·에디터 오버레이는 선명해야 하므로 이 자리에 둔다
-	if (Options.ShowFlags.DepthOfField && Options.ShowFlags.VisualizeDepthOfField && View.bIsPerspective &&
+	if (Options.ShowFlags.DepthOfField && View.bIsPerspective &&
 		!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeSceneDepth)
 	{
 		const uint32 Width = Targets.SceneColor->GetWidth();
@@ -800,16 +800,59 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 					DOF->RenderSetup(View, Graph.Resolve(Depth));
 			})) return false;
 
-		FRenderGraphRasterPassDesc Visualize = MakeViewportPass("DOFVisualize", SceneColor);
-		// SceneColor는 이 패스의 출력이라 같은 텍스처를 읽을 수 없어서 복사본을 읽는다
-		Visualize.ReadTextures = { CoC, SceneCopy };
-		if (!Graph.AddRasterPass(std::move(Visualize), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
-			{
-				FTexture2D* Copy = Graph.Resolve(SceneCopy);
-				RenderCommand::CopyTexture(Copy, SceneColorTarget);
-				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
-					DOF->RenderVisualize(Graph.Resolve(CoC), Copy);
-			})) return false;
+		if (Options.ShowFlags.VisualizeDepthOfField)
+		{
+			FRenderGraphRasterPassDesc Visualize = MakeViewportPass("DOFVisualize", SceneColor);
+			// SceneColor는 이 패스의 출력이라 같은 텍스처를 읽을 수 없어서 복사본을 읽는다
+			Visualize.ReadTextures = { CoC, SceneCopy };
+			if (!Graph.AddRasterPass(std::move(Visualize), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
+				{
+					FTexture2D* Copy = Graph.Resolve(SceneCopy);
+					RenderCommand::CopyTexture(Copy, SceneColorTarget);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderVisualize(Graph.Resolve(CoC), Copy);
+				})) return false;
+		}
+		else
+		{
+			const uint32 HalfWidth = std::max(Width / 2, 1u);
+			const uint32 HalfHeight = std::max(Height / 2, 1u);
+			// A에 부호 있는 CoC를, RGB에 색을 담아야 하므로 반해상도도 실수 포맷이다
+			const FRenderGraphTextureRef HalfRes = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfRes");
+			const FRenderGraphTextureRef HalfBlur = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfBlur");
+			if (!HalfRes || !HalfBlur) return false;
+
+			FRenderGraphRasterPassDesc Downsample{};
+			Downsample.Name = "DOFDownsample";
+			Downsample.ReadTextures = { SceneCopy, CoC };
+			Downsample.ColorAttachments = { { HalfRes, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Downsample), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
+				{
+					// 합성 패스가 SceneColor에 쓰는 동안 원본을 읽어야 하므로 여기서 미리 복사해 둔다
+					FTexture2D* Copy = Graph.Resolve(SceneCopy);
+					RenderCommand::CopyTexture(Copy, SceneColorTarget);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderDownsample(Copy, Graph.Resolve(CoC));
+				})) return false;
+
+			FRenderGraphRasterPassDesc Gather{};
+			Gather.Name = "DOFGather";
+			Gather.ReadTextures = { HalfRes };
+			Gather.ColorAttachments = { { HalfBlur, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Gather), [Renderer, &Graph, HalfRes]
+				{
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderGather(Graph.Resolve(HalfRes));
+				})) return false;
+
+			FRenderGraphRasterPassDesc Composite = MakeViewportPass("DOFComposite", SceneColor);
+			Composite.ReadTextures = { SceneCopy, CoC, HalfBlur };
+			if (!Graph.AddRasterPass(std::move(Composite), [Renderer, &Graph, SceneCopy, CoC, HalfBlur]
+				{
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfBlur));
+				})) return false;
+		}
 	}
 
 	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.VisualizeSceneDepth && Callbacks.DepthVisualization)

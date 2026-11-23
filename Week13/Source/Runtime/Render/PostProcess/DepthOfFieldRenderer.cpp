@@ -25,10 +25,16 @@ void FDepthOfFieldRenderer::Init(FRenderer* InRenderer)
 	Renderer = InRenderer;
 	SetupShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldSetup.hlsl");
 	VisualizeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldVisualize.hlsl");
+	DownsampleShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldDownsample.hlsl");
+	GatherShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldGather.hlsl");
+	CompositeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldComposite.hlsl");
 	SetupPipelineState = MakeFullscreenPipeline(SetupShader);
 	VisualizePipelineState = MakeFullscreenPipeline(VisualizeShader);
+	DownsamplePipelineState = MakeFullscreenPipeline(DownsampleShader);
+	GatherPipelineState = MakeFullscreenPipeline(GatherShader);
+	CompositePipelineState = MakeFullscreenPipeline(CompositeShader);
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FDepthOfFieldData));
-	assert(SetupShader && VisualizeShader && ConstantBuffer);
+	assert(SetupShader && VisualizeShader && DownsampleShader && GatherShader && CompositeShader && ConstantBuffer);
 }
 
 bool FDepthOfFieldRenderer::RenderSetup(const FSceneView& View, FTexture2D* DepthTarget)
@@ -68,4 +74,37 @@ bool FDepthOfFieldRenderer::RenderVisualize(FTexture2D* CoCTexture, FTexture2D* 
 	RenderCommand::Draw(6);
 	RenderCommand::UnbindShaderResources(0, 2, EShaderBindFlagBits::Pixel);
 	return true;
+}
+
+bool FDepthOfFieldRenderer::DrawFullscreen(const FPipelineState& Pipeline, std::initializer_list<FTexture2D*> Textures)
+{
+	if (!Pipeline.Shader) return false;
+	for (FTexture2D* Texture : Textures)
+		if (!Texture) return false;
+
+	RenderCommand::BindPipelineState(Pipeline);
+	RenderCommand::BindVertexBuffer(nullptr);
+	RenderCommand::BindSamplerState(0, ESamplerState::LinearClamp, EShaderBindFlagBits::Pixel);
+	uint32 Slot = 0;
+	for (FTexture2D* Texture : Textures)
+		RenderCommand::BindShaderResource(Slot++, Texture, EShaderBindFlagBits::Pixel);
+	RenderCommand::Draw(6);
+	// 다음 패스가 이 텍스처들을 렌더 타깃으로 쓸 수 있게 푼다
+	RenderCommand::UnbindShaderResources(0, Slot, EShaderBindFlagBits::Pixel);
+	return true;
+}
+
+bool FDepthOfFieldRenderer::RenderDownsample(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture)
+{
+	return DrawFullscreen(DownsamplePipelineState, { SceneColorCopy, CoCTexture });
+}
+
+bool FDepthOfFieldRenderer::RenderGather(FTexture2D* HalfResTexture)
+{
+	return DrawFullscreen(GatherPipelineState, { HalfResTexture });
+}
+
+bool FDepthOfFieldRenderer::RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* BlurTexture)
+{
+	return DrawFullscreen(CompositePipelineState, { SceneColorCopy, CoCTexture, BlurTexture });
 }
