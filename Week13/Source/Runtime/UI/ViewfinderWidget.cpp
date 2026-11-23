@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace
 {
@@ -39,9 +40,8 @@ namespace
 
 	// 화면 좌표는 Y가 아래로 커지므로 90°가 아래, 270°가 위다
 	void AddArc(FUIDrawList& DrawList, const FVector2& Center, float Radius, float StartDeg, float EndDeg,
-		float Thickness, const FLinearColor& Color)
+		float Thickness, const FLinearColor& Color, int32 Segments = 8)
 	{
-		constexpr int32 Segments = 8;
 		const float ToRad = 3.14159265f / 180.0f;
 		FVector2 Prev = Center + FVector2(cosf(StartDeg * ToRad), sinf(StartDeg * ToRad)) * Radius;
 		for (int32 i = 1; i <= Segments; ++i)
@@ -53,6 +53,55 @@ namespace
 		}
 	}
 
+	// 초점 링 눈금은 거리의 역수(디옵터)에 거의 비례한다. 그래서 가까운 쪽은 넓고 먼 쪽은 무한대 앞에 몰린다
+	float FocusDistanceToScale(float Distance)
+	{
+		const float Near = 1.0f / FPhotoCameraState::MinFocusDistance;
+		const float Far = 1.0f / FPhotoCameraState::MaxFocusDistance;
+		return std::clamp((Near - 1.0f / std::max(Distance, 0.01f)) / (Near - Far), 0.0f, 1.0f);
+	}
+
+	// LC-A 거리 아이콘. Base는 아이콘 바닥 가운데, K는 크기 배율 (디자인 픽셀 기준 높이 약 20)
+	void AddPersonIcon(FUIDrawList& DrawList, const FVector2& Base, float K, const FLinearColor& Color)
+	{
+		const float Th = 1.8f * K;
+		AddArc(DrawList, Base + FVector2(0.0f, -15.0f) * K, 4.5f * K, 0.0f, 360.0f, Th, Color, 12);
+		AddArc(DrawList, Base, 8.0f * K, 180.0f, 360.0f, Th, Color, 10);
+		DrawList.AddLine(Base + FVector2(-8.0f, 0.0f) * K, Base + FVector2(8.0f, 0.0f) * K, Th, Color);
+	}
+
+	void AddMountainIcon(FUIDrawList& DrawList, const FVector2& Base, float K, const FLinearColor& Color)
+	{
+		const FVector2 P[] = {
+			FVector2(-18.0f, 0.0f), FVector2(-7.0f, -17.0f), FVector2(1.0f, -7.0f),
+			FVector2(8.0f, -14.0f), FVector2(18.0f, 0.0f) };
+		for (int32 i = 0; i + 1 < 5; ++i)
+			DrawList.AddLine(Base + P[i] * K, Base + P[i + 1] * K, 1.8f * K, Color);
+	}
+
+	// LC-A 거리 눈금: 0.8m 인물, 1.5m 두 사람, 3m 단체, 무한대 풍경
+	void AddDistanceIcon(FUIDrawList& DrawList, int32 Zone, const FVector2& Base, float S, const FLinearColor& Color)
+	{
+		switch (Zone)
+		{
+		case 0:
+			AddPersonIcon(DrawList, Base, S, Color);
+			break;
+		case 1:
+			AddPersonIcon(DrawList, Base + FVector2(-6.0f, 0.0f) * S, 0.85f * S, Color);
+			AddPersonIcon(DrawList, Base + FVector2(7.0f, 0.0f) * S, 0.7f * S, Color);
+			break;
+		case 2:
+			for (int32 i = -1; i <= 1; ++i)
+				AddPersonIcon(DrawList, Base + FVector2(i * 10.0f, 0.0f) * S, 0.6f * S, Color);
+			break;
+		default:
+			AddMountainIcon(DrawList, Base, S, Color);
+			break;
+		}
+	}
+
+	constexpr float DistanceZones[] = { FPhotoCameraState::MinFocusDistance, 1.5f, 3.0f, FPhotoCameraState::MaxFocusDistance };
 }
 
 void FViewfinderNeedle::Update(float Target, float DeltaTime)
@@ -104,6 +153,7 @@ void UViewfinderWidget::NativeTick(float DeltaTime)
 	const FPhotoCameraState& State = Photo->GetState();
 	ShutterNeedle.Update(static_cast<float>(State.ShutterIndex) / (FPhotoCameraState::NumShutterStops - 1), DeltaTime);
 	ApertureNeedle.Update(static_cast<float>(State.ApertureIndex) / (FPhotoCameraState::NumApertureStops - 1), DeltaTime);
+	FocusNeedle.Update(FocusDistanceToScale(State.FocusDistance), DeltaTime);
 }
 
 void UViewfinderWidget::PaintNeedle(FUIDrawList& DrawList, const FVector2& Pivot, const FVector2& Tip,
@@ -225,8 +275,38 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 		PaintNeedle(DrawList, Pivot, Tip, PW * 0.5f + 6.0f * S, 2.5f * S, Needle);
 	}
 
+	// ---------- 아래: 거리계 (LC-A) ----------
+	{
+		const float PW = 560.0f * S, PH = 44.0f * S;
+		const float PL = CX - PW * 0.5f;
+		const float PCY = WB + (R.Y + R.H - WB) * 0.5f;
+		const float PT = PCY - PH * 0.5f;
+		DrawList.AddRect({ PL, PT, PW, PH }, WithOpacity(PlateColor, Opacity));
+
+		const float Inset = 40.0f * S;
+		const float X0 = PL + Inset, X1 = PL + PW - Inset;
+		const float IconBase = PT + PH - 10.0f * S;
+		for (int32 Zone = 0; Zone < 4; ++Zone)
+		{
+			const float X = LerpF(X0, X1, FocusDistanceToScale(DistanceZones[Zone]));
+			AddDistanceIcon(DrawList, Zone, FVector2(X, IconBase), S, Label);
+		}
+
+		// LC-A 바늘은 기울지 않고 눈금판을 세로로 가로지른다
+		const float NX = LerpF(X0, X1, FocusNeedle.Position);
+		DrawList.AddLine(FVector2(NX, PT - 4.0f * S), FVector2(NX, PT + PH + 4.0f * S), 2.5f * S, Needle);
+
+		if (Font)
+		{
+			const bool bInfinity = State.FocusDistance >= FPhotoCameraState::MaxFocusDistance * 0.99f;
+			char Buffer[16];
+			std::snprintf(Buffer, sizeof(Buffer), "%.1fm", State.FocusDistance);
+			DrawList.AddText({ PL + PW + 16.0f * S, PT, 120.0f * S, PH }, bInfinity ? FString("INF") : FString(Buffer),
+				*Font, 20.0f * S, Label, 0);
+		}
+	}
+
 	// ---------- 아래 왼쪽: 필름·렌즈 정보 ----------
-	// 아래 가운데는 4단계 LC-A 거리계 자리라 비워 둔다
 	if (Font)
 	{
 		const FString Info = "ISO " + std::to_string(static_cast<int32>(State.ISO)) + "   " +
