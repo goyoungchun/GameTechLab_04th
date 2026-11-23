@@ -129,7 +129,8 @@ float UCameraModifier_Photo::TraceFocusDistance(const FMinimalViewInfo& POV) con
 		.Direction = POV.Rotation.Quaternion().GetForwardVector(),
 	};
 	FHitResult OutHit;
-	bool bIsHit = World->LineTraceSingle(Ray, OutHit);
+	// 아이콘 쿼드는 화면에 안 보이는데도 맞아서, 물체 실루엣 밖에서 초점을 붙잡는다
+	bool bIsHit = World->LineTraceSingle(Ray, OutHit, nullptr, nullptr, false);
 	if (bIsHit)
 	{
 		return std::clamp(OutHit.Distance, FPhotoCameraState::MinFocusDistance, FPhotoCameraState::MaxFocusDistance);

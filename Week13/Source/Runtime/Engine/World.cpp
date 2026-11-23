@@ -736,7 +736,7 @@ bool UWorld::SweepAgainstCandidates(const TArray<FPrimitiveSceneProxy*>& Candida
 }
 
 bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
-	FBillboardTraceTransform ResolveBillboard, const void* ViewContext)
+	FBillboardTraceTransform ResolveBillboard, const void* ViewContext, bool bIncludeBillboards)
 {
 	SCOPE_CYCLE_COUNTER_ALWAYS(EditorStats::STAT_PickingTime_Name);
 	OutHit = FHitResult();
@@ -773,6 +773,9 @@ bool UWorld::LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
 
 			if (UBillboardComponent* Billboard = Cast<UBillboardComponent>(Component))
 			{
+				if (!bIncludeBillboards)
+					return false;
+
 				if (!ResolveBillboard)
 				{
 					FHitResult Hit;
