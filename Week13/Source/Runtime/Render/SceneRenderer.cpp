@@ -14,6 +14,7 @@
 #include "Render/PostProcess/HeightFogRenderer.h"
 #include "Render/PostProcess/CameraOverlayRenderer.h"
 #include "Render/PostProcess/DepthOfFieldRenderer.h"
+#include "Render/PostProcess/ExposureMeterRenderer.h"
 #include "Render/PostProcess/FXAARenderer.h"
 #include "Render/PostProcess/ToneMapData.h"
 #include "Render/DecalData.h"
@@ -707,6 +708,23 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 	}
 
 	
+
+	// 노출계는 노출을 곱하기 전의 장면 밝기를 재야 하므로 ToneMap 앞에 둔다. 물리 노출을 쓰는 카메라(사진 모드)일 때만 잰다
+	if (View.FinalPostProcessSettings.bApplyPhysicalCameraExposure)
+	{
+		if (FExposureMeterRenderer* Meter = Renderer->GetExposureMeter(); Meter && Meter->GetTarget())
+		{
+			FRenderGraphRasterPassDesc Metering{};
+			Metering.Name = "ExposureMeter";
+			Metering.ReadTextures = { LightingHDR };
+			Metering.ColorAttachments = { { Graph.ImportTexture(Meter->GetTarget(), "ExposureMeterTarget"), ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Metering), [this, Meter, &Graph, LightingHDR]
+				{
+					if (bCorePassSucceeded)
+						Meter->Render(Graph.Resolve(LightingHDR));
+				})) return false;
+		}
+	}
 
 	FRenderGraphRasterPassDesc ToneMap{};
 	ToneMap.Name = "ToneMap";

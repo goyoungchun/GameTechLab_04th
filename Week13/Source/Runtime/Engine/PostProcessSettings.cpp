@@ -32,12 +32,26 @@ namespace
 	constexpr float SunnySixteenFstop = 16.0f;
 	constexpr float SunnySixteenShutter = 200.0f;
 	constexpr float SunnySixteenISO = 200.0f;
+	// 노출계가 평균 밝기를 맞추려는 목표. 톤매핑 전 선형 값 기준 중간 회색(18%)
+	constexpr float MiddleGray = 0.18f;
 
-	float ComputeEV100(float Fstop, float ShutterSpeed, float ISO)
+	float GetReferenceEV100()
 	{
-		// EV100 = log2(N^2 / t) - log2(ISO / 100), t = 1 / ShutterSpeed
-		return std::log2(Fstop * Fstop * ShutterSpeed * 100.0f / ISO);
+		static const float Reference = FPostProcessSettings::ComputeEV100(SunnySixteenFstop, SunnySixteenShutter, SunnySixteenISO);
+		return Reference;
 	}
+}
+
+float FPostProcessSettings::ComputeEV100(float Fstop, float ShutterSpeed, float ISO)
+{
+	// EV100 = log2(N^2 / t) - log2(ISO / 100), t = 1 / ShutterSpeed
+	return std::log2(Fstop * Fstop * ShutterSpeed * 100.0f / ISO);
+}
+
+float FPostProcessSettings::GetMeteredEV100(float AverageLuminance)
+{
+	// 화면 밝기 = 평균 휘도 x 2^(기준EV - EV) 이므로, 이것이 중간 회색이 되는 EV를 거꾸로 푼다
+	return GetReferenceEV100() + std::log2(std::max(AverageLuminance, 1e-6f) / MiddleGray);
 }
 
 float FPostProcessSettings::GetCameraEV100() const
@@ -48,7 +62,6 @@ float FPostProcessSettings::GetCameraEV100() const
 float FPostProcessSettings::GetPhysicalCameraExposureScale() const
 {
 	if (!bApplyPhysicalCameraExposure) return 1.0f;
-	static const float ReferenceEV100 = ComputeEV100(SunnySixteenFstop, SunnySixteenShutter, SunnySixteenISO);
 	// EV가 1 커지면(한 스톱 조이면) 빛이 절반이 된다
-	return std::exp2(ReferenceEV100 - GetCameraEV100());
+	return std::exp2(GetReferenceEV100() - GetCameraEV100());
 }

@@ -57,6 +57,9 @@ struct FPostProcessSettings
 
 	// 조리개·셔터·ISO를 ISO 100 기준 노출값(EV100)으로 바꾼다. 클수록 빛을 적게 받는다
 	float GetCameraEV100() const;
+	static float ComputeEV100(float Fstop, float ShutterSpeed, float ISO);
+	// 노출계: 측정한 평균 휘도(노출 전 HDR)가 중간 회색으로 찍히려면 필요한 EV100
+	static float GetMeteredEV100(float AverageLuminance);
 	// 톤매핑 전에 곱할 배율. Sunny 16(f/16, 1/200초, ISO 200)에서 1이 되도록 맞췄다
 	float GetPhysicalCameraExposureScale() const;
 

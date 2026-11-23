@@ -4,8 +4,10 @@
 #include "Asset/AssetManager.h"
 #include "Camera/CameraModifier_Photo.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Engine/PostProcessSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Render/PostProcess/ExposureMeterRenderer.h"
 #include "Text/Font.h"
 
 #include <algorithm>
@@ -19,6 +21,7 @@ namespace
 	const FLinearColor LabelColor(0.82f, 0.82f, 0.80f, 1.0f);
 	const FLinearColor FrameColor(0.95f, 0.93f, 0.88f, 0.85f);
 	const FLinearColor NeedleColor(1.0f, 0.55f, 0.15f, 1.0f);
+	const FLinearColor MeterColor(0.95f, 0.95f, 0.92f, 1.0f);
 	const FLinearColor FlagColor(0.85f, 0.10f, 0.08f, 1.0f);
 	const FLinearColor PatchColor(0.80f, 0.80f, 0.80f, 0.30f);
 
@@ -154,6 +157,23 @@ void UViewfinderWidget::NativeTick(float DeltaTime)
 	ShutterNeedle.Update(static_cast<float>(State.ShutterIndex) / (FPhotoCameraState::NumShutterStops - 1), DeltaTime);
 	ApertureNeedle.Update(static_cast<float>(State.ApertureIndex) / (FPhotoCameraState::NumApertureStops - 1), DeltaTime);
 	FocusNeedle.Update(FocusDistanceToScale(State.FocusDistance), DeltaTime);
+
+	float AverageLuminance = 0.0f;
+	bMeterValid = Photo->IsPhotoModeActive() && FExposureMeterRenderer::GetAverageLuminance(AverageLuminance);
+	if (bMeterValid)
+	{
+		const float MeteredEV = FPostProcessSettings::GetMeteredEV100(AverageLuminance);
+		const float ShutterSpeed = 1.0f / State.GetShutterSeconds();
+		ExposureOffsetEV = MeteredEV - FPostProcessSettings::ComputeEV100(State.GetFstop(), ShutterSpeed, State.ISO);
+
+		// EV100 = log2(N^2 * 셔터분모 * 100 / ISO)를 N^2에 대해 풀고, 조리개 눈금(1스톱 간격)의 위치로 바꾼다
+		const float Log2N2 = MeteredEV - std::log2(ShutterSpeed * 100.0f / State.ISO);
+		const float MinN = FPhotoCameraState::ApertureStops[0];
+		const float MaxN = FPhotoCameraState::ApertureStops[FPhotoCameraState::NumApertureStops - 1];
+		const float Pos = (Log2N2 - std::log2(MinN * MinN)) / (std::log2(MaxN * MaxN) - std::log2(MinN * MinN));
+		// 눈금을 벗어나면 빨간 칸에 머문다. 너무 멀리 보내면 돌아올 때 오래 걸리므로 조금만 넘긴다
+		MeterNeedle.Update(std::clamp(Pos, -0.35f, 1.35f), DeltaTime);
+	}
 }
 
 void UViewfinderWidget::PaintNeedle(FUIDrawList& DrawList, const FVector2& Pivot, const FVector2& Tip,
@@ -270,8 +290,22 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 				DrawList.AddText({ PL, Y - 15.0f * S, PW, 30.0f * S }, ApertureLabels[i], *Font, 22.0f * S, Label, 1);
 		}
 
-		const FVector2 Tip(PCX, LerpF(Y0, Y1, ApertureNeedle.Position));
 		const FVector2 Pivot(PCX - NeedlePivotDistance * S, CY);
+		if (bMeterValid)
+		{
+			// 노출계 바늘(흰색)에 설정 바늘(주황)을 겹치면 적정 노출이다
+			const float MeterY = std::clamp(LerpF(Y0, Y1, MeterNeedle.Position), PT + FlagH * 0.5f, PT + PH - FlagH * 0.5f);
+			PaintNeedle(DrawList, Pivot, FVector2(PCX, MeterY), PW * 0.5f + 10.0f * S, 2.0f * S, WithOpacity(MeterColor, Opacity));
+
+			if (Font)
+			{
+				char Buffer[16];
+				std::snprintf(Buffer, sizeof(Buffer), "%+.1f EV", ExposureOffsetEV);
+				DrawList.AddText({ PL - 30.0f * S, PT + PH + 6.0f * S, PW + 60.0f * S, 28.0f * S }, Buffer, *Font, 18.0f * S, Label, 1);
+			}
+		}
+
+		const FVector2 Tip(PCX, LerpF(Y0, Y1, ApertureNeedle.Position));
 		PaintNeedle(DrawList, Pivot, Tip, PW * 0.5f + 6.0f * S, 2.5f * S, Needle);
 	}
 

@@ -44,4 +44,8 @@ private:
 	FViewfinderNeedle ShutterNeedle;
 	FViewfinderNeedle ApertureNeedle;
 	FViewfinderNeedle FocusNeedle;
+	// 노출계 바늘. 지금 셔터·ISO에서 적정 노출이 되는 조리개를 가리킨다 (QL17 셔터 우선 방식)
+	FViewfinderNeedle MeterNeedle;
+	bool bMeterValid = false;
+	float ExposureOffsetEV = 0.0f;   // +면 그만큼 과다 노출
 };
