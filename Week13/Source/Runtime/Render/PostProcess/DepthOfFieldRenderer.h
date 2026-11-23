@@ -12,8 +12,14 @@ struct alignas(16) FDepthOfFieldData
 	float ZOffset;
 	float FocalDistance;
 	float FocusRange;
+
+	// 얇은 렌즈 CoC 입력. 셰이더가 단위를 신경 쓰지 않도록 렌즈 값도 월드 단위로 넘긴다.
+	float FocalLength;
+	float Fstop;
+	float SensorWidth;
+	float ViewWidthPx;
 };
-static_assert(sizeof(FDepthOfFieldData) == 16);
+static_assert(sizeof(FDepthOfFieldData) == 32);
 
 // DOF 셰이더를 돌릴 준비(상수, 바인딩, Draw)만 한다. 언제 어떤 텍스처로 부를지는 FSceneRenderer가 정한다.
 class FDepthOfFieldRenderer

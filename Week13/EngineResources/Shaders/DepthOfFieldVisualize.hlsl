@@ -2,6 +2,9 @@
 Texture2D<float> CoCTexture : register(t0);
 Texture2D SceneColorTexture : register(t1);
 
+// CoC는 픽셀 반경이라, 블러가 허용할 최대 반경으로 나눠야 near/far 모두 0~1 색으로 구별된다
+static const float MaxCoCRadiusPx = 32.f;
+
 struct VSOutput
 {
     float4 Position : SV_Position;
@@ -28,7 +31,7 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
 float4 mainPS(VSOutput Input) : SV_Target
 {
     int3 PixelPosition = int3(int2(Input.Position.xy), 0);
-    float SignedCoC = CoCTexture.Load(PixelPosition);
+    float SignedCoC = clamp(CoCTexture.Load(PixelPosition) / MaxCoCRadiusPx, -1.f, 1.f);
     float3 SceneColor = SceneColorTexture.Load(PixelPosition).rgb;
 
     // 장면을 어둡게 깔아야 CoC 색과 원래 물체 색이 헷갈리지 않는다

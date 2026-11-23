@@ -41,6 +41,10 @@ bool FDepthOfFieldRenderer::RenderSetup(const FSceneView& View, FTexture2D* Dept
 	Data.ZOffset = View.ProjectionMatrix.M[3][2];
 	Data.FocalDistance = View.FinalPostProcessSettings.DepthOfFieldFocalDistance;
 	Data.FocusRange = View.FinalPostProcessSettings.DepthOfFieldFocusRange;
+	Data.Fstop = View.FinalPostProcessSettings.DepthOfFieldFstop;
+	Data.ViewWidthPx = View.ViewRect.Width;
+	Data.FocalLength = View.FinalPostProcessSettings.DepthOfFieldSensorWidth / 2 * View.ProjectionMatrix.M[1][0] * 0.001f;
+	Data.SensorWidth = View.FinalPostProcessSettings.DepthOfFieldSensorWidth * 0.001f;
 
 	RenderCommand::BindPipelineState(SetupPipelineState);
 	RenderCommand::BindVertexBuffer(nullptr);
