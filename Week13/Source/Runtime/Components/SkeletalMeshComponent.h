@@ -2,6 +2,7 @@
 
 #include "SkinnedMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Clothing/ClothingTypes.h"
 #include "SkeletalMeshComponent.generated.h"
 
 class UAnimInstance;
@@ -9,6 +10,7 @@ class UAnimSequence;
 class UBlendSpace1D;
 class UWorld;
 class FLineBatcher;
+class FClothingSimulationNv;
 
 // World의 SkeletalMeshComponent마다 root 디버그를 그린다 (DrawCollisionShapes와 같은 방식). PIE의 Show Root에서 호출
 void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher);
@@ -73,6 +75,19 @@ public:
 	// 디버그: root 본 구체 + 액터 위치(root 높이)에서 root까지의 선
 	void DrawRootDebug(FLineBatcher* LineBatcher) const;
 
+	// Cloth 시뮬레이션 (언리얼 USkeletalMeshComponent 구조와 동일)
+	void CreateClothingSimulation();
+	void DestroyClothingSimulation();
+	void ForceClothNextUpdateTeleport() { bClothTeleportPending = true; }
+	FClothingSimulationNv* GetClothingSimulation() const { return ClothingSimulation.get(); }
+	const FClothingSimulationData& GetClothSimData() const { return ClothSimData; }
+
+	UPROPERTY()
+	bool bEnableClothingSimulation = true;
+
+	UPROPERTY()
+	bool bEnableClothBodyCollision = true;
+
 protected:
 	// 단일 애니메이션 에셋 경로/루프/재생 속도를 씬에 저장·복원한다 (Serialize에서 부른다)
 	void SerializeSingleAnimation(FStructuredArchive::FRecord& Record);
@@ -81,6 +96,8 @@ protected:
 	void OnSkeletalMeshChanged() override;
 
 private:
+	void UpdateClothingSimulation(float DeltaTime);
+	void UpdateAutoBodyCollisions();
     UPROPERTY()
     FString AnimBlueprintPath;
 
@@ -96,4 +113,8 @@ private:
 
 	FTransform PendingRootMotion;           // 월드 공간 누적값
 	bool bHasPendingRootMotion = false;
+
+	TUniquePtr<FClothingSimulationNv> ClothingSimulation;
+	FClothingSimulationData ClothSimData;
+	bool bClothTeleportPending = true;
 };

@@ -4,6 +4,7 @@
 #include "Tasks/Tasks.h"
 #include "Tasks/TaskScheduler.h"
 #include "Render/SkinningStats.h"
+#include "Clothing/ClothingAsset.h"
 
 // GpuSkinCommon.hlsli가 이 배치를 가정한다
 static_assert(sizeof(FMatrix) == 64);
@@ -150,6 +151,42 @@ void FSkeletalMeshObjectCPUSkin::UploadVertices()
 	RenderCommand::Unmap(FinalVertexBuffer.get());
 }
 
+void FSkeletalMeshObjectCPUSkin::UpdateClothData(const FClothingSimulationData* SimData)
+{
+	if (!SimData || !SkeletalMesh)
+		return;
+
+	const UClothingAssetCommon* ClothAsset = SkeletalMesh->GetClothingAsset();
+	if (!ClothAsset)
+		return;
+
+	const TArray<FClothVertMapping>& Mapping = ClothAsset->GetRenderToSimMapping();
+	const int32 NumVerts = FMath::Min(SkinnedVertices.Num(), Mapping.Num());
+	const int32 NumSimVerts = SimData->Positions.Num();
+	const bool bHasNormals = (SimData->Normals.Num() == NumSimVerts);
+
+	for (int32 v = 0; v < NumVerts; ++v)
+	{
+		const FClothVertMapping& Map = Mapping[v];
+		if (Map.BlendWeight <= 0.0f || static_cast<int32>(Map.SimIndex) >= NumSimVerts)
+			continue;
+
+		FVertex& Out = SkinnedVertices[v];
+		const FVector& SimPos = SimData->Positions[Map.SimIndex];
+		Out.Position = Out.Position + (SimPos - Out.Position) * Map.BlendWeight;
+		if (bHasNormals)
+		{
+			const FVector& SimN = SimData->Normals[Map.SimIndex];
+			Out.Normal = (Out.Normal + (SimN - Out.Normal) * Map.BlendWeight).GetSafeNormal(SMALL_NUMBER, Out.Normal);
+			const FVector T(Out.Tangent.X, Out.Tangent.Y, Out.Tangent.Z);
+			const FVector OrthoT = (T - Out.Normal * T.Dot(Out.Normal)).GetSafeNormal(SMALL_NUMBER, T);
+			Out.Tangent = FVector4(OrthoT.X, OrthoT.Y, OrthoT.Z, Out.Tangent.W);
+		}
+	}
+
+	UploadVertices();
+}
+
 FSkeletalMeshObjectGPUSkin::FSkeletalMeshObjectGPUSkin(USkeletalMesh* InMesh)
 	:FSkeletalMeshObject(InMesh)
 {
@@ -213,6 +250,45 @@ void FSkeletalMeshObjectGPUSkin::UploadBoneMatrices()
 	if (!Dst) return;
 	std::memcpy(Dst, RefToLocal.GetData(), sizeof(FMatrix) * RefToLocal.Num());
 	RenderCommand::Unmap(BoneMatrixBuffer.get());
+}
+
+void FSkeletalMeshObjectGPUSkin::UpdateClothData(const FClothingSimulationData* SimData)
+{
+	const FStructuredBuffer* MappingBuffer = SkeletalMesh ? SkeletalMesh->GetClothMappingBuffer() : nullptr;
+	if (!SimData || !MappingBuffer || SimData->Positions.IsEmpty())
+	{
+		VertexFactory.SetClothBuffers(nullptr, nullptr);
+		return;
+	}
+
+	const uint32 NumSimVerts = static_cast<uint32>(SimData->Positions.Num());
+	if (!ClothSimulBuffer || ClothSimulBuffer->GetCapacity() < NumSimVerts)
+	{
+		ClothSimulBuffer = RenderCommand::CreateDynamicStructuredBuffer(NumSimVerts, sizeof(FClothSimulVertex));
+	}
+	if (!ClothSimulBuffer || !ClothSimulBuffer->GetSRV())
+	{
+		VertexFactory.SetClothBuffers(nullptr, nullptr);
+		return;
+	}
+
+	ClothSimulStaging.SetNum(NumSimVerts);
+	const bool bHasNormals = (SimData->Normals.Num() == SimData->Positions.Num());
+	for (uint32 i = 0; i < NumSimVerts; ++i)
+	{
+		ClothSimulStaging[i].Position = SimData->Positions[i];
+		ClothSimulStaging[i].Pad0 = 0.0f;
+		ClothSimulStaging[i].Normal = bHasNormals ? SimData->Normals[i] : FVector(0.0f, 0.0f, 1.0f);
+		ClothSimulStaging[i].Pad1 = 0.0f;
+	}
+
+	if (void* Dst = RenderCommand::MapWriteDiscard(ClothSimulBuffer.get()))
+	{
+		std::memcpy(Dst, ClothSimulStaging.GetData(), sizeof(FClothSimulVertex) * NumSimVerts);
+		RenderCommand::Unmap(ClothSimulBuffer.get());
+	}
+
+	VertexFactory.SetClothBuffers(MappingBuffer, ClothSimulBuffer.get());
 }
 
 

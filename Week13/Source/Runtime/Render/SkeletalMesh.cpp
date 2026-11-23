@@ -2,6 +2,7 @@
 #include "SkeletalMesh.h"
 #include "Render/RenderCommand.h"
 #include "Asset/AssetManager.h"
+#include "Clothing/ClothingAsset.h"
 
 namespace
 {
@@ -128,6 +129,30 @@ UMaterial* USkeletalMesh::GetMaterial(uint32 SlotIndex) const
 		return Materials[SlotIndex];
 	}
 	return UAssetManager::GetAssetByPath<UMaterial>("DefaultMaterial");
+}
+
+void USkeletalMesh::SetClothingAsset(UClothingAssetCommon* InAsset)
+{
+	ClothingAsset = InAsset;
+	ClothMappingBuffer.reset();
+
+	if (!ClothingAsset || !ClothingAsset->IsValid())
+		return;
+
+	const TArray<FClothVertMapping>& Mapping = ClothingAsset->GetRenderToSimMapping();
+	if (Mapping.IsEmpty())
+		return;
+
+	ClothMappingBuffer = RenderCommand::CreateDynamicStructuredBuffer(
+		static_cast<uint32>(Mapping.Num()), sizeof(FClothVertMapping));
+	if (ClothMappingBuffer)
+	{
+		if (void* Dst = RenderCommand::MapWriteDiscard(ClothMappingBuffer.get()))
+		{
+			std::memcpy(Dst, Mapping.GetData(), sizeof(FClothVertMapping) * Mapping.Num());
+			RenderCommand::Unmap(ClothMappingBuffer.get());
+		}
+	}
 }
 
 size_t USkeletalMesh::FMaterialSlotsHash::operator()(const TArray<UMaterial*>& Slots) const

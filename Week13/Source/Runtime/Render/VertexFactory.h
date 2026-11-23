@@ -8,7 +8,9 @@ class FVertexBuffer;
 class FIndexBuffer;
 class FStructuredBuffer;
 
-inline constexpr uint32 BoneMatrixBufferSlot = 14; // GpuSkinCommon.hlsli의 t14
+inline constexpr uint32 ClothMappingBufferSlot = 12; // GpuSkinCommon.hlsli의 t12
+inline constexpr uint32 ClothSimulBufferSlot = 13;   // GpuSkinCommon.hlsli의 t13
+inline constexpr uint32 BoneMatrixBufferSlot = 14;   // GpuSkinCommon.hlsli의 t14
 
 enum class EVertexFactoryType : uint8
 {
@@ -62,11 +64,18 @@ public:
 		IndexBuffer = IB;
 		BoneBuffer = Bones;
 	}
+	void SetClothBuffers(const FStructuredBuffer* InMappingBuffer, const FStructuredBuffer* InSimulBuffer)
+	{
+		ClothMappingBuffer = InMappingBuffer;
+		ClothSimulBuffer = InSimulBuffer;
+	}
 	EVertexFactoryType GetType() const override { return EVertexFactoryType::GpuSkin; }
 	void Bind() const override;
 
 private:
 	const FStructuredBuffer* BoneBuffer = nullptr;
+	const FStructuredBuffer* ClothMappingBuffer = nullptr;
+	const FStructuredBuffer* ClothSimulBuffer = nullptr;
 };
 
 class FInstancedVertexFactory : public FVertexFactory

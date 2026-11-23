@@ -8,20 +8,18 @@ bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 {
 	Shutdown();
 
+	CachedMeshData = MeshData;
+
 	// Factory는 FClothCore에서 관리한다.
 	nv::cloth::Factory* Factory = FClothCore::Get().GetCpuFactory();
-	if(!Factory)
-	{
+	if (!Factory)
 		return false;
-	}
 
 	// MeshData 검증
 	const uint32 NumVertices = static_cast<uint32>(MeshData.Vertices.Num());
 	const uint32 NumIndices = static_cast<uint32>(MeshData.Indices.Num());
 	if (NumVertices == 0 || NumIndices < 3 || (NumIndices % 3 != 0) || MeshData.InverseMasses.Num() != MeshData.Vertices.Num())
-	{
 		return false;
-	}
 
 	// NvCloth ClothMeshDesc 설정
 	nv::cloth::ClothMeshDesc Desc;
@@ -36,13 +34,11 @@ bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 	Desc.triangles.stride = sizeof(uint32) * 3;
 	Desc.triangles.count = NumIndices / 3;
 
-	// Fabric 생성
+	// Fabric 쿠킹 (Z-up)
 	nv::cloth::Vector<int32_t>::Type PhaseTypes;
 	Fabric = NvClothCookFabricFromMesh(Factory, Desc, physx::PxVec3(0.0f, 0.0f, -1.0f), &PhaseTypes, true);
 	if (!Fabric)
-	{
 		return false;
-	}
 
 	TArray<physx::PxVec4> Particles;
 	Particles.SetNum(NumVertices);
@@ -53,33 +49,41 @@ bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 	}
 
 	// Cloth 생성
-	Cloth = Factory->createCloth(nv::cloth::Range<physx::PxVec4>(Particles.GetData(), Particles.GetData() + NumVertices), *Fabric);
+	Cloth = Factory->createCloth(
+		nv::cloth::Range<physx::PxVec4>(Particles.GetData(), Particles.GetData() + NumVertices),
+		*Fabric);
 	if (!Cloth)
 	{
 		Shutdown();
 		return false;
 	}
 
-	// PhaseConfig 설정, 제약 조건 설정
+	// PhaseConfig 설정: 먼저 초기화한 뒤 Phase 종류별로 Stiffness를 나눈다.
 	const uint32 NumPhases = Fabric->getNumPhases();
 	TArray<nv::cloth::PhaseConfig> Phases;
 	Phases.SetNum(NumPhases);
 	for (uint32 i = 0; i < NumPhases; ++i)
 	{
 		Phases[i] = nv::cloth::PhaseConfig(static_cast<uint16_t>(i));
-		Phases[i].mStiffness = 1.0f;
+		const int32_t Type = (i < PhaseTypes.size()) ? PhaseTypes[i] : nv::cloth::ClothFabricPhaseType::eINVALID;
+		if (Type == nv::cloth::ClothFabricPhaseType::eBENDING)
+			Phases[i].mStiffness = CachedConfig.BendStiffness;
+		else if (Type == nv::cloth::ClothFabricPhaseType::eSHEARING)
+			Phases[i].mStiffness = CachedConfig.ShearStiffness;
+		else
+			Phases[i].mStiffness = CachedConfig.StretchStiffness;
 		Phases[i].mStiffnessMultiplier = 1.0f;
 		Phases[i].mCompressionLimit = 1.0f;
 		Phases[i].mStretchLimit = 1.0f;
 	}
 	Cloth->setPhaseConfig(nv::cloth::Range<nv::cloth::PhaseConfig>(Phases.GetData(), Phases.GetData() + NumPhases));
 
-	// 기본 물리 파리미터 설정
-	Cloth->setGravity(physx::PxVec3(0.0f, 0.0f, -9.8f));
-	Cloth->setDamping(physx::PxVec3(0.05f, 0.05f, 0.05f));
-	Cloth->setSolverFrequency(60.0f);
-	Cloth->setTetherConstraintScale(1.0f);
-	Cloth->setTetherConstraintStiffness(1.0f);
+	// 기본 물리 파라미터 설정
+	Cloth->setGravity(physx::PxVec3(CachedConfig.Gravity.X, CachedConfig.Gravity.Y, CachedConfig.Gravity.Z));
+	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
+	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
+	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
 
 	// 솔버 생성 및 등록
 	Solver = Factory->createSolver();
@@ -89,6 +93,30 @@ bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 		return false;
 	}
 	Solver->addCloth(Cloth);
+	return true;
+}
+
+bool FClothingSimulationNv::CreateClothFromAsset(const UClothingAssetCommon& Asset)
+{
+	if (!Asset.IsValid())
+		return false;
+
+	CachedConfig = Asset.GetConfig();
+	if (!CreateCloth(Asset.GetPhysicalMeshData()))
+		return false;
+
+	SetGravity(CachedConfig.Gravity);
+	SetWindVelocity(CachedConfig.WindVelocity, CachedConfig.DragCoefficient, CachedConfig.LiftCoefficient);
+	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
+	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
+	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
+	Cloth->setLinearInertia(physx::PxVec3(CachedConfig.LinearInertiaScale));
+	Cloth->setAngularInertia(physx::PxVec3(CachedConfig.AngularInertiaScale));
+	Cloth->setMotionConstraintScaleBias(CachedConfig.MaxDistanceScale, 0.0f);
+	Cloth->setMotionConstraintStiffness(1.0f);
+
+	SkinnedPositions.SetNum(CachedMeshData.Vertices.Num());
 	return true;
 }
 
@@ -113,6 +141,93 @@ void FClothingSimulationNv::Shutdown()
 	}
 }
 
+void FClothingSimulationNv::UpdateSkeletalPose(
+	const TArray<FMatrix>& RefToLocal,
+	const FTransform& ComponentToWorld,
+	bool bTeleport)
+{
+	if (!Cloth || CachedMeshData.SkinWeights.Num() != CachedMeshData.Vertices.Num())
+		return;
+
+	const uint32 NumVerts = static_cast<uint32>(CachedMeshData.Vertices.Num());
+	const int32 NumBones = RefToLocal.Num();
+	if (NumVerts == 0 || NumBones == 0)
+		return;
+
+	// 1. 시뮬 메시를 현재 애니메이션 본 행렬로 스키닝
+	SkinnedPositions.SetNum(NumVerts);
+	for (uint32 i = 0; i < NumVerts; ++i)
+	{
+		const FSkinWeight& W = CachedMeshData.SkinWeights[i];
+		FMatrix M = RefToLocal[W.BoneIndex[0]] * W.Weight[0];
+		for (int32 k = 1; k < MaxBoneInfluences; ++k)
+		{
+			if (W.Weight[k] > 0.0f && W.BoneIndex[k] < NumBones)
+				M += RefToLocal[W.BoneIndex[k]] * W.Weight[k];
+		}
+		SkinnedPositions[i] = M.TransformPosition(CachedMeshData.Vertices[i]);
+	}
+
+	// 2. 고정점 위치 갱신 + 동적점 MotionConstraints 전달
+	nv::cloth::MappedRange<physx::PxVec4> Particles = Cloth->getCurrentParticles();
+	nv::cloth::Range<physx::PxVec4> Constraints = Cloth->getMotionConstraints();
+
+	const bool bHasMaxDist = (CachedMeshData.MaxDistances.Num() == CachedMeshData.Vertices.Num());
+	for (uint32 i = 0; i < NumVerts; ++i)
+	{
+		const FVector& P = SkinnedPositions[i];
+		const float InvMass = CachedMeshData.InverseMasses[i];
+		if (InvMass == 0.0f || bTeleport)
+		{
+			Particles[i] = physx::PxVec4(P.X, P.Y, P.Z, InvMass);
+		}
+		const float MaxDist = bHasMaxDist ? CachedMeshData.MaxDistances[i] : 0.0f;
+		Constraints[i] = physx::PxVec4(P.X, P.Y, P.Z, MaxDist);
+	}
+
+	// 3. 엔진 월드 -> 컴포넌트 로컬 공간 스케일 자동 보정
+	const float UniformScale = FMath::Max(std::fabs(ComponentToWorld.Scale.Z), 0.001f);
+	const float InvScale = 1.0f / UniformScale;
+
+	const FVector LocalGravity = CachedConfig.Gravity * InvScale;
+	const FVector LocalWind = CachedConfig.WindVelocity * InvScale;
+	Cloth->setGravity(physx::PxVec3(LocalGravity.X, LocalGravity.Y, LocalGravity.Z));
+	Cloth->setWindVelocity(physx::PxVec3(LocalWind.X, LocalWind.Y, LocalWind.Z));
+
+	// 로컬 공간 이동/회전 전달
+	const FVector ScaledLoc = ComponentToWorld.Location * InvScale;
+	const FQuat Rot = ComponentToWorld.Rotation.Normalized();
+	Cloth->setTranslation(physx::PxVec3(ScaledLoc.X, ScaledLoc.Y, ScaledLoc.Z));
+	Cloth->setRotation(physx::PxQuat(Rot.X, Rot.Y, Rot.Z, Rot.W));
+	if (bTeleport)
+	{
+		Cloth->clearInertia();
+	}
+}
+
+void FClothingSimulationNv::UpdateCollisions(const TArray<FVector4>& Spheres, const TArray<uint32>& CapsuleIndices)
+{
+	if (!Cloth)
+		return;
+
+	const uint32 NumSpheres = static_cast<uint32>(std::min<int32>(Spheres.Num(), 32));
+	TArray<physx::PxVec4> PxSpheres;
+	PxSpheres.SetNum(NumSpheres);
+	for (uint32 i = 0; i < NumSpheres; ++i)
+	{
+		PxSpheres[i] = physx::PxVec4(Spheres[i].X, Spheres[i].Y, Spheres[i].Z, Spheres[i].W);
+	}
+
+	Cloth->setSpheres(
+		nv::cloth::Range<const physx::PxVec4>(PxSpheres.GetData(), PxSpheres.GetData() + NumSpheres),
+		0, Cloth->getNumSpheres());
+
+	const uint32 NumCapIdx = static_cast<uint32>(std::min<int32>(CapsuleIndices.Num(), 64));
+	Cloth->setCapsules(
+		nv::cloth::Range<const uint32_t>(CapsuleIndices.GetData(), CapsuleIndices.GetData() + NumCapIdx),
+		0, Cloth->getNumCapsules());
+}
+
 void FClothingSimulationNv::Simulate(float DeltaTime)
 {
 	if (!Solver || !Cloth || DeltaTime <= 0.0f)
@@ -134,20 +249,47 @@ void FClothingSimulationNv::GetSimulationData(FClothingSimulationData& OutData) 
 {
 	if (!Cloth)
 		return;
+
 	const nv::cloth::Cloth* ConstCloth = Cloth;
 	nv::cloth::MappedRange<const physx::PxVec4> Particles = ConstCloth->getCurrentParticles();
 	const uint32 Count = Particles.size();
 
 	OutData.Positions.SetNum(Count);
+	OutData.Normals.SetNum(Count);
 	for (uint32 i = 0; i < Count; ++i)
 	{
 		const physx::PxVec4& P = Particles[i];
 		OutData.Positions[i] = FVector(P.x, P.y, P.z);
+		OutData.Normals[i] = FVector::ZeroVector;
+	}
+
+	// 시뮬 메시 삼각형 면 법선을 정점에 누적해 부드러운 노멀 재계산
+	const TArray<uint32>& Idx = CachedMeshData.Indices;
+	for (int32 i = 0; i + 2 < Idx.Num(); i += 3)
+	{
+		const uint32 I0 = Idx[i];
+		const uint32 I1 = Idx[i + 1];
+		const uint32 I2 = Idx[i + 2];
+		if (I0 >= Count || I1 >= Count || I2 >= Count)
+			continue;
+
+		const FVector FaceN = FVector::Cross(
+			OutData.Positions[I1] - OutData.Positions[I0],
+			OutData.Positions[I2] - OutData.Positions[I0]);
+		OutData.Normals[I0] += FaceN;
+		OutData.Normals[I1] += FaceN;
+		OutData.Normals[I2] += FaceN;
+	}
+
+	for (uint32 i = 0; i < Count; ++i)
+	{
+		OutData.Normals[i] = OutData.Normals[i].GetSafeNormal(SMALL_NUMBER, FVector(0.0f, 0.0f, 1.0f));
 	}
 }
 
 void FClothingSimulationNv::SetGravity(const FVector& InGravity)
 {
+	CachedConfig.Gravity = InGravity;
 	if (Cloth)
 	{
 		Cloth->setGravity(physx::PxVec3(InGravity.X, InGravity.Y, InGravity.Z));
@@ -156,10 +298,30 @@ void FClothingSimulationNv::SetGravity(const FVector& InGravity)
 
 void FClothingSimulationNv::SetWindVelocity(const FVector& InWind, float InDrag, float InLift)
 {
+	CachedConfig.WindVelocity = InWind;
+	CachedConfig.DragCoefficient = InDrag;
+	CachedConfig.LiftCoefficient = InLift;
 	if (Cloth)
 	{
 		Cloth->setWindVelocity(physx::PxVec3(InWind.X, InWind.Y, InWind.Z));
 		Cloth->setDragCoefficient(InDrag);
 		Cloth->setLiftCoefficient(InLift);
 	}
+}
+
+void FClothingSimulationNv::ApplyConfig(const FClothConfigNv& InConfig)
+{
+	CachedConfig = InConfig;
+	if (!Cloth)
+		return;
+
+	Cloth->setDragCoefficient(CachedConfig.DragCoefficient);
+	Cloth->setLiftCoefficient(CachedConfig.LiftCoefficient);
+	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
+	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
+	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
+	Cloth->setLinearInertia(physx::PxVec3(CachedConfig.LinearInertiaScale));
+	Cloth->setAngularInertia(physx::PxVec3(CachedConfig.AngularInertiaScale));
+	Cloth->setMotionConstraintScaleBias(CachedConfig.MaxDistanceScale, 0.0f);
 }

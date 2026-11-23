@@ -31,6 +31,8 @@ struct FSkeletalMeshRenderData
 	TArray<FSkeletalMeshLODRenderData> LODRenderData;
 };
 
+class UClothingAssetCommon;
+
 UCLASS()
 class USkeletalMesh : public URenderAsset
 {
@@ -44,6 +46,10 @@ public:
 	const FSkeletalMeshRenderData& GetRenderData() const { return RenderData; }
 	const TArray<FSkeletalMaterialSlot>& GetMaterialSlots() const { return MaterialSlots; }
 	UMaterial* GetMaterial(uint32 SlotIndex) const;
+
+	void SetClothingAsset(UClothingAssetCommon* InAsset);
+	UClothingAssetCommon* GetClothingAsset() const { return ClothingAsset; }
+	const FStructuredBuffer* GetClothMappingBuffer() const { return ClothMappingBuffer.get(); }
 
 	TSharedPtr<const FMeshRenderState> GetRenderState(const TArray<UMaterial*>& Materials);
 
@@ -59,4 +65,7 @@ private:
 	FSkeletalMeshRenderData RenderData;
 	// UStaticMesh와 같은 캐시: 같은 머티리얼 조합의 컴포넌트끼리 섹션 목록 공유
 	TMap<TArray<UMaterial*>, TWeakPtr<const FMeshRenderState>, FMaterialSlotsHash> RenderStates;
+
+	UClothingAssetCommon* ClothingAsset = nullptr;
+	TUniquePtr<FStructuredBuffer> ClothMappingBuffer;
 };

@@ -18,6 +18,9 @@
 #include "Animation/BlendSpace1D.h"
 #include "Animation/BlendSpaceFile.h"
 #include "Asset/AssetManager.h"
+#include "Clothing/ClothingAsset.h"
+#include "Clothing/ClothingSimulationNv.h"
+#include "Render/SkeletalMeshObject.h"
 
 void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* InInstance)
 {
@@ -66,6 +69,8 @@ void USkeletalMeshComponent::BeginPlay()
 			}
 		}
 	}
+
+	CreateClothingSimulation();
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
@@ -102,6 +107,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         bUpdatingAnimation = false;
 	}
 	Super::TickComponent(DeltaTime);
+	UpdateClothingSimulation(DeltaTime);
 }
 
 const TArray<FBoneInfo>& USkeletalMeshComponent::GetBones() const
@@ -281,6 +287,7 @@ void USkeletalMeshComponent::OnSkeletalMeshChanged()
 	BoneSpaceTransforms.Reset();
 	for (const FBoneInfo& Bone : GetBones())
 		BoneSpaceTransforms.Add(Bone.LocalBindPose);
+	CreateClothingSimulation();
 }
 UAnimSingleNodeInstance* USkeletalMeshComponent::GetSingleNodeInstance() const
 {
@@ -451,6 +458,7 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
+	DestroyClothingSimulation();
     if (ManagedAnimGraph)
     {
         if (AnimInstance == ManagedAnimGraph.get())
@@ -462,6 +470,138 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
             ManagedAnimGraph->UninitializeAnimation();
         }
     }
+}
+
+void USkeletalMeshComponent::CreateClothingSimulation()
+{
+	DestroyClothingSimulation();
+
+	USkeletalMesh* Mesh = GetSkeletalMesh();
+	if (!Mesh || !bEnableClothingSimulation)
+		return;
+
+	UClothingAssetCommon* Asset = Mesh->GetClothingAsset();
+	if (!Asset || !Asset->IsValid())
+		return;
+
+	TUniquePtr<FClothingSimulationNv> NewSim = MakeUnique<FClothingSimulationNv>();
+	if (!NewSim->CreateClothFromAsset(*Asset))
+		return;
+
+	ClothingSimulation = std::move(NewSim);
+	bClothTeleportPending = true;
+}
+
+void USkeletalMeshComponent::DestroyClothingSimulation()
+{
+	if (ClothingSimulation)
+	{
+		ClothingSimulation->Shutdown();
+		ClothingSimulation.reset();
+	}
+	ClothSimData.Positions.Empty();
+	ClothSimData.Normals.Empty();
+	if (FSkeletalMeshObject* MeshObj = GetMeshObject())
+	{
+		MeshObj->UpdateClothData(nullptr);
+	}
+}
+
+void USkeletalMeshComponent::UpdateClothingSimulation(float DeltaTime)
+{
+	FSkeletalMeshObject* MeshObj = GetMeshObject();
+	if (!MeshObj)
+		return;
+
+	if (!bEnableClothingSimulation)
+	{
+		if (ClothingSimulation)
+			MeshObj->UpdateClothData(nullptr);
+		return;
+	}
+
+	// 에셋에 ClothingAsset이 나중에 바인딩된 경우 자동 생성
+	if (!ClothingSimulation)
+	{
+		USkeletalMesh* Mesh = GetSkeletalMesh();
+		if (Mesh && Mesh->GetClothingAsset() && Mesh->GetClothingAsset()->IsValid())
+			CreateClothingSimulation();
+		if (!ClothingSimulation)
+			return;
+	}
+
+	const FTransform ComponentToWorld(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+	ClothingSimulation->UpdateSkeletalPose(MeshObj->GetRefToLocal(), ComponentToWorld, bClothTeleportPending);
+	bClothTeleportPending = false;
+
+	if (bEnableClothBodyCollision)
+		UpdateAutoBodyCollisions();
+	else
+		ClothingSimulation->UpdateCollisions({}, {});
+
+	ClothingSimulation->Simulate(DeltaTime);
+	ClothingSimulation->GetSimulationData(ClothSimData);
+	MeshObj->UpdateClothData(&ClothSimData);
+}
+
+void USkeletalMeshComponent::UpdateAutoBodyCollisions()
+{
+	if (!ClothingSimulation || ComponentSpaceTransforms.IsEmpty())
+		return;
+
+	const TArray<FBoneInfo>& Bones = GetBones();
+	auto FindBoneContaining = [&](const char* SubA, const char* SubB = nullptr) -> int32
+	{
+		for (int32 i = 0; i < Bones.Num(); ++i)
+		{
+			const FString& N = Bones[i].Name;
+			if (N.find(SubA) != FString::npos && (!SubB || N.find(SubB) != FString::npos))
+				return i;
+		}
+		return -1;
+	};
+
+	TArray<FVector4> Spheres;
+	TArray<uint32> Capsules;
+
+	auto AddBoneCapsule = [&](int32 StartBone, int32 EndBone, float RadiusRatio)
+	{
+		if (StartBone < 0 || EndBone < 0 ||
+			StartBone >= ComponentSpaceTransforms.Num() || EndBone >= ComponentSpaceTransforms.Num())
+			return;
+
+		const FVector P0 = ComponentSpaceTransforms[StartBone].TransformPosition(FVector::ZeroVector);
+		const FVector P1 = ComponentSpaceTransforms[EndBone].TransformPosition(FVector::ZeroVector);
+		const float Len = (P1 - P0).Length();
+		if (Len < 1e-3f)
+			return;
+
+		const float Radius = Len * RadiusRatio;
+		const uint32 Idx0 = static_cast<uint32>(Spheres.Num());
+		Spheres.Add(FVector4(P0.X, P0.Y, P0.Z, Radius));
+		Spheres.Add(FVector4(P1.X, P1.Y, P1.Z, Radius));
+		Capsules.Add(Idx0);
+		Capsules.Add(Idx0 + 1);
+	};
+
+	const int32 Pelvis = FindBoneContaining("Pelvis");
+	const int32 Spine2 = FindBoneContaining("Spine2");
+	const int32 LThigh = FindBoneContaining("L-Thigh");
+	const int32 LCalf  = FindBoneContaining("L-Calf");
+	const int32 RThigh = FindBoneContaining("R-Thigh");
+	const int32 RCalf  = FindBoneContaining("R-Calf");
+	const int32 LUpper = FindBoneContaining("L-UpperArm");
+	const int32 LFore  = FindBoneContaining("L-Forearm");
+	const int32 RUpper = FindBoneContaining("R-UpperArm");
+	const int32 RFore  = FindBoneContaining("R-Forearm");
+
+	AddBoneCapsule(Pelvis, Spine2, 0.30f);
+	AddBoneCapsule(LThigh, LCalf,  0.22f);
+	AddBoneCapsule(RThigh, RCalf,  0.22f);
+	AddBoneCapsule(LUpper, LFore,  0.20f);
+	AddBoneCapsule(RUpper, RFore,  0.20f);
+
+	ClothingSimulation->UpdateCollisions(Spheres, Capsules);
 }
 
 const FString& USkeletalMeshComponent::GetAnimBlueprintPath() const
