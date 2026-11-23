@@ -2,6 +2,9 @@
 #include "Camera/CameraModifier_Photo.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/PhotoCapture.h"
+#include "Engine/World.h"
+#include "Collision/Ray.h"
+#include "Collision/HitResult.h"
 
 #include <algorithm>
 #include <cmath>
@@ -73,6 +76,10 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	InOutPOV.Location = FMath::Lerp(InOutPOV.Location, FreeCamLocation, Alpha);
 	InOutPOV.Rotation = LerpRotator(InOutPOV.Rotation, FreeCamRotation, Alpha);
 
+	// 화면에 보이는 최종 시점으로 쏴야 전환 중에도 초점이 엉뚱한 곳을 잡지 않는다
+	if (State.bAutoFocus)
+		AutoFocusTarget = TraceFocusDistance(InOutPOV);
+
 	// 필름(36x24)은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
 	// 그래서 화면 전체에 대응하는 "가상 필름" 크기를 구해서 화각과 DOF에 같이 쓴다
 	const float Aspect = std::max(InOutPOV.AspectRatio, 0.01f);
@@ -100,6 +107,23 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	// 카메라가 후처리를 꺼 둔 상태(가중치 0)여도 사진 모드 값은 들어가야 한다
 	InOutPOV.PostProcessBlendWeight = std::max(InOutPOV.PostProcessBlendWeight, Alpha);
 	return false;
+}
+
+float UCameraModifier_Photo::TraceFocusDistance(const FMinimalViewInfo& POV) const
+{
+	// 화면 중앙 레이캐스트 → 맞으면 거리, 아니면 MaxFocusDistance, Min~Max로 clamp
+	UWorld* World = GetCameraOwner()->GetWorld();
+	FRay Ray{
+		.Origin = POV.Location,
+		.Direction = POV.Rotation.Quaternion().GetForwardVector(),
+	};
+	FHitResult OutHit;
+	bool bIsHit = World->LineTraceSingle(Ray, OutHit);
+	if (bIsHit)
+	{
+		return std::clamp(OutHit.Distance, FPhotoCameraState::MinFocusDistance, FPhotoCameraState::MaxFocusDistance);
+	}
+	return FPhotoCameraState::MaxFocusDistance;
 }
 
 void UCameraModifier_Photo::TogglePhotoMode()

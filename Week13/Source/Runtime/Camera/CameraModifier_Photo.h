@@ -28,6 +28,7 @@ struct FPhotoCameraState
 	float FocusDistance = 5.0f;   // m
 	float FocalLength = 35.0f;    // mm
 	float SensorWidth = 36.0f;    // mm, 35mm 필름 가로
+	bool bAutoFocus = true;       // 켜면 화면 중앙 물체에 초점을 맞춘다
 
 	float GetFstop() const { return ApertureStops[ApertureIndex]; }
 	float GetShutterSeconds() const { return ShutterStops[ShutterIndex]; }
@@ -67,7 +68,12 @@ public:
 	const FPhotoCameraState& GetState() const { return State; }
 
 private:
+	// 화면 중앙으로 레이를 쏴서 맞은 물체까지의 거리(m)를 돌려준다
+	float TraceFocusDistance(const FMinimalViewInfo& POV) const;
+
 	FPhotoCameraState State;
+	// 레이캐스트로 잰 목표 초점. State.FocusDistance가 이 값을 따라간다 (Step 2)
+	float AutoFocusTarget = 5.0f;
 	float TimeSinceShutter = 1000.0f;
 	int32 ShotCount = 0;
 
