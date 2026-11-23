@@ -1,7 +1,6 @@
 // 풀해상도 장면 색 + CoC를 반해상도 한 장(RGB=색, A=CoC 픽셀 반경)으로 줄인다.
 Texture2D SceneColorTexture : register(t0);
 Texture2D<float> CoCTexture : register(t1);
-SamplerState LinearClampSampler : register(s0);
 
 struct VSOutput
 {
