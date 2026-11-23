@@ -32,7 +32,8 @@ public:
 	FRay DeProjection(FVector2 MousePos, float ScreenW, float ScreenH);
 
 	// Get & Set
-	float GetFieldOfView() const { return FieldOfView; }
+	// bUseFocalLength면 렌즈 길이와 센서 폭으로 계산한 세로 화각을 돌려준다
+	float GetFieldOfView() const;
 	void SetFieldOfView(float InFieldOfView) { FieldOfView = InFieldOfView; }
 
 	float GetAspectRatio() const { return AspectRatio; }
@@ -70,7 +71,17 @@ public:
 	void UpdateZoom(float DeltaTime);     // 마우스 휠 줌
 
 protected:
+	// 세로 화각(도). 0°/180° 근처는 투영 행렬이 깨지므로 막는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=5, ClampMax=170, Delta=0.5))
 	float FieldOfView = 60.0f;
+
+	// 켜면 FieldOfView 대신 FocalLength로 화각을 정한다 (UE CineCamera처럼 mm로 렌즈를 고른다)
+	UPROPERTY(EditAnywhere)
+	bool bUseFocalLength = false;
+
+	// 렌즈 길이(mm). 센서 폭은 PostProcessSettings.DepthOfFieldSensorWidth를 같이 쓴다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=4, ClampMax=1000, Delta=0.5))
+	float FocalLength = 35.0f;
 	float AspectRatio = 16.0f / 9.0f;
 	float NearClipPlane = 0.1f;
 	float FarClipPlane = 10000.0f;
