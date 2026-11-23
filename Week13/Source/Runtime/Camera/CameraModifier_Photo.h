@@ -13,7 +13,7 @@ struct FPhotoCameraState
 	static constexpr int32 NumApertureStops = sizeof(ApertureStops) / sizeof(float);
 	static constexpr int32 NumShutterStops = sizeof(ShutterStops) / sizeof(float);
 
-	static constexpr float MinFocusDistance = 0.8f;   // LC-A 최단 초점 거리(m)
+	static constexpr float MinFocusDistance = 0.2f;   // 꽃·소품을 가까이 찍을 수 있게 LC-A(0.8m)보다 줄였다
 	static constexpr float MaxFocusDistance = 100.0f; // 이보다 멀면 무한대로 본다
 	// 35mm 필름 한 컷은 36x24mm(3:2). 뷰파인더 프레임이 화면 높이의 이만큼을 차지한다
 	static constexpr float FilmAspect = 1.5f;

@@ -56,10 +56,13 @@ namespace
 		}
 	}
 
-	// 초점 링 눈금은 거리의 역수(디옵터)에 거의 비례한다. 그래서 가까운 쪽은 넓고 먼 쪽은 무한대 앞에 몰린다
+	constexpr float ScaleNearDistance = 0.8f;   // 거리계 왼쪽 끝(m), LC-A 인물 아이콘 위치
+
+	// 초점 링 눈금은 거리의 역수(디옵터)에 거의 비례한다. 그래서 가까운 쪽은 넓고 먼 쪽은 무한대 앞에 몰린다.
+	// 눈금은 LC-A처럼 0.8m부터 그리고, 그보다 가까우면 바늘이 왼쪽 끝에 붙는다 (실제 거리는 글자로 보인다)
 	float FocusDistanceToScale(float Distance)
 	{
-		const float Near = 1.0f / FPhotoCameraState::MinFocusDistance;
+		const float Near = 1.0f / ScaleNearDistance;
 		const float Far = 1.0f / FPhotoCameraState::MaxFocusDistance;
 		return std::clamp((Near - 1.0f / std::max(Distance, 0.01f)) / (Near - Far), 0.0f, 1.0f);
 	}
@@ -120,7 +123,7 @@ namespace
 		return 1.0f + (Log2N2 - StopLog(Num - 1)) / (StopLog(Num - 1) - StopLog(Num - 2)) * Step;
 	}
 
-	constexpr float DistanceZones[] = { FPhotoCameraState::MinFocusDistance, 1.5f, 3.0f, FPhotoCameraState::MaxFocusDistance };
+	constexpr float DistanceZones[] = { ScaleNearDistance, 1.5f, 3.0f, FPhotoCameraState::MaxFocusDistance };
 }
 
 void FViewfinderNeedle::Update(float Target, float DeltaTime)
