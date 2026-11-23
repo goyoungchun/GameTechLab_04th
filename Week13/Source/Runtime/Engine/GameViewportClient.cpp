@@ -9,6 +9,7 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Engine/PhotoCapture.h"
 #include <cmath>
 #include "Math/Frustum.h"
 #include "Render/RenderCommand.h"
@@ -257,8 +258,12 @@ bool FGameViewportClient::Draw(FRenderer* Renderer, FUIRenderer* UIRenderer)
 		[this, UIRenderer, &SceneView](FScenePassCallbacks& Callbacks)
 		{
 			// 게임 UI는 씬 위에 그려야 하므로 그 시점에 불릴 함수로 등록한다.
-			Callbacks.Overlays.GameUI = [this, UIRenderer]
+			// FXAA가 켜져 있으면 최종 화면은 FXAA 출력에 있다
+			FTexture2D* FinalColor = Callbacks.FXAAOutput ? Callbacks.FXAAOutput : ViewTargets.SceneColor.get();
+			Callbacks.Overlays.GameUI = [this, UIRenderer, FinalColor]
 				{
+					// 뷰파인더(UI)가 찍히지 않도록 UI를 그리기 직전 화면을 저장한다
+					FPhotoCapture::ExecutePending(FinalColor);
 					if (!UIRenderer) return;
 					PaintUI(UIDrawList);
 					UIRenderer->Render(UIDrawList, Width, Height);

@@ -10,7 +10,10 @@ void DispatchGameKeyboardInput(TReceiver&& Receive)
 	constexpr EKeyCode Keys[] = {
 		EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
 		EKeyCode::Q, EKeyCode::E, EKeyCode::Space, EKeyCode::Shift,
-		EKeyCode::C, EKeyCode::R
+		EKeyCode::C, EKeyCode::R,
+		// 사진 모드: 조리개(↑↓), 셔터(←→), 줌(Z/X)
+		EKeyCode::Up, EKeyCode::Down, EKeyCode::Left, EKeyCode::Right,
+		EKeyCode::Z, EKeyCode::X
 	};
 	for (EKeyCode Key : Keys)
 	{

@@ -38,6 +38,31 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere, meta=(ClampMin=1))
 	float DepthOfFieldSensorWidth = 36.0f;
 
+	// ---------- Camera (물리 노출) ----------
+	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)
+	UPROPERTY(EditAnywhere)
+	bool bOverride_CameraShutterSpeed = false;
+	// 셔터 속도의 분모(1/s). 125면 1/125초
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=8000))
+	float CameraShutterSpeed = 60.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_CameraISO = false;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=25, ClampMax=6400))
+	float CameraISO = 100.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_bApplyPhysicalCameraExposure = false;
+	// 켜면 F-Stop·셔터·ISO로 노출 배율을 정한다. 끄면 배율 1 (UE의 Apply Physical Camera Exposure)
+	UPROPERTY(EditAnywhere)
+	bool bApplyPhysicalCameraExposure = false;
+
+	// 조리개·셔터·ISO를 ISO 100 기준 노출값(EV100)으로 바꾼다. 클수록 빛을 적게 받는다
+	float GetCameraEV100() const;
+	static float ComputeEV100(float Fstop, float ShutterSpeed, float ISO);
+	// 노출계: 측정한 평균 휘도(노출 전 HDR)가 중간 회색으로 찍히려면 필요한 EV100
+	static float GetMeteredEV100(float AverageLuminance);
+	// 톤매핑 전에 곱할 배율. Sunny 16(f/16, 1/200초, ISO 200)에서 1이 되도록 맞췄다
+	float GetPhysicalCameraExposureScale() const;
+
 	// Src에서 bOverride_가 켜진 값만 Weight(0~1)만큼 이 값 쪽에서 Src 쪽으로 섞는다.
 	void OverrideBlend(const FPostProcessSettings& Src, float Weight);
 };

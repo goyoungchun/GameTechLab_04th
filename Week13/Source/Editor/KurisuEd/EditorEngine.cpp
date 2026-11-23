@@ -811,7 +811,8 @@ void UEditorEngine::Tick(const float DeltaTime)
 			ViewportsPanel->SetActiveViewIndex(HoveredViewIndex);
 		}
 
-		int32 WheelDelta = FInputSystem::GetWheelDelta();
+		// 게임이 마우스를 잡고 있으면 휠은 게임 몫이다 (TickPIEInput이 읽도록 남겨 둔다)
+		int32 WheelDelta = bGameMouseCaptured ? 0 : FInputSystem::GetWheelDelta();
 		// 우클릭 캡처 중 휠은 카메라 속도. 게임 화면 View는 캡처할 수 없으므로 PIE/SIE 중에도 그대로 허용한다.
 		if (CapturedViewportIndex != -1 && WheelDelta != 0)
 		{
