@@ -34,7 +34,8 @@ void FDepthOfFieldRenderer::Init(FRenderer* InRenderer)
 	GatherPipelineState = MakeFullscreenPipeline(GatherShader);
 	CompositePipelineState = MakeFullscreenPipeline(CompositeShader);
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FDepthOfFieldData));
-	assert(SetupShader && VisualizeShader && DownsampleShader && GatherShader && CompositeShader && ConstantBuffer);
+	GatherConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FDepthOfFieldGatherData));
+	assert(SetupShader && VisualizeShader && DownsampleShader && GatherShader && CompositeShader && ConstantBuffer && GatherConstantBuffer);
 }
 
 bool FDepthOfFieldRenderer::RenderSetup(const FSceneView& View, FTexture2D* DepthTarget)
@@ -99,8 +100,14 @@ bool FDepthOfFieldRenderer::RenderDownsample(FTexture2D* SceneColorCopy, FTextur
 	return DrawFullscreen(DownsamplePipelineState, { SceneColorCopy, CoCTexture });
 }
 
-bool FDepthOfFieldRenderer::RenderGather(FTexture2D* HalfResTexture)
+bool FDepthOfFieldRenderer::RenderGather(const FSceneView& View, FTexture2D* HalfResTexture)
 {
+	if (!GatherConstantBuffer) return false;
+
+	FDepthOfFieldGatherData Data{};
+	Data.BladeCount = static_cast<float>(View.FinalPostProcessSettings.DepthOfFieldBladeCount);
+	RenderCommand::UpdateBufferData(GatherConstantBuffer.get(), &Data, sizeof(Data));
+	RenderCommand::BindConstantBuffer(0, GatherConstantBuffer.get(), EShaderBindFlagBits::Pixel);
 	return DrawFullscreen(GatherPipelineState, { HalfResTexture });
 }
 

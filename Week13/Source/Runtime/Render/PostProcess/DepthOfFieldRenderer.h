@@ -21,6 +21,14 @@ struct alignas(16) FDepthOfFieldData
 };
 static_assert(sizeof(FDepthOfFieldData) == 32);
 
+// DepthOfFieldGather.hlsl의 cbuffer b0과 같은 배치
+struct alignas(16) FDepthOfFieldGatherData
+{
+	float BladeCount;
+	float Padding[3];
+};
+static_assert(sizeof(FDepthOfFieldGatherData) == 16);
+
 // DOF 셰이더를 돌릴 준비(상수, 바인딩, Draw)만 한다. 언제 어떤 텍스처로 부를지는 FSceneRenderer가 정한다.
 class FDepthOfFieldRenderer
 {
@@ -34,7 +42,7 @@ public:
 	// 장면 복사본 + CoC → 현재 바인딩된 반해상도 타깃(RGB=색, A=CoC)
 	bool RenderDownsample(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture);
 	// 반해상도 (색, CoC) → 현재 바인딩된 반해상도 블러 타깃
-	bool RenderGather(FTexture2D* HalfResTexture);
+	bool RenderGather(const FSceneView& View, FTexture2D* HalfResTexture);
 	// 원본 + CoC + 블러 → 현재 바인딩된 SceneColor
 	bool RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* FarTexture, FTexture2D* NearTexture);
 
@@ -53,4 +61,5 @@ private:
 	FPipelineState GatherPipelineState;
 	FPipelineState CompositePipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
+	TUniquePtr<FConstantBuffer> GatherConstantBuffer;
 };

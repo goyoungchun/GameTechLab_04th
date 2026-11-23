@@ -19,6 +19,9 @@ void FPostProcessSettings::OverrideBlend(const FPostProcessSettings& Src, float 
 	BlendFloat(Src.bOverride_DepthOfFieldFocusRange, DepthOfFieldFocusRange, Src.DepthOfFieldFocusRange);
 	BlendFloat(Src.bOverride_DepthOfFieldFstop, DepthOfFieldFstop, Src.DepthOfFieldFstop);
 	BlendFloat(Src.bOverride_DepthOfFieldSensorWidth, DepthOfFieldSensorWidth, Src.DepthOfFieldSensorWidth);
+	// 날 수는 정수라 섞지 않고 절반을 넘으면 넘어간다
+	if (Src.bOverride_DepthOfFieldBladeCount && Weight >= 0.5f)
+		DepthOfFieldBladeCount = Src.DepthOfFieldBladeCount;
 	BlendFloat(Src.bOverride_CameraShutterSpeed, CameraShutterSpeed, Src.CameraShutterSpeed);
 	BlendFloat(Src.bOverride_CameraISO, CameraISO, Src.CameraISO);
 	// 켜고 끄는 값은 섞을 수 없으니 절반을 넘으면 넘어간다

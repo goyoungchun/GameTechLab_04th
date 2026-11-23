@@ -37,6 +37,11 @@ struct FPostProcessSettings
 	// 센서 가로 폭(mm). 36 = 풀프레임
 	UPROPERTY(EditAnywhere, meta=(ClampMin=1))
 	float DepthOfFieldSensorWidth = 36.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldBladeCount = false;
+	// 조리개 날 수. 보케가 이 수만큼의 다각형이 된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=4, ClampMax=16))
+	int32 DepthOfFieldBladeCount = 5;
 
 	// ---------- Camera (물리 노출) ----------
 	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)

@@ -1,4 +1,10 @@
 // 반해상도 (색, CoC) 텍스처에서 CoC 반경만큼 원판으로 샘플을 모아 흐린 색을 만든다.
+cbuffer DepthOfFieldGatherConstants : register(b0)
+{
+    float BladeCount; // 조리개 날 수 (보케 다각형 꼭짓점 수)
+    float3 GatherPadding;
+};
+
 Texture2D HalfResTexture : register(t0);
 SamplerState LinearClampSampler : register(s0);
 

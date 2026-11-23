@@ -863,10 +863,10 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			Gather.ColorAttachments = {
 				{ HalfFar, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } },
 				{ HalfNear, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
-			if (!Graph.AddRasterPass(std::move(Gather), [Renderer, &Graph, HalfRes]
+			if (!Graph.AddRasterPass(std::move(Gather), [this, Renderer, &Graph, HalfRes]
 				{
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
-						DOF->RenderGather(Graph.Resolve(HalfRes));
+						DOF->RenderGather(View, Graph.Resolve(HalfRes));
 				})) return false;
 
 			FRenderGraphRasterPassDesc Composite = MakeViewportPass("DOFComposite", SceneColor);
