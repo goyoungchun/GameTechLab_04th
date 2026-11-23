@@ -100,8 +100,6 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	bool bGenerateOverlapEvents = true;
-	UPROPERTY(EditAnywhere)
-	bool bBlockComponent = false;
 
 	bool IsOverlappingComponent(const UPrimitiveComponent* Other) const;
 	const TArray<FOverlapInfo>& GetOverlapInfos() const { return OverlapInfos; }

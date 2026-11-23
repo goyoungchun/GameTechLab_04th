@@ -16,12 +16,16 @@ namespace
 	class FKurisuQueryFilterCallback : public physx::PxQueryFilterCallback
 	{
 	public:
-		explicit FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams, const physx::PxVec3& InSweepDir = physx::PxVec3(0.0f))
-			: Params(InParams), SweepDir(InSweepDir) {}
+		// bInIgnoreTriggers: 막힘을 찾는 쿼리(Raycast·Sweep)는 트리거를 지나친다. 트리거는 겹침만 알리고 막지 않는다.
+		FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams, bool bInIgnoreTriggers, const physx::PxVec3& InSweepDir = physx::PxVec3(0.0f))
+			: Params(InParams), SweepDir(InSweepDir), bIgnoreTriggers(bInIgnoreTriggers) {}
 
 		physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& /*QueryData*/, const physx::PxShape* Shape,
 			const physx::PxRigidActor* Actor, physx::PxHitFlags& /*Flags*/) override
 		{
+			if (bIgnoreTriggers && (Shape->getFlags() & physx::PxShapeFlag::eTRIGGER_SHAPE))
+				return physx::PxQueryHitType::eNONE;
+
 			const physx::PxFilterData ShapeData = Shape->getQueryFilterData();
 			if ((ShapeData.word0 & Params.ObjectTypesMask) == 0)
 				return physx::PxQueryHitType::eNONE;
@@ -57,6 +61,7 @@ namespace
 	private:
 		const FCollisionQueryParams& Params;
 		physx::PxVec3 SweepDir;
+		bool bIgnoreTriggers;
 	};
 
 	physx::PxQueryFilterData MakeQueryFilterData()
@@ -252,7 +257,7 @@ bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitRes
 
 	SCOPED_SCENE_READ_LOCK(Scene);
 
-	FKurisuQueryFilterCallback Filter(Params);
+	FKurisuQueryFilterCallback Filter(Params, true);
 	physx::PxRaycastBuffer Buffer;
 	const bool bHit = Scene->raycast(K2PVector(Start), K2PVector(Dir), Distance, Buffer,
 		physx::PxHitFlag::eDEFAULT, MakeQueryFilterData(), &Filter);
@@ -266,6 +271,10 @@ bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitRes
 bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation, const FVector& Start, const FVector& End,
 	FSweepResult& OutHit, const FCollisionQueryParams& Params) const
 {
+	// 크기가 없는 모양은 PhysX가 유효하지 않은 지오메트리로 거부한다. 점을 쓸어 보는 것과 같으므로 레이로 바꾼다.
+	if (Shape.IsNearlyZero())
+		return RaycastSingle(Start, End, OutHit, Params);
+
 	const FVector Delta = End - Start;
 	const float Distance = Delta.Size();
 	if (!Scene || Distance <= 0.0f)
@@ -277,7 +286,7 @@ bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation
 	physx::PxQuat Rot = K2PQuat(Rotation);
 	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
 
-	FKurisuQueryFilterCallback Filter(Params, K2PVector(Dir));
+	FKurisuQueryFilterCallback Filter(Params, true, K2PVector(Dir));
 	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
 	physx::PxHitFlags HitFlags = physx::PxHitFlag::eDEFAULT;
 	if (Params.bIgnoreTouchesMovingAway)
@@ -316,7 +325,7 @@ bool FPhysScene::OverlapMulti(const FCollisionShape& Shape, const FVector& Posit
 	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
 	FilterData.flags |= physx::PxQueryFlag::eNO_BLOCK;   // 모든 후보를 touch로 취급
 
-	FKurisuQueryFilterCallback Filter(Params);
+	FKurisuQueryFilterCallback Filter(Params, false);   // 겹침 쿼리는 트리거도 찾는다
 	Scene->overlap(Geometry.any(), physx::PxTransform(K2PVector(Position), Rot), Buffer, FilterData, &Filter);
 
 	for (physx::PxU32 Index = 0; Index < Buffer.getNbTouches(); ++Index)
