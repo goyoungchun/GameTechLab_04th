@@ -14,6 +14,14 @@ void FUIDrawList::Reset()
 void FUIDrawList::AddQuad(float L, float T, float R, float B, float U0, float V0, float U1, float V1,
 	const FLinearColor& Color, EUIDrawMode Mode, UTexture2D* Texture, float PxRange)
 {
+	const FVector2 P[4] = { FVector2(L, T), FVector2(R, T), FVector2(R, B), FVector2(L, B) };
+	const FVector2 UV[4] = { FVector2(U0, V0), FVector2(U1, V0), FVector2(U1, V1), FVector2(U0, V1) };
+	AddQuadCorners(P, UV, Color, Mode, Texture, PxRange);
+}
+
+void FUIDrawList::AddQuadCorners(const FVector2 (&P)[4], const FVector2 (&UV)[4],
+	const FLinearColor& Color, EUIDrawMode Mode, UTexture2D* Texture, float PxRange)
+{
 	// 단색 사각형은 텍스처를 읽지 않으므로 현재 배치에 그대로 붙인다.
 	FUIDrawBatch* Batch = Batches.IsEmpty() ? nullptr : &Batches.Last();
 	if (Batch && Mode != EUIDrawMode::Solid)
@@ -36,10 +44,8 @@ void FUIDrawList::AddQuad(float L, float T, float R, float B, float U0, float V0
 
 	const uint32 Base = static_cast<uint32>(Vertices.Num());
 	const float M = static_cast<float>(Mode);
-	Vertices.Add({ FVector2(L, T), FVector2(U0, V0), Color, M });
-	Vertices.Add({ FVector2(R, T), FVector2(U1, V0), Color, M });
-	Vertices.Add({ FVector2(R, B), FVector2(U1, V1), Color, M });
-	Vertices.Add({ FVector2(L, B), FVector2(U0, V1), Color, M });
+	for (int32 i = 0; i < 4; ++i)
+		Vertices.Add({ P[i], UV[i], Color, M });
 
 	Indices.Add(Base + 0); Indices.Add(Base + 1); Indices.Add(Base + 2);
 	Indices.Add(Base + 0); Indices.Add(Base + 2); Indices.Add(Base + 3);
@@ -54,6 +60,19 @@ void FUIDrawList::AddRect(const FUIRect& Rect, const FLinearColor& Color)
 void FUIDrawList::AddImage(const FUIRect& Rect, UTexture2D* Texture, const FLinearColor& Tint)
 {
 	AddQuad(Rect.X, Rect.Y, Rect.X + Rect.W, Rect.Y + Rect.H, 0, 0, 1, 1, Tint, EUIDrawMode::Texture, Texture, 0.0f);
+}
+
+void FUIDrawList::AddLine(const FVector2& A, const FVector2& B, float Thickness, const FLinearColor& Color)
+{
+	const FVector2 D = B - A;
+	const float Len = std::sqrt(D.X * D.X + D.Y * D.Y);
+	if (Len <= 0.0f) return;
+
+	// 선 방향에 수직인 벡터로 두께의 절반씩 양쪽으로 벌린다
+	const FVector2 N(-D.Y / Len * Thickness * 0.5f, D.X / Len * Thickness * 0.5f);
+	const FVector2 P[4] = { A + N, B + N, B - N, A - N };
+	const FVector2 UV[4] = { FVector2(0.0f), FVector2(0.0f), FVector2(0.0f), FVector2(0.0f) };
+	AddQuadCorners(P, UV, Color, EUIDrawMode::Solid, nullptr, 0.0f);
 }
 
 FVector2 FUIDrawList::MeasureText(const FString& Text, const UFont& Font, float FontSize)

@@ -4,6 +4,7 @@
 #include "GameFramework/Actor/KurisuCharacter.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/CameraModifier_Photo.h"
+#include "UI/ViewfinderWidget.h"
 
 namespace
 {
@@ -41,6 +42,12 @@ UCameraModifier_Photo* AMyPlayerController::GetPhotoModifier(bool bCreate)
 	{
 		Modifier = NewObject<UCameraModifier_Photo>(PCM);
 		PCM->AddCameraModifier(Modifier);
+
+		// 뷰파인더는 모디파이어 상태를 매 프레임 직접 읽으므로 여기서 포인터를 들고 있지 않는다.
+		// PIE가 끝나면 뷰포트가 위젯을 지운다
+		UViewfinderWidget* Viewfinder = NewObject<UViewfinderWidget>();
+		Viewfinder->SetOwningWorld(GetWorld());
+		Viewfinder->AddToViewport(100);
 	}
 	return Modifier;
 }

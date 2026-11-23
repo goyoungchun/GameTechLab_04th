@@ -17,9 +17,12 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	Super::ModifyCamera(DeltaTime, InOutPOV);
 	if (Alpha <= 0.0f) return false;
 
-	// 센서 폭은 가로 기준이라 가로 화각이 나오고, POV.FOV는 세로 화각이라 종횡비로 나눈다
+	// 필름(36x24)은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
+	// 그래서 화면 전체에 대응하는 "가상 필름" 크기를 구해서 화각과 DOF에 같이 쓴다
 	const float Aspect = std::max(InOutPOV.AspectRatio, 0.01f);
-	const float TanHalfVertical = State.SensorWidth / (2.0f * State.FocalLength * Aspect);
+	const float ScreenFilmHeight = State.SensorWidth / FPhotoCameraState::FilmAspect / FPhotoCameraState::FrameHeightOnScreen;
+	const float ScreenFilmWidth = ScreenFilmHeight * Aspect;
+	const float TanHalfVertical = ScreenFilmHeight / (2.0f * State.FocalLength);
 	const float PhotoFOV = FMath::RadiansToDegrees(2.0f * atanf(TanHalfVertical));
 	InOutPOV.FOV = FMath::Lerp(InOutPOV.FOV, PhotoFOV, Alpha);
 
@@ -30,7 +33,8 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.bOverride_DepthOfFieldFocalDistance = true;
 	PP.DepthOfFieldFocalDistance = State.FocusDistance;
 	PP.bOverride_DepthOfFieldSensorWidth = true;
-	PP.DepthOfFieldSensorWidth = State.SensorWidth;
+	// DOF 렌더러는 센서 폭과 투영 행렬로 렌즈 길이를 되찾으므로, 화면 전체 기준 폭을 넘겨야 같은 mm가 나온다
+	PP.DepthOfFieldSensorWidth = ScreenFilmWidth;
 	PP.bOverride_CameraShutterSpeed = true;
 	PP.CameraShutterSpeed = 1.0f / State.GetShutterSeconds();
 	PP.bOverride_CameraISO = true;
