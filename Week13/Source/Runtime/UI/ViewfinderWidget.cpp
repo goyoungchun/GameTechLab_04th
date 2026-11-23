@@ -25,8 +25,8 @@ namespace
 	const FLinearColor FlagColor(0.85f, 0.10f, 0.08f, 1.0f);
 	const FLinearColor PatchColor(0.80f, 0.80f, 0.80f, 0.30f);
 
-	const char* ShutterLabels[] = { "15", "30", "60", "125", "250", "500" };
-	const char* ApertureLabels[] = { "2.8", "4", "5.6", "8", "11", "16", "22" };
+	const char* ShutterLabels[] = { "15", "30", "60", "125", "250", "500", "1000", "2000", "4000", "8000", "16000" };
+	const char* ApertureLabels[] = { "1.4", "2", "2.8", "4", "5.6", "8", "11", "16", "22" };
 	static_assert(sizeof(ShutterLabels) / sizeof(ShutterLabels[0]) == FPhotoCameraState::NumShutterStops);
 	static_assert(sizeof(ApertureLabels) / sizeof(ApertureLabels[0]) == FPhotoCameraState::NumApertureStops);
 
@@ -104,6 +104,22 @@ namespace
 		}
 	}
 
+	// 조리개 눈금 칸마다 스톱 수가 달라도 맞도록 N^2의 log2를 눈금 칸 사이에서 보간한다.
+	// 눈금 밖은 끝 칸의 기울기로 늘려서 노출계 바늘이 빨간 칸까지 넘어가게 한다
+	float ApertureLog2N2ToScale(float Log2N2)
+	{
+		constexpr int32 Num = FPhotoCameraState::NumApertureStops;
+		const auto StopLog = [](int32 i) { const float N = FPhotoCameraState::ApertureStops[i]; return std::log2(N * N); };
+		const float Step = 1.0f / (Num - 1);
+
+		if (Log2N2 <= StopLog(0))
+			return (Log2N2 - StopLog(0)) / (StopLog(1) - StopLog(0)) * Step;
+		for (int32 i = 1; i < Num; ++i)
+			if (Log2N2 <= StopLog(i))
+				return Step * ((i - 1) + (Log2N2 - StopLog(i - 1)) / (StopLog(i) - StopLog(i - 1)));
+		return 1.0f + (Log2N2 - StopLog(Num - 1)) / (StopLog(Num - 1) - StopLog(Num - 2)) * Step;
+	}
+
 	constexpr float DistanceZones[] = { FPhotoCameraState::MinFocusDistance, 1.5f, 3.0f, FPhotoCameraState::MaxFocusDistance };
 }
 
@@ -166,11 +182,9 @@ void UViewfinderWidget::NativeTick(float DeltaTime)
 		const float ShutterSpeed = 1.0f / State.GetShutterSeconds();
 		ExposureOffsetEV = MeteredEV - FPostProcessSettings::ComputeEV100(State.GetFstop(), ShutterSpeed, State.ISO);
 
-		// EV100 = log2(N^2 * 셔터분모 * 100 / ISO)를 N^2에 대해 풀고, 조리개 눈금(1스톱 간격)의 위치로 바꾼다
+		// EV100 = log2(N^2 * 셔터분모 * 100 / ISO)를 N^2에 대해 풀고, 조리개 눈금 위치로 바꾼다
 		const float Log2N2 = MeteredEV - std::log2(ShutterSpeed * 100.0f / State.ISO);
-		const float MinN = FPhotoCameraState::ApertureStops[0];
-		const float MaxN = FPhotoCameraState::ApertureStops[FPhotoCameraState::NumApertureStops - 1];
-		const float Pos = (Log2N2 - std::log2(MinN * MinN)) / (std::log2(MaxN * MaxN) - std::log2(MinN * MinN));
+		const float Pos = ApertureLog2N2ToScale(Log2N2);
 		// 눈금을 벗어나면 빨간 칸에 머문다. 너무 멀리 보내면 돌아올 때 오래 걸리므로 조금만 넘긴다
 		MeterNeedle.Update(std::clamp(Pos, -0.35f, 1.35f), DeltaTime);
 	}
@@ -248,7 +262,8 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 
 	// ---------- 위: 셔터 눈금 (35RC) ----------
 	{
-		const float PW = 560.0f * S, PH = 40.0f * S;
+		// 눈금이 11칸이라 네·다섯 자리 숫자끼리 붙지 않게 거리계보다 넓게 둔다
+		const float PW = 960.0f * S, PH = 40.0f * S;
 		const float PL = CX - PW * 0.5f;
 		const float PCY = R.Y + (WT - R.Y) * 0.5f;
 		const float PT = PCY - PH * 0.5f;

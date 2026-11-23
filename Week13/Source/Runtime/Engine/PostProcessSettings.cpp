@@ -32,8 +32,9 @@ namespace
 	constexpr float SunnySixteenFstop = 16.0f;
 	constexpr float SunnySixteenShutter = 200.0f;
 	constexpr float SunnySixteenISO = 200.0f;
-	// 노출계가 평균 밝기를 맞추려는 목표. 톤매핑 전 선형 값 기준 중간 회색(18%)
-	constexpr float MiddleGray = 0.18f;
+	// 노출계가 평균 밝기를 맞추려는 목표(톤매핑 전 선형 값). 실제 18%로 두면 이 씬은 원래보다 어둡게 맞춰져서,
+	// 한 스톱 올려 원래 게임 화면 밝기에 가깝게 맞췄다
+	constexpr float MiddleGray = 0.36f;
 
 	float GetReferenceEV100()
 	{
