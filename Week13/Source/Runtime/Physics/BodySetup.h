@@ -3,6 +3,7 @@
 #include "UObject/Object.h"
 #include "Math/Vector.h"
 #include "Math/Quat.h"
+#include "BodySetupCore.h"
 #include "BodySetup.generated.h"
 
 namespace physx 
@@ -52,13 +53,12 @@ struct FKAggregateGeom
 
 // 바디의 형상 정의. StaticMesh는 하나, PhysicsAsset은 본마다 하나 갖는다.
 UCLASS()
-class UBodySetup : public UObject
+class UBodySetup : public UBodySetupCore
 {
 	GENERATED_BODY()
 public:
 	virtual ~UBodySetup() override;   // Cooking한 PxConvexMesh·PxTriangleMesh를 해제한다
 
-	FName BoneName;            // PhysicsAsset에서 이 바디가 붙는 본. StaticMesh에서는 비워 둔다.
 	FKAggregateGeom AggGeom;
 
 	// ConvexElems를 Cooking해 PxConvexMesh로 만든다. 이미 있으면 그대로 둔다. 하나라도 실패하면 false.
