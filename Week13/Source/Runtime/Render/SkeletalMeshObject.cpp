@@ -138,6 +138,53 @@ void FSkeletalMeshObjectCPUSkin::Update(const TArray<FMatrix>& ComponentSpaceTra
 		SCOPE_CYCLE_COUNTER(SkinningStats::STAT_CpuSkinning);
 		SkinVerticesCPU(SkinnedVertices, SkinnedBounds);
 	}
+	if (!ClothPaintOverlay.IsEmpty())
+	{
+		const int32 Count = FMath::Min(SkinnedVertices.Num(), ClothPaintOverlay.Num());
+		for (int32 v = 0; v < Count; ++v)
+		{
+			if (ClothPaintOverlay[v].SimIndex > 0u)
+			{
+				const float Val = ClothPaintOverlay[v].BlendWeight;
+				SkinnedVertices[v].Color = FVector4(Val, Val, Val, 1.0f);
+			}
+			else
+			{
+				SkinnedVertices[v].Color.W = 0.0f;
+			}
+		}
+	}
+	UploadVertices();
+}
+
+void FSkeletalMeshObjectCPUSkin::SetClothPaintOverlay(const TArray<FClothVertMapping>* PaintOverlay)
+{
+	const FSkeletalMeshLODRenderData& LOD = SkeletalMesh->GetRenderData().LODRenderData[0];
+	const int32 Count = FMath::Min(SkinnedVertices.Num(), LOD.BindVertices.Num());
+	if (!PaintOverlay || PaintOverlay->IsEmpty())
+	{
+		ClothPaintOverlay.Empty();
+		for (int32 v = 0; v < Count; ++v)
+			SkinnedVertices[v].Color = LOD.BindVertices[v].Color;
+		UploadVertices();
+		return;
+	}
+
+	ClothPaintOverlay = *PaintOverlay;
+	const int32 PaintCount = FMath::Min(Count, ClothPaintOverlay.Num());
+	for (int32 v = 0; v < PaintCount; ++v)
+	{
+		if (ClothPaintOverlay[v].SimIndex > 0u)
+		{
+			const float Val = ClothPaintOverlay[v].BlendWeight;
+			SkinnedVertices[v].Color = FVector4(Val, Val, Val, 1.0f);
+		}
+		else
+		{
+			SkinnedVertices[v].Color = LOD.BindVertices[v].Color;
+			SkinnedVertices[v].Color.W = 0.0f;
+		}
+	}
 	UploadVertices();
 }
 
@@ -153,8 +200,32 @@ void FSkeletalMeshObjectCPUSkin::UploadVertices()
 
 void FSkeletalMeshObjectCPUSkin::UpdateClothData(const FClothingSimulationData* SimData)
 {
-	if (!SimData || !SkeletalMesh)
+	if (!SkeletalMesh)
 		return;
+
+	if (!SimData || SimData->Positions.IsEmpty())
+	{
+		// 클로스 일시정지/해제 시 마지막 시뮬 정점에 머물지 않도록 스키닝 포즈로 즉시 복구한다.
+		SkinVerticesCPU(SkinnedVertices, SkinnedBounds);
+		if (!ClothPaintOverlay.IsEmpty())
+		{
+			const int32 Count = FMath::Min(SkinnedVertices.Num(), ClothPaintOverlay.Num());
+			for (int32 v = 0; v < Count; ++v)
+			{
+				if (ClothPaintOverlay[v].SimIndex > 0u)
+				{
+					const float Val = ClothPaintOverlay[v].BlendWeight;
+					SkinnedVertices[v].Color = FVector4(Val, Val, Val, 1.0f);
+				}
+				else
+				{
+					SkinnedVertices[v].Color.W = 0.0f;
+				}
+			}
+		}
+		UploadVertices();
+		return;
+	}
 
 	const UClothingAssetCommon* ClothAsset = SkeletalMesh->GetClothingAsset();
 	if (!ClothAsset)
@@ -254,6 +325,9 @@ void FSkeletalMeshObjectGPUSkin::UploadBoneMatrices()
 
 void FSkeletalMeshObjectGPUSkin::UpdateClothData(const FClothingSimulationData* SimData)
 {
+	if (bClothPaintOverlayActive)
+		return;
+
 	const FStructuredBuffer* MappingBuffer = SkeletalMesh ? SkeletalMesh->GetClothMappingBuffer() : nullptr;
 	if (!SimData || !MappingBuffer || SimData->Positions.IsEmpty())
 	{
@@ -277,7 +351,7 @@ void FSkeletalMeshObjectGPUSkin::UpdateClothData(const FClothingSimulationData* 
 	for (uint32 i = 0; i < NumSimVerts; ++i)
 	{
 		ClothSimulStaging[i].Position = SimData->Positions[i];
-		ClothSimulStaging[i].Pad0 = 0.0f;
+		ClothSimulStaging[i].Pad0 = 1.0f; // 유효 시뮬 버퍼 표시 (GpuSkinCommon.hlsli)
 		ClothSimulStaging[i].Normal = bHasNormals ? SimData->Normals[i] : FVector(0.0f, 0.0f, 1.0f);
 		ClothSimulStaging[i].Pad1 = 0.0f;
 	}
@@ -289,6 +363,37 @@ void FSkeletalMeshObjectGPUSkin::UpdateClothData(const FClothingSimulationData* 
 	}
 
 	VertexFactory.SetClothBuffers(MappingBuffer, ClothSimulBuffer.get());
+}
+
+void FSkeletalMeshObjectGPUSkin::SetClothPaintOverlay(const TArray<FClothVertMapping>* PaintOverlay)
+{
+	if (!PaintOverlay || PaintOverlay->IsEmpty())
+	{
+		bClothPaintOverlayActive = false;
+		VertexFactory.SetClothBuffers(nullptr, nullptr);
+		return;
+	}
+
+	const uint32 Count = static_cast<uint32>(PaintOverlay->Num());
+	if (!ClothPaintOverlayBuffer || ClothPaintOverlayBuffer->GetCapacity() < Count)
+	{
+		ClothPaintOverlayBuffer = RenderCommand::CreateDynamicStructuredBuffer(Count, sizeof(FClothVertMapping));
+	}
+	if (!ClothPaintOverlayBuffer || !ClothPaintOverlayBuffer->GetSRV())
+	{
+		bClothPaintOverlayActive = false;
+		return;
+	}
+
+	if (void* Dst = RenderCommand::MapWriteDiscard(ClothPaintOverlayBuffer.get()))
+	{
+		std::memcpy(Dst, PaintOverlay->GetData(), sizeof(FClothVertMapping) * Count);
+		RenderCommand::Unmap(ClothPaintOverlayBuffer.get());
+	}
+
+	bClothPaintOverlayActive = true;
+	// t12에 PaintOverlay, t13은 nullptr(시뮬 변위 비활성)로 바인딩
+	VertexFactory.SetClothBuffers(ClothPaintOverlayBuffer.get(), nullptr);
 }
 
 

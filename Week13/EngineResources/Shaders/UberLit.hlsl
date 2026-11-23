@@ -371,6 +371,18 @@ VS_OUT Uber_VS(FVertexFactoryInput Input)
         Output.BoneWeight = Input.Color.r;
 #endif
     }
+    else if (ShadowFlags.y < -0.5f)
+    {
+        // Cloth Paint 오버레이 모드: Color.a = 섹션 포함 여부(0/1), BoneWeight = 정규화 페인트 값(0=분홍, >0=검정~흰색)
+#if VF_GPU_SKIN
+        const FClothVertMapping Paint = ClothMappingBuffer[Input.VertexID];
+        Output.Color.a = (Paint.SimIndex > 0u) ? 1.0f : 0.0f;
+        Output.BoneWeight = Paint.BlendWeight;
+#else
+        Output.Color.a = Input.Color.a;
+        Output.BoneWeight = Input.Color.r;
+#endif
+    }
     Output.UV = VF.UV * UVTransform.zw + UVTransform.xy;
 
     float3 N = VF.WorldNormal;
@@ -432,6 +444,26 @@ FUberOutput Uber_PS(VS_OUT Input, bool bIsFrontFace : SV_IsFrontFace)
         Output.NormalRoughness = float4(ShadingNormal, 0.8f); // SV_Target1도 반드시 채운다
         return Output;
     }
+    if (ShadowFlags.y < -0.5f && Input.Color.a > 0.5f)
+    {
+        // Cloth Paint 오버레이: 0 = 분홍(고정), >0 = 검정(작은 값) ~ 흰색(ViewMax)
+        float3 PaintColor;
+        if (Input.BoneWeight <= 0.0005f)
+        {
+            PaintColor = float3(0.95f, 0.12f, 0.85f);
+        }
+        else
+        {
+            const float Gray = saturate((Input.BoneWeight - 0.001f) / 0.999f);
+            PaintColor = float3(Gray, Gray, Gray);
+        }
+        const float3 PaintL = normalize(CameraPosition.xyz - Input.WorldPosition);
+        const float HalfLambert = dot(ShadingNormal, PaintL) * 0.5f + 0.5f;
+        const float LightingFactor = HalfLambert * 0.65f + 0.35f;
+        Output.LitColor = float4(PaintColor * LightingFactor, 1.0f);
+        Output.NormalRoughness = float4(ShadingNormal, 0.8f);
+        return Output;
+    }
     float4 SurfaceColor;
     if (SurfaceParams.z > 0.5f)
     {
@@ -444,7 +476,7 @@ FUberOutput Uber_PS(VS_OUT Input, bool bIsFrontFace : SV_IsFrontFace)
     }
     else
     {
-        SurfaceColor = Input.Color;
+        SurfaceColor = (ShadowFlags.y < -0.5f) ? float4(Input.Color.rgb, 1.0f) : Input.Color;
     }
     const float FinalAlpha = SurfaceColor.a * BaseColor.a;
     if (SurfaceParams.y >= 0.0f)

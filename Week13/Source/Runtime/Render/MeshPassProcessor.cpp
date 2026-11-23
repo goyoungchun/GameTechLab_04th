@@ -312,11 +312,19 @@ bool FMeshPassProcessor::Build(const FSceneView& View, const FRenderQueue& Queue
 			Packet.Proxy ? Packet.Proxy->GetBounds() : ConservativeBounds, Packet.Proxy));
 		Batch.Items.Last().InstanceCount = Packet.InstanceCount;
 
-		// 웨이트 히트맵: Forward 패스의 오브젝트 상수 빈 칸(ShadowFlags.y)에 본 번호 + 1을 싣는다
-		if (Pass == EMeshPassType::Forward && Packet.DebugWeightBone >= 0)
+		// 웨이트 히트맵(>0) 또는 Cloth Paint 오버레이(-2 -> ShadowFlags.y = -1)
+		if (Pass == EMeshPassType::Forward)
 		{
-			auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
-			Constants->ShadowFlags.Y = static_cast<float>(Packet.DebugWeightBone + 1);
+			if (Packet.DebugWeightBone >= 0)
+			{
+				auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
+				Constants->ShadowFlags.Y = static_cast<float>(Packet.DebugWeightBone + 1);
+			}
+			else if (Packet.DebugWeightBone == -2)
+			{
+				auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
+				Constants->ShadowFlags.Y = -1.0f;
+			}
 		}
 
 		Out.Add(std::move(Batch));

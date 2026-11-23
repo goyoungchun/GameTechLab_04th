@@ -8,9 +8,9 @@ class FVertexBuffer;
 class FIndexBuffer;
 class FStructuredBuffer;
 
-inline constexpr uint32 ClothMappingBufferSlot = 12; // GpuSkinCommon.hlsli의 t12
-inline constexpr uint32 ClothSimulBufferSlot = 13;   // GpuSkinCommon.hlsli의 t13
 inline constexpr uint32 BoneMatrixBufferSlot = 14;   // GpuSkinCommon.hlsli의 t14
+inline constexpr uint32 ClothMappingBufferSlot = 15; // GpuSkinCommon.hlsli의 t15
+inline constexpr uint32 ClothSimulBufferSlot = 16;   // GpuSkinCommon.hlsli의 t16
 
 enum class EVertexFactoryType : uint8
 {

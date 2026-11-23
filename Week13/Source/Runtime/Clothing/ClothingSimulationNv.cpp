@@ -3,6 +3,7 @@
 #include "ClothCore.h"
 #include "NvClothIncludes.h"
 #include <algorithm>
+#include <cmath>
 
 bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 {
@@ -170,6 +171,7 @@ void FClothingSimulationNv::UpdateSkeletalPose(
 
 	// 2. 고정점 위치 갱신 + 동적점 MotionConstraints 전달
 	nv::cloth::MappedRange<physx::PxVec4> Particles = Cloth->getCurrentParticles();
+	nv::cloth::MappedRange<physx::PxVec4> PrevParticles = Cloth->getPreviousParticles();
 	nv::cloth::Range<physx::PxVec4> Constraints = Cloth->getMotionConstraints();
 
 	const bool bHasMaxDist = (CachedMeshData.MaxDistances.Num() == CachedMeshData.Vertices.Num());
@@ -179,20 +181,53 @@ void FClothingSimulationNv::UpdateSkeletalPose(
 		const float InvMass = CachedMeshData.InverseMasses[i];
 		if (InvMass == 0.0f || bTeleport)
 		{
-			Particles[i] = physx::PxVec4(P.X, P.Y, P.Z, InvMass);
+			const physx::PxVec4 V(P.X, P.Y, P.Z, InvMass);
+			Particles[i] = V;
+			if (bTeleport)
+			{
+				PrevParticles[i] = V;
+			}
 		}
 		const float MaxDist = bHasMaxDist ? CachedMeshData.MaxDistances[i] : 0.0f;
 		Constraints[i] = physx::PxVec4(P.X, P.Y, P.Z, MaxDist);
 	}
 
-	// 3. 엔진 월드 -> 컴포넌트 로컬 공간 스케일 자동 보정
+	// 3. 엔진 월드(m) -> 컴포넌트 로컬 공간 스케일 자동 보정
+	//    - 레벨에서 Scale=0.01 배치된 cm 메시: InvScale = 100 -> -980 cm/s^2 (1G)
+	//    - 프리뷰 에디터에서 Scale=1.0으로 띄운 cm 메시: 로컬 크기가 크면 cm 단위로 간주해 100x 보정
 	const float UniformScale = FMath::Max(std::fabs(ComponentToWorld.Scale.Z), 0.001f);
 	const float InvScale = 1.0f / UniformScale;
+	float PhysicsUnitScale = InvScale;
+	if (UniformScale > 0.5f && NumVerts > 1)
+	{
+		FVector MinP = CachedMeshData.Vertices[0];
+		FVector MaxP = CachedMeshData.Vertices[0];
+		for (uint32 i = 1; i < NumVerts; ++i)
+		{
+			MinP.X = FMath::Min(MinP.X, CachedMeshData.Vertices[i].X);
+			MinP.Y = FMath::Min(MinP.Y, CachedMeshData.Vertices[i].Y);
+			MinP.Z = FMath::Min(MinP.Z, CachedMeshData.Vertices[i].Z);
+			MaxP.X = FMath::Max(MaxP.X, CachedMeshData.Vertices[i].X);
+			MaxP.Y = FMath::Max(MaxP.Y, CachedMeshData.Vertices[i].Y);
+			MaxP.Z = FMath::Max(MaxP.Z, CachedMeshData.Vertices[i].Z);
+		}
+		if ((MaxP - MinP).Size() > 15.0f)
+		{
+			PhysicsUnitScale = 100.0f;
+		}
+	}
 
-	const FVector LocalGravity = CachedConfig.Gravity * InvScale;
-	const FVector LocalWind = CachedConfig.WindVelocity * InvScale;
+	const FVector LocalGravity = CachedConfig.Gravity * PhysicsUnitScale;
+	const FVector LocalWind = CachedConfig.WindVelocity * PhysicsUnitScale;
 	Cloth->setGravity(physx::PxVec3(LocalGravity.X, LocalGravity.Y, LocalGravity.Z));
 	Cloth->setWindVelocity(physx::PxVec3(LocalWind.X, LocalWind.Y, LocalWind.Z));
+
+	// NvCloth applyWind의 impulse = (drag + lift) * fluidDensity * doubleArea는 L^4에 비례하므로
+	// cm 단위(100x)에서 fluidDensity=1.0을 그대로 두면 항력이 1,000,000배 폭주해 NaN이 발생한다.
+	// 길이 단위의 세제곱 역수(1 / L^3)로 유체 밀도를 스케일링해 m/cm 모든 메시에서 물리적으로 일관되게 유지한다.
+	const float UnitScale3 = PhysicsUnitScale * PhysicsUnitScale * PhysicsUnitScale;
+	const float FluidDensity = (PhysicsUnitScale > 1.0f) ? (5.0f / UnitScale3) : 1.0f;
+	Cloth->setFluidDensity(FluidDensity);
 
 	// 로컬 공간 이동/회전 전달
 	const FVector ScaledLoc = ComponentToWorld.Location * InvScale;
@@ -202,6 +237,7 @@ void FClothingSimulationNv::UpdateSkeletalPose(
 	if (bTeleport)
 	{
 		Cloth->clearInertia();
+		Cloth->clearInterpolation();
 	}
 }
 
@@ -259,7 +295,22 @@ void FClothingSimulationNv::GetSimulationData(FClothingSimulationData& OutData) 
 	for (uint32 i = 0; i < Count; ++i)
 	{
 		const physx::PxVec4& P = Particles[i];
-		OutData.Positions[i] = FVector(P.x, P.y, P.z);
+		if (std::isfinite(P.x) && std::isfinite(P.y) && std::isfinite(P.z))
+		{
+			OutData.Positions[i] = FVector(P.x, P.y, P.z);
+		}
+		else if (static_cast<int32>(i) < SkinnedPositions.Num())
+		{
+			OutData.Positions[i] = SkinnedPositions[i];
+		}
+		else if (static_cast<int32>(i) < CachedMeshData.Vertices.Num())
+		{
+			OutData.Positions[i] = CachedMeshData.Vertices[i];
+		}
+		else
+		{
+			OutData.Positions[i] = FVector::ZeroVector;
+		}
 		OutData.Normals[i] = FVector::ZeroVector;
 	}
 

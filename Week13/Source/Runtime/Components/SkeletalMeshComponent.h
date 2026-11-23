@@ -79,14 +79,14 @@ public:
 	void CreateClothingSimulation();
 	void DestroyClothingSimulation();
 	void ForceClothNextUpdateTeleport() { bClothTeleportPending = true; }
+	void SetClothSimulationSuspended(bool bSuspend);
+	bool IsClothSimulationSuspended() const { return bSuspendClothingSimulation; }
 	FClothingSimulationNv* GetClothingSimulation() const { return ClothingSimulation.get(); }
 	const FClothingSimulationData& GetClothSimData() const { return ClothSimData; }
+	static void RefreshClothingOnAllComponents(USkeletalMesh* TargetMesh);
 
 	UPROPERTY()
 	bool bEnableClothingSimulation = true;
-
-	UPROPERTY()
-	bool bEnableClothBodyCollision = true;
 
 protected:
 	// 단일 애니메이션 에셋 경로/루프/재생 속도를 씬에 저장·복원한다 (Serialize에서 부른다)
@@ -97,7 +97,6 @@ protected:
 
 private:
 	void UpdateClothingSimulation(float DeltaTime);
-	void UpdateAutoBodyCollisions();
     UPROPERTY()
     FString AnimBlueprintPath;
 
@@ -117,4 +116,5 @@ private:
 	TUniquePtr<FClothingSimulationNv> ClothingSimulation;
 	FClothingSimulationData ClothSimData;
 	bool bClothTeleportPending = true;
+	bool bSuspendClothingSimulation = false;
 };

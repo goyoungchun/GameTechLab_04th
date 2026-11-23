@@ -14,5 +14,11 @@ protected:
 	bool IsViewportPanel() const override { return true; }
 
 private:
+	void DrawSectionContextMenu();
+
 	FPreviewViewportToolbarState ToolbarState;
+	bool bRightClickTracking = false;
+	ImVec2 RightClickStartPos = ImVec2(0.0f, 0.0f);
+	int32 ContextMenuSectionIndex = -1;
+	char CreateClothNameBuf[128] = "Clothing_0";
 };

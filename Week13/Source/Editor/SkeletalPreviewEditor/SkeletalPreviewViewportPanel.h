@@ -8,8 +8,13 @@ struct FPreviewViewportToolbarState
     bool bCameraSpeedDragged = false;
 };
 
+#include <functional>
+
 // 스켈레탈 프리뷰/메시 에디터 뷰포트 상단에 공용 뷰 툴바(Projection, Camera Speed, View Mode, Show)를 오른쪽 정렬로 그린다.
-void DrawPreviewViewToolbar(FSkeletalPreviewEditor& Editor, FPreviewViewportToolbarState& State);
+void DrawPreviewViewToolbar(
+    FSkeletalPreviewEditor& Editor,
+    FPreviewViewportToolbarState& State,
+    const std::function<void()>& LeftToolbarContent = nullptr);
 
 class FSkeletalPreviewViewportPanel : public TAssetEditorPanel<FSkeletalPreviewEditor>
 {
