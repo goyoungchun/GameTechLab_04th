@@ -1,6 +1,46 @@
 #include "EnginePCH.h"
 #include "PhysicsAsset.h"
 
+void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
+{
+    FArchive& Ar = Record.GetUnderlyingArchive();
+    Super::Serialize(Record);
+
+    int32 Version = Ar.IsSaving() ? 1 : 0;
+    Record << SA_VALUE("Version", Version);
+
+    if (Version != 1)
+    {
+        Ar.SetError();
+        return;
+    }
+
+    int32 Num = Ar.IsSaving() ? BodySetup.Num() : 0;
+    FStructuredArchive::FArray Bodies = Record.EnterArray("Bodies", Num);
+
+    if (Ar.IsLoading())
+    {
+        ClearAllBodies();
+    }
+
+    for (int32 i = 0; i < Num; ++i)
+    {
+        FStructuredArchive::FRecord BodyRecord = Bodies.EnterElement().EnterRecord();
+
+        if (Ar.IsLoading())
+        {
+            UBodySetup* Setup = NewObject<UBodySetup>(this);
+            Setup->Serialize(BodyRecord);
+            BodySetup.Add(Setup);
+        }
+        else
+        {
+            BodySetup[i]->Serialize(BodyRecord);
+        }
+    }
+
+}
+
 int32 UPhysicsAsset::FindBodyIndex(FName BoneName) const
 {
     for (int32 i = 0; i < BodySetup.Num(); ++i)

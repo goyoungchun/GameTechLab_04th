@@ -12,6 +12,8 @@ class UPhysicsAsset : public UObject
 	GENERATED_BODY()
 
 public:
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+
 	TArray<UBodySetup*> BodySetup;
 
 	int32 FindBodyIndex(FName BoneName) const;
