@@ -43,6 +43,8 @@ public:
 	bool RenderDownsample(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture);
 	// 반해상도 (색, CoC) → 현재 바인딩된 반해상도 블러 타깃
 	bool RenderGather(const FSceneView& View, FTexture2D* HalfResTexture);
+	// 반해상도 Far/Near → 현재 바인딩된 두 타깃(튀는 픽셀을 거른 Far/Near)
+	bool RenderPostFilter(FTexture2D* FarTexture, FTexture2D* NearTexture);
 	// 원본 + CoC + 블러 → 현재 바인딩된 SceneColor
 	bool RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* FarTexture, FTexture2D* NearTexture);
 
@@ -54,11 +56,13 @@ private:
 	FShaderProgram* VisualizeShader = nullptr;
 	FShaderProgram* DownsampleShader = nullptr;
 	FShaderProgram* GatherShader = nullptr;
+	FShaderProgram* PostFilterShader = nullptr;
 	FShaderProgram* CompositeShader = nullptr;
 	FPipelineState SetupPipelineState;
 	FPipelineState VisualizePipelineState;
 	FPipelineState DownsamplePipelineState;
 	FPipelineState GatherPipelineState;
+	FPipelineState PostFilterPipelineState;
 	FPipelineState CompositePipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
 	TUniquePtr<FConstantBuffer> GatherConstantBuffer;

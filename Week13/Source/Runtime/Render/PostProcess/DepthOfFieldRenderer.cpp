@@ -27,15 +27,17 @@ void FDepthOfFieldRenderer::Init(FRenderer* InRenderer)
 	VisualizeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldVisualize.hlsl");
 	DownsampleShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldDownsample.hlsl");
 	GatherShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldGather.hlsl");
+	PostFilterShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldPostFilter.hlsl");
 	CompositeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/DepthOfFieldComposite.hlsl");
 	SetupPipelineState = MakeFullscreenPipeline(SetupShader);
 	VisualizePipelineState = MakeFullscreenPipeline(VisualizeShader);
 	DownsamplePipelineState = MakeFullscreenPipeline(DownsampleShader);
 	GatherPipelineState = MakeFullscreenPipeline(GatherShader);
+	PostFilterPipelineState = MakeFullscreenPipeline(PostFilterShader);
 	CompositePipelineState = MakeFullscreenPipeline(CompositeShader);
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FDepthOfFieldData));
 	GatherConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FDepthOfFieldGatherData));
-	assert(SetupShader && VisualizeShader && DownsampleShader && GatherShader && CompositeShader && ConstantBuffer && GatherConstantBuffer);
+	assert(SetupShader && VisualizeShader && DownsampleShader && GatherShader && PostFilterShader && CompositeShader && ConstantBuffer && GatherConstantBuffer);
 }
 
 bool FDepthOfFieldRenderer::RenderSetup(const FSceneView& View, FTexture2D* DepthTarget)
@@ -109,6 +111,11 @@ bool FDepthOfFieldRenderer::RenderGather(const FSceneView& View, FTexture2D* Hal
 	RenderCommand::UpdateBufferData(GatherConstantBuffer.get(), &Data, sizeof(Data));
 	RenderCommand::BindConstantBuffer(0, GatherConstantBuffer.get(), EShaderBindFlagBits::Pixel);
 	return DrawFullscreen(GatherPipelineState, { HalfResTexture });
+}
+
+bool FDepthOfFieldRenderer::RenderPostFilter(FTexture2D* FarTexture, FTexture2D* NearTexture)
+{
+	return DrawFullscreen(PostFilterPipelineState, { FarTexture, NearTexture });
 }
 
 bool FDepthOfFieldRenderer::RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* FarTexture, FTexture2D* NearTexture)

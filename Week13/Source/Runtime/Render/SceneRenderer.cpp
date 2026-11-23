@@ -842,7 +842,10 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			const FRenderGraphTextureRef HalfFar = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfFar");
 			// near는 초점 물체 위에 덮여야 하므로 far와 따로 모으고, A에 덮는 비율을 담는다
 			const FRenderGraphTextureRef HalfNear = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfNear");
-			if (!HalfRes || !HalfFar || !HalfNear) return false;
+			// Gather가 읽고 있는 텍스처에 바로 쓸 수 없으니 거른 결과는 따로 둔다
+			const FRenderGraphTextureRef HalfFarFiltered = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfFarFiltered");
+			const FRenderGraphTextureRef HalfNearFiltered = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfNearFiltered");
+			if (!HalfRes || !HalfFar || !HalfNear || !HalfFarFiltered || !HalfNearFiltered) return false;
 
 			FRenderGraphRasterPassDesc Downsample{};
 			Downsample.Name = "DOFDownsample";
@@ -869,12 +872,24 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 						DOF->RenderGather(View, Graph.Resolve(HalfRes));
 				})) return false;
 
-			FRenderGraphRasterPassDesc Composite = MakeViewportPass("DOFComposite", SceneColor);
-			Composite.ReadTextures = { SceneCopy, CoC, HalfFar, HalfNear };
-			if (!Graph.AddRasterPass(std::move(Composite), [Renderer, &Graph, SceneCopy, CoC, HalfFar, HalfNear]
+			FRenderGraphRasterPassDesc PostFilter{};
+			PostFilter.Name = "DOFPostFilter";
+			PostFilter.ReadTextures = { HalfFar, HalfNear };
+			PostFilter.ColorAttachments = {
+				{ HalfFarFiltered, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } },
+				{ HalfNearFiltered, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(PostFilter), [Renderer, &Graph, HalfFar, HalfNear]
 				{
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
-						DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFar), Graph.Resolve(HalfNear));
+						DOF->RenderPostFilter(Graph.Resolve(HalfFar), Graph.Resolve(HalfNear));
+				})) return false;
+
+			FRenderGraphRasterPassDesc Composite = MakeViewportPass("DOFComposite", SceneColor);
+			Composite.ReadTextures = { SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered };
+			if (!Graph.AddRasterPass(std::move(Composite), [Renderer, &Graph, SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered]
+				{
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFarFiltered), Graph.Resolve(HalfNearFiltered));
 				})) return false;
 		}
 	}
