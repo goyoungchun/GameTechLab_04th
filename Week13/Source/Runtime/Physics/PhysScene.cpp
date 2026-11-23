@@ -65,9 +65,6 @@ namespace
 		return physx::PxQueryFilterData(physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER);
 	}
 
-	// PhysX 캡슐은 X축으로 눕는다. 엔진 캡슐(Z축)과 맞추려고 Y축 기준 90도 돌린다 (BodyInstance와 같은 규약).
-	physx::PxQuat CapsuleAxisFix() { return physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0)); }
-
 	// 모양 하나와 그 회전을 함께 만든다. 캡슐만 축 보정이 붙는다.
 	physx::PxGeometryHolder MakeGeometry(const FCollisionShape& Shape, physx::PxQuat& InOutRotation)
 	{
@@ -355,6 +352,14 @@ void FPhysScene::DispatchPendingNotifies()
 			continue;
 		if (Info.bBegin)
 		{
+			// 상대가 겹침 이벤트를 껐거나, 같은 액터의 컴포넌트끼리거나, 액터 충돌이 꺼져 있으면 시작하지 않는다.
+			// 나감은 조건 없이 보낸다 (EndComponentOverlap은 겹쳐 있던 쌍에만 반응한다).
+			const AActor* TriggerOwner = Info.TriggerComponent->GetOwner();
+			const AActor* OtherOwner = Info.OtherComponent->GetOwner();
+			if (!Info.OtherComponent->bGenerateOverlapEvents ||
+				!TriggerOwner || !OtherOwner || TriggerOwner == OtherOwner ||
+				!TriggerOwner->GetActorEnableCollision() || !OtherOwner->GetActorEnableCollision())
+				continue;
 			Info.TriggerComponent->BeginComponentOverlap(Info.OtherComponent);
 			Info.OtherComponent->BeginComponentOverlap(Info.TriggerComponent);
 		}

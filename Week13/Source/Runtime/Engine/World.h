@@ -62,9 +62,6 @@ public:
 
 	void Tick(float RealDeltaTime);
 
-	// 모든 액터 Tick이 끝난 뒤 1회. 지난 프레임 겹침 쌍과 비교해 End → Begin 순으로 보낸다. 담당: C
-	void UpdateOverlaps();
-
 	void ClearWorld();
 
 

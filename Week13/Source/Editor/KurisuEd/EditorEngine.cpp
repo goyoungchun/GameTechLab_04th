@@ -53,8 +53,6 @@
 #include "Components/ShapeComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 
-#include "Physics/Collision.h"
-
 #include "Audio/AudioDevice.h"
 #include "Core/Misc/Paths.h"
 #include "Engine/GameSettings.h"
@@ -296,11 +294,6 @@ void UEditorEngine::InitLevelEditorTab()
 	OutputLogPanel->SetOpen(false);
 	FLog::AddSink(OutputLogPanel);
 	KRS_LOG(Info, "Editor Initialize...");
-
-	// 테스트 코드 
-#ifdef ENGINE_DEBUG
-	FCollision::RunSelfTest();
-#endif
 }
 
 // ImGui를 초기화하고 메인 메뉴 바를 창의 제목 표시줄로 쓴다.

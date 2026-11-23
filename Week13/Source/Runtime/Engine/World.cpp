@@ -43,7 +43,6 @@
 
 #include "Script/LuaBindings.h"
 
-#include "Physics/Collision.h"
 #include "Physics/PhysScene.h"
 
 namespace
@@ -258,9 +257,6 @@ void UWorld::GameWorldTick(float DeltaTime)
 
 	// 코루틴 Tick
 	CoroutineScheduler.Tick(DeltaTime);
-
-	// ShapeComponent 충돌 처리
-	UpdateOverlaps();
 
 	// Lua Script 제거 처리
 	FLuaBindings::FlushPendingDestroy(this);
@@ -973,139 +969,6 @@ void UWorld::Serialize(FStructuredArchive::FRecord Record)
 
 	FArchive& Ar = Record.GetUnderlyingArchive();
 	PersistentLevel->Serialize(Record.EnterRecord("PersistentLevel"));
-}
-
-void UWorld::UpdateOverlaps()
-{
-	// 1. 이 월드에서 살아 있고 등록된 모든 충돌 도형을 수집한다.
-	// bGenerateOverlapEvents가 false인 도형도 넣는다.
-	// 그래야 실행 중 이벤트를 껐을 때 기존 Overlap에 End를 보낼 수 있다.
-	TArray<UShapeComponent*> Shapes;
-
-	for (TObjectIterator<UShapeComponent> It; It; ++It)
-	{
-		UShapeComponent* Shape = *It;
-
-		if (!Shape ||
-			!Shape->IsRegistered() ||
-			Shape->GetWorld() != this ||
-			!Shape->GetOwner())
-		{
-			continue;
-		}
-
-		Shapes.Add(Shape);
-	}
-
-	// 2. 도형은 렌더용 Scene.BVH에 없으므로 이번 프레임의 도형 전용 BVH를 만든다.
-	std::vector<int32> Indices;
-	std::unordered_map<UPrimitiveComponent*, int32> ShapeIndices;
-	Indices.reserve(Shapes.Num());
-	ShapeIndices.reserve(Shapes.Num());
-	for (int32 i = 0; i < Shapes.Num(); ++i)
-	{
-		Indices.push_back(i);
-		ShapeIndices.emplace(Shapes[i], i);
-	}
-
-	TBVH<int32> OverlapBVH([&](const int32& Index) -> FBox
-		{
-			return Shapes[Index]->GetWorldAABB();
-		});
-	OverlapBVH.Build(std::span<const int32>(Indices.data(), Indices.size()));
-
-	std::vector<int32> Candidates;
-	for (int32 i = 0; i < Shapes.Num(); ++i)
-	{
-		UShapeComponent* A = Shapes[i];
-		// 앞선 쌍의 오버랩 콜백에서 Destroy되어 등록 해제된 도형. 메모리는 Tick 끝까지 살아 있지만
-		// 여기서 새 겹침을 만들면 곧 해제될 도형이 상대의 OverlapInfos에 남는다.
-		if (!A->IsRegistered())
-			continue;
-		AActor* OwnerA = A->GetOwner();
-
-		Candidates.clear();
-		const FBox QueryBounds = A->GetWorldAABB();
-		OverlapBVH.Query(
-			[&](const FBox& Bounds) { return AreAABBsOverlapping(QueryBounds, Bounds); },
-			[&](int32 j)
-			{
-				if (j > i) Candidates.push_back(j);
-			});
-
-		// BVH 후보에서 빠진 이전 겹침도 검사해야 분리/충돌 설정 해제 시 End를 보낼 수 있다.
-		for (const FOverlapInfo& Info : A->GetOverlapInfos())
-		{
-			const auto It = ShapeIndices.find(Info.OtherComp);
-			if (It != ShapeIndices.end() && It->second > i)
-				Candidates.push_back(It->second);
-		}
-
-		// 후보 중복을 없애고 기존 i < j 순서대로 이벤트를 전달한다.
-		std::sort(Candidates.begin(), Candidates.end());
-		Candidates.erase(std::unique(Candidates.begin(), Candidates.end()), Candidates.end());
-
-		for (int32 j : Candidates)
-		{
-			// 콜백으로 A나 B가 이번 루프 도중 등록 해제될 수 있다. 해제 시 OverlapInfos는 이미 정리되었다.
-			if (!A->IsRegistered())
-				break;
-			UShapeComponent* B = Shapes[j];
-			if (!B->IsRegistered())
-				continue;
-			AActor* OwnerB = B->GetOwner();
-
-			// 같은 Actor의 콜라이더끼리는 여기서는 무시한다.
-			// 필요하면 나중에 self-collision 정책을 별도로 추가한다.
-			const bool bCanGenerateOverlap =
-				OwnerA &&
-				OwnerB &&
-				OwnerA != OwnerB &&
-				OwnerA->GetActorEnableCollision() &&
-				OwnerB->GetActorEnableCollision() &&
-				A->bGenerateOverlapEvents &&
-				B->bGenerateOverlapEvents;
-
-			bool bIsOverlappingNow = false;
-
-			if (bCanGenerateOverlap)
-			{
-				// 3. 값싼 AABB 검사에서 먼저 탈락시킨다.
-				const FBox BoundsA = A->GetWorldAABB();
-				const FBox BoundsB = B->GetWorldAABB();
-
-				if (AreAABBsOverlapping(BoundsA, BoundsB))
-				{
-					// 4. 실제 도형 충돌: Sphere/Box/Capsule 조합
-					bIsOverlappingNow = FCollision::Overlap(A, B);
-				}
-			}
-
-			// 5. 지난 프레임의 상태
-			const bool bWasOverlapping =
-				A->IsOverlappingComponent(B);
-
-			// false -> true: 첫 접촉
-			if (!bWasOverlapping && bIsOverlappingNow)
-			{
-				A->BeginComponentOverlap(B);
-				B->BeginComponentOverlap(A);
-
-				// 지금은 “처음 막혔을 때 한 번” Hit를 보내는 정책
-				if (A->bBlockComponent && B->bBlockComponent)
-				{
-					A->DispatchHit(B);
-					B->DispatchHit(A);
-				}
-			}
-			// true -> false: 분리
-			else if (bWasOverlapping && !bIsOverlappingNow)
-			{
-				A->EndComponentOverlap(B);
-				B->EndComponentOverlap(A);
-			}
-		}
-	}
 }
 
 float UWorld::GetEffectiveTimeDilation() const

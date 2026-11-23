@@ -3,6 +3,50 @@
 #include "PhysicsCore.h"
 #include "PhysXConversions.h"
 #include "PhysXIncludes.h"
+#include "PhysXFilterShader.h"
+#include "BodyInstance.h"
+#include "PhysicalMaterial.h"
+
+namespace
+{
+	// 스케일은 형상 크기에 반영한다. 캡슐·구는 균일해야 하므로 가장 큰 축을 쓴다.
+	float MaxAbsXY(const FVector& S) { return std::max(std::abs(S.X), std::abs(S.Y)); }
+	float MaxAbs3(const FVector& S) { return std::max({ std::abs(S.X), std::abs(S.Y), std::abs(S.Z) }); }
+
+	physx::PxTransform MakeLocalPose(const FVector& Center, const FQuat& Rotation, const FVector& Scale)
+	{
+		const FVector ScaledCenter(Center.X * Scale.X, Center.Y * Scale.Y, Center.Z * Scale.Z);
+		return physx::PxTransform(K2PVector(ScaledCenter), K2PQuat(Rotation));
+	}
+
+	void AttachShape(physx::PxRigidActor& Actor, const physx::PxGeometry& Geometry, const physx::PxTransform& LocalPose, FBodyInstance* Owner)
+	{
+		physx::PxMaterial* Material = Owner->GetPhysicalMaterial()->GetPxMaterial();
+		physx::PxShape* Shape = Material ? physx::PxRigidActorExt::createExclusiveShape(Actor, Geometry, *Material) : nullptr;
+		if (!Shape)
+		{
+			KRS_LOG(Error, "[Physics] Failed to create shape.");
+			return;
+		}
+		Shape->setLocalPose(LocalPose);
+
+		// 시뮬레이션(밀고 밀림)과 쿼리(레이캐스트·스윕) 참여를 따로 켠다.
+		const ECollisionEnabled Collision = Owner->CollisionEnabled;
+		Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE,
+			Collision == ECollisionEnabled::PhysicsOnly || Collision == ECollisionEnabled::QueryAndPhysics);
+		Shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE,
+			Collision == ECollisionEnabled::QueryOnly || Collision == ECollisionEnabled::QueryAndPhysics);
+		// 밀고 밀리지 않으면서 겹침 이벤트를 원하면 트리거로 만들어 onTrigger로 들어옴/나감을 받는다.
+		// eSIMULATION_SHAPE와 함께 켤 수 없으므로 위에서 시뮬레이션 플래그를 내린 뒤에 켠다.
+		if (Owner->IsTriggerBody())
+			Shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, true);
+		Shape->userData = Owner;
+
+		const physx::PxFilterData FilterData = K2PFilterData(Owner->MakeMaskFilter());
+		Shape->setSimulationFilterData(FilterData);   // 바디끼리 충돌 판정 (Filter Shader)
+		Shape->setQueryFilterData(FilterData);        // 레이캐스트·스윕 판정 (A7-2)
+	}
+}
 
 UBodySetup::~UBodySetup()
 {
@@ -88,6 +132,61 @@ physx::PxTriangleMesh* UBodySetup::GetOrCreateTriMesh()
 	if (!CookedTriMesh)
 		KRS_LOG(Warning, "[Physics] TriangleMesh cooking failed ({} triangles).", Desc.triangles.count);
 	return CookedTriMesh;
+}
+
+void UBodySetup::AddShapesToRigidActor(FBodyInstance* OwningInstance, physx::PxRigidActor& Actor, const FVector& Scale3D)
+{
+	// 음수(뒤집기) 스케일은 PhysX가 유효하지 않은 메시 스케일로 거부하므로 크기만 쓴다.
+	const physx::PxMeshScale MeshScale(K2PVector(Scale3D.GetAbs()));
+
+	// Complex as Simple이면 삼각형 메시 하나만 붙인다.
+	// 계단·지형처럼 오목한 배경을 정확히 막고, 평면 바닥도 두께 없이 그대로 쓸 수 있다.
+	// PhysX는 시뮬레이트하는 바디와 트리거에 삼각형 메시를 허용하지 않으므로 Static 바디에만 쓰고,
+	// 나머지는 삼각형이 없을 때처럼 단순 형상으로 만든다.
+	const bool bUseComplexAsSimple = CollisionTraceFlag == ECollisionTraceFlag::UseComplexAsSimple
+		&& OwningInstance->Mobility == EBodyMobility::Static && !OwningInstance->IsTriggerBody();
+	if (bUseComplexAsSimple)
+	{
+		if (physx::PxTriangleMesh* TriMesh = GetOrCreateTriMesh())
+		{
+			AttachShape(Actor, physx::PxTriangleMeshGeometry(TriMesh, MeshScale), physx::PxTransform(physx::PxIdentity), OwningInstance);
+			return;
+		}
+	}
+
+	for (const FKSphereElem& Elem : AggGeom.SphereElems)
+	{
+		const physx::PxSphereGeometry Sphere(Elem.Radius * MaxAbs3(Scale3D));
+		AttachShape(Actor, Sphere, MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), OwningInstance);
+	}
+	for (const FKBoxElem& Elem : AggGeom.BoxElems)
+	{
+		const physx::PxBoxGeometry Box(
+			std::abs(Elem.Extent.X * Scale3D.X), std::abs(Elem.Extent.Y * Scale3D.Y), std::abs(Elem.Extent.Z * Scale3D.Z));
+		AttachShape(Actor, Box, MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), OwningInstance);
+	}
+	for (const FKSphylElem& Elem : AggGeom.SphylElems)
+	{
+		const physx::PxCapsuleGeometry Capsule(Elem.Radius * MaxAbsXY(Scale3D), Elem.Length * 0.5f * std::abs(Scale3D.Z));
+		physx::PxTransform LocalPose = MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D);
+		LocalPose.q = LocalPose.q * CapsuleAxisFix();
+		AttachShape(Actor, Capsule, LocalPose, OwningInstance);
+	}
+
+	if (!AggGeom.ConvexElems.IsEmpty())
+	{
+		CreatePhysicsMeshes();
+		for (int32 Index = 0; Index < AggGeom.ConvexElems.Num(); ++Index)
+		{
+			physx::PxConvexMesh* Mesh = GetConvexMesh(Index);
+			if (!Mesh)
+				continue;   // Cooking 실패한 요소는 건너뛴다 (경고는 CreatePhysicsMeshes가 남겼다)
+
+			// 구·캡슐과 달리 볼록 메시는 축마다 다른 스케일을 그대로 받는다.
+			const FKConvexElem& Elem = AggGeom.ConvexElems[Index];
+			AttachShape(Actor, physx::PxConvexMeshGeometry(Mesh, MeshScale), MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), OwningInstance);
+		}
+	}
 }
 
 physx::PxConvexMesh* UBodySetup::GetConvexMesh(int32 Index) const
