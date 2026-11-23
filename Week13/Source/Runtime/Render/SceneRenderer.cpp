@@ -816,6 +816,8 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		Setup.ColorAttachments = { { CoC, ERenderGraphLoadAction::Clear,{ 0.0f, 0.0f, 0.0f, 0.0f } } };
 		if (!Graph.AddRasterPass(std::move(Setup), [this, Renderer, &Graph, Depth]
 			{
+				// 패스가 람다로 나뉘어 있어도 같은 이름은 합산되므로 DOF 전체 시간이 된다
+				SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 					DOF->RenderSetup(View, Graph.Resolve(Depth));
 			})) return false;
@@ -827,6 +829,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			Visualize.ReadTextures = { CoC, SceneCopy };
 			if (!Graph.AddRasterPass(std::move(Visualize), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
 				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 					FTexture2D* Copy = Graph.Resolve(SceneCopy);
 					RenderCommand::CopyTexture(Copy, SceneColorTarget);
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
@@ -853,6 +856,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			Downsample.ColorAttachments = { { HalfRes, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
 			if (!Graph.AddRasterPass(std::move(Downsample), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
 				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 					// 합성 패스가 SceneColor에 쓰는 동안 원본을 읽어야 하므로 여기서 미리 복사해 둔다
 					FTexture2D* Copy = Graph.Resolve(SceneCopy);
 					RenderCommand::CopyTexture(Copy, SceneColorTarget);
@@ -868,6 +872,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 				{ HalfNear, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
 			if (!Graph.AddRasterPass(std::move(Gather), [this, Renderer, &Graph, HalfRes]
 				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 						DOF->RenderGather(View, Graph.Resolve(HalfRes));
 				})) return false;
@@ -880,6 +885,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 				{ HalfNearFiltered, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
 			if (!Graph.AddRasterPass(std::move(PostFilter), [Renderer, &Graph, HalfFar, HalfNear]
 				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 						DOF->RenderPostFilter(Graph.Resolve(HalfFar), Graph.Resolve(HalfNear));
 				})) return false;
@@ -888,6 +894,7 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 			Composite.ReadTextures = { SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered };
 			if (!Graph.AddRasterPass(std::move(Composite), [Renderer, &Graph, SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered]
 				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 						DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFarFiltered), Graph.Resolve(HalfNearFiltered));
 				})) return false;
