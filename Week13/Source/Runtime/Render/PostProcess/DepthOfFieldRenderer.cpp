@@ -104,7 +104,7 @@ bool FDepthOfFieldRenderer::RenderGather(FTexture2D* HalfResTexture)
 	return DrawFullscreen(GatherPipelineState, { HalfResTexture });
 }
 
-bool FDepthOfFieldRenderer::RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* BlurTexture)
+bool FDepthOfFieldRenderer::RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* FarTexture, FTexture2D* NearTexture)
 {
-	return DrawFullscreen(CompositePipelineState, { SceneColorCopy, CoCTexture, BlurTexture });
+	return DrawFullscreen(CompositePipelineState, { SceneColorCopy, CoCTexture, FarTexture, NearTexture });
 }

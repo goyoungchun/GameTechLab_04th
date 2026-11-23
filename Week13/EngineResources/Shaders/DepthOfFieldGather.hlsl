@@ -25,7 +25,13 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
     return Output;
 }
 
-float4 mainPS(VSOutput Input) : SV_Target
+struct PSOutput
+{
+    float4 Far : SV_Target0;  // RGB=far 블러 색, A=가운데 CoC
+    float4 Near : SV_Target1; // RGB=near 블러 색, A=near가 이 픽셀을 덮는 비율(0~1)
+};
+
+PSOutput mainPS(VSOutput Input)
 {
     static const float MaxCoCRadiusPx = 32.f;
     static const int SampleCount = 32;
@@ -39,8 +45,20 @@ float4 mainPS(VSOutput Input) : SV_Target
     float2 HalfTexelSize = 1.0 / float2(HalfWidth, HalfHeight);
     float2 CenterUV = Input.Position.xy * HalfTexelSize;
     
-    float3 ColorSum = CenterSample.rgb;
-    float WeightSum = 1.f;
+    float3 FarColorSum = 0, NearColorSum = 0;
+    float FarWeightSum = 0, NearWeightSum = 0;
+    float MaxNearCoCPx = 0; // near가 얼마나 흐린지: 살짝 앞인 픽셀은 덮지 않으려고 쓴다
+    if (CenterSample.a < 0)
+    {
+        NearColorSum = CenterSample.rgb;
+        NearWeightSum = 1;
+        MaxNearCoCPx = -CenterSample.a;
+    }
+    else
+    {
+        FarColorSum = CenterSample.rgb;
+        FarWeightSum = 1;
+    }
     for (int i = 0; i < SampleCount; ++i)
     {
         float SampleDistHalfPx = sqrt((i + 0.5) / SampleCount) * GatherRadiusHalfPx; // 면적 균등
@@ -50,8 +68,34 @@ float4 mainPS(VSOutput Input) : SV_Target
 
         float NeighborCoCHalfPx = abs(Neighbor.a) * 0.5f;
         float ReachWeight = saturate(NeighborCoCHalfPx - SampleDistHalfPx + 1.f); // 이웃 원판이 나까지 닿는가
-        ColorSum += Neighbor.rgb * ReachWeight;
-        WeightSum += ReachWeight;
+
+        // Neighbor.a 부호로 far/near를 나눠 각각 누적한다 (near는 덮는 비율도 계산)
+        // 가운데 샘플과 같은 기준: CoC 0은 far 쪽
+        if (Neighbor.a >= 0)
+        {
+            FarColorSum += Neighbor.rgb * ReachWeight;
+            FarWeightSum += ReachWeight;
+        }
+        else
+        {
+            NearColorSum += Neighbor.rgb * ReachWeight;
+            NearWeightSum += ReachWeight;
+            if (ReachWeight > 0)
+                MaxNearCoCPx = max(MaxNearCoCPx, -Neighbor.a);
+        }
     }
-    return float4(ColorSum / WeightSum, CenterSample.a);
+
+    // Composite의 BlendRadiusPx와 같은 값: near도 충분히 흐릴 때만 원본을 덮는다
+    static const float NearBlendRadiusPx = 8.f;
+    float NearCoverage = saturate(NearWeightSum / SampleCount);
+    float NearBlurAmount = saturate(MaxNearCoCPx / NearBlendRadiusPx);
+
+    // far 이웃이 없으면 검은색 대신 가운데 색을 내보내, bilinear로 읽는 옆 픽셀이 어두워지지 않게 한다
+    float3 FarColor = FarWeightSum > 0 ? FarColorSum / FarWeightSum : CenterSample.rgb;
+    float3 NearColor = NearWeightSum > 0 ? NearColorSum / NearWeightSum : CenterSample.rgb;
+
+    PSOutput Output;
+    Output.Far = float4(FarColor, CenterSample.a);
+    Output.Near = float4(NearColor, NearCoverage * NearBlurAmount);
+    return Output;
 }

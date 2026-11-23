@@ -36,7 +36,7 @@ public:
 	// 반해상도 (색, CoC) → 현재 바인딩된 반해상도 블러 타깃
 	bool RenderGather(FTexture2D* HalfResTexture);
 	// 원본 + CoC + 블러 → 현재 바인딩된 SceneColor
-	bool RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* BlurTexture);
+	bool RenderComposite(FTexture2D* SceneColorCopy, FTexture2D* CoCTexture, FTexture2D* FarTexture, FTexture2D* NearTexture);
 
 private:
 	bool DrawFullscreen(const FPipelineState& Pipeline, std::initializer_list<FTexture2D*> Textures);
