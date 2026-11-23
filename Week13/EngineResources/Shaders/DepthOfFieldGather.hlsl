@@ -41,6 +41,7 @@ PSOutput mainPS(VSOutput Input)
 {
     static const float MaxCoCRadiusPx = 32.f;
     static const int SampleCount = 64;
+    static const float PI = 3.14159265359;
 
     int3 HalfPixel = int3(int2(Input.Position.xy), 0);
     float4 CenterSample = HalfResTexture.Load(HalfPixel);
@@ -57,7 +58,7 @@ PSOutput mainPS(VSOutput Input)
     for (int s = 0; s < SampleCount; ++s)
     {
         float SearchDistHalfPx = sqrt((s + 0.5) / SampleCount) * SearchRadiusHalfPx;
-        float SearchAngle = s * 2.39996;
+        float SearchAngle = s * 2.39996;        
         float2 SearchOffsetHalfPx = float2(cos(SearchAngle), sin(SearchAngle)) * SearchDistHalfPx;
         float4 Neighbor = HalfResTexture.SampleLevel(LinearClampSampler, CenterUV + SearchOffsetHalfPx * HalfTexelSize, 0);
 
@@ -88,7 +89,14 @@ PSOutput mainPS(VSOutput Input)
     {
         float SampleDistHalfPx = sqrt((i + 0.5) / SampleCount) * GatherRadiusHalfPx; // 면적 균등
         float SampleAngle = i * 2.39996; // 황금각
-        float2 SampleOffsetHalfPx = float2(cos(SampleAngle), sin(SampleAngle)) * SampleDistHalfPx;
+        
+        // SampleAngle로 다각형 배율을 구해 SampleDistHalfPx에 곱한다 (BladeCount 사용)
+        float Wedge = 2 * PI / BladeCount;
+        float Phi = fmod(SampleAngle, Wedge) - Wedge * 0.5f;
+        float PolyScale = cos(PI / BladeCount) / cos(Phi);
+        float SamplePolyDistHalfPx = SampleDistHalfPx * PolyScale;
+        
+        float2 SampleOffsetHalfPx = float2(cos(SampleAngle), sin(SampleAngle)) * SamplePolyDistHalfPx;
         float4 Neighbor = HalfResTexture.SampleLevel(LinearClampSampler, CenterUV + SampleOffsetHalfPx * HalfTexelSize, 0);
 
         float NeighborCoCHalfPx = abs(Neighbor.a) * 0.5f;
