@@ -17,8 +17,9 @@ struct FPhotoCameraState
 	static constexpr float MinFocalLength = 24.0f;
 	static constexpr float MaxFocalLength = 135.0f;
 
-	int32 ApertureIndex = 3;      // f/8
-	int32 ShutterIndex = 3;       // 1/125
+	// 처음 들었을 때 Sunny 16 근처(f/16, 1/250)라서 노출이 거의 맞는다
+	int32 ApertureIndex = 5;      // f/16
+	int32 ShutterIndex = 4;       // 1/250
 	float ISO = 200.0f;
 	float FocusDistance = 5.0f;   // m
 	float FocalLength = 35.0f;    // mm

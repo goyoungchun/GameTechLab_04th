@@ -31,6 +31,12 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.DepthOfFieldFocalDistance = State.FocusDistance;
 	PP.bOverride_DepthOfFieldSensorWidth = true;
 	PP.DepthOfFieldSensorWidth = State.SensorWidth;
+	PP.bOverride_CameraShutterSpeed = true;
+	PP.CameraShutterSpeed = 1.0f / State.GetShutterSeconds();
+	PP.bOverride_CameraISO = true;
+	PP.CameraISO = State.ISO;
+	PP.bOverride_bApplyPhysicalCameraExposure = true;
+	PP.bApplyPhysicalCameraExposure = true;
 	// 카메라가 후처리를 꺼 둔 상태(가중치 0)여도 사진 모드 값은 들어가야 한다
 	InOutPOV.PostProcessBlendWeight = std::max(InOutPOV.PostProcessBlendWeight, Alpha);
 	return false;

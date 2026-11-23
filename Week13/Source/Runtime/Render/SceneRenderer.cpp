@@ -712,7 +712,8 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 	ToneMap.Name = "ToneMap";
 	ToneMap.ReadTextures = { LightingHDR };
 	ToneMap.ColorAttachments = { { SceneColor, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } } };
-	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.Settings.bGammaCorrection, DisplayGamma = Options.Settings.DisplayGamma, ExposureEV = Options.Settings.ExposureCompensation]
+	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.Settings.bGammaCorrection, DisplayGamma = Options.Settings.DisplayGamma, ExposureEV = Options.Settings.ExposureCompensation,
+		CameraExposure = View.FinalPostProcessSettings.GetPhysicalCameraExposureScale()]
 		{
 			if (bCorePassSucceeded)
 			{
@@ -723,7 +724,8 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 					Data.InvGamma = 1.0f / std::max(DisplayGamma, 0.01f);
 					Data.bGammaCorretion = bGamma ? 1.0f : 0.0f;
 					// 슬라이더는 스톱 단위라 배율로 바꿔 넘긴다. 같은 거리를 움직이면 같은 만큼 밝아진 것처럼 보인다
-					Data.Exposure = std::exp2(ExposureEV);
+					// 에디터 보정(EV)은 카메라 노출 위에 한 번 더 얹는 값이다 (UE Exposure Compensation과 같은 자리)
+					Data.Exposure = std::exp2(ExposureEV) * CameraExposure;
 					FConstantBuffer* Constants = Renderer->GetToneMapConstants();
 					RenderCommand::UpdateBufferData(Constants, &Data, sizeof(Data));
 
