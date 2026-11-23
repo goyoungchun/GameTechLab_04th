@@ -14,6 +14,8 @@ namespace
 	constexpr float FreeCamSpeed = 3.0f;       // m/s
 	constexpr float FreeCamFastScale = 3.0f;   // Shift를 누르면 이만큼 빠르게
 	constexpr float FreeCamMaxPitch = 89.0f;
+	// 남은 초점 차이가 1초에 e^-Speed배로 준다. 8이면 약 0.3초에 거의 따라간다
+	constexpr float AutoFocusSpeed = 8.0f;
 
 	// -180~180으로 접는다. 359°→1°를 -358°가 아니라 +2°로 보간하려고 쓴다
 	float WrapDegrees(float Angle)
@@ -78,7 +80,13 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 
 	// 화면에 보이는 최종 시점으로 쏴야 전환 중에도 초점이 엉뚱한 곳을 잡지 않는다
 	if (State.bAutoFocus)
+	{
 		AutoFocusTarget = TraceFocusDistance(InOutPOV);
+		// State.FocusDistance가 AutoFocusTarget을 1/거리 공간에서 지수 감쇠로 따라가게 한다
+		float T = 1.f - expf(-AutoFocusSpeed * DeltaTime);
+		float InvTarget = 1.f / AutoFocusTarget;
+		State.FocusDistance = 1.f / FMath::Lerp(1.f / State.FocusDistance, InvTarget, T);
+	}
 
 	// 필름(36x24)은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
 	// 그래서 화면 전체에 대응하는 "가상 필름" 크기를 구해서 화각과 DOF에 같이 쓴다
@@ -112,7 +120,10 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 float UCameraModifier_Photo::TraceFocusDistance(const FMinimalViewInfo& POV) const
 {
 	// 화면 중앙 레이캐스트 → 맞으면 거리, 아니면 MaxFocusDistance, Min~Max로 clamp
-	UWorld* World = GetCameraOwner()->GetWorld();
+	APlayerCameraManager* Owner = GetCameraOwner();
+	UWorld* World = Owner ? Owner->GetWorld() : nullptr;
+	// 잴 수 없으면 이전 목표를 유지해야 초점이 튀지 않는다
+	if (!World) return AutoFocusTarget;
 	FRay Ray{
 		.Origin = POV.Location,
 		.Direction = POV.Rotation.Quaternion().GetForwardVector(),
@@ -144,6 +155,8 @@ void UCameraModifier_Photo::StepShutter(int32 Delta)
 
 void UCameraModifier_Photo::AdjustFocus(float Notches)
 {
+	// 초점 링을 돌리면 MF로 넘어가야 다음 프레임 AF가 덮어쓰지 않는다
+	State.bAutoFocus = false;
 	// 실제 초점 링처럼 가까울수록 촘촘하고 멀수록 성기게 움직이도록 배율로 바꾼다
 	const float Scaled = State.FocusDistance * powf(1.15f, Notches);
 	State.FocusDistance = std::clamp(Scaled, FPhotoCameraState::MinFocusDistance, FPhotoCameraState::MaxFocusDistance);

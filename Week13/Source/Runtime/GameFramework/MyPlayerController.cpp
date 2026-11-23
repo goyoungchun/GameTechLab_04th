@@ -96,6 +96,8 @@ bool AMyPlayerController::HandlePhotoKey(int32 Key)
 	if (Key == static_cast<int32>(EKeyCode::Down))  { Photo->StepAperture(-1); return true; }
 	if (Key == static_cast<int32>(EKeyCode::Right)) { Photo->StepShutter(+1);  return true; }
 	if (Key == static_cast<int32>(EKeyCode::Left))  { Photo->StepShutter(-1);  return true; }
+	// F: AF를 다시 켜거나 끈다 (휠을 돌리면 MF로 넘어간다)
+	if (Key == static_cast<int32>(EKeyCode::F))     { Photo->ToggleAutoFocus(); return true; }
 
 	if (Key == static_cast<int32>(EKeyCode::LButton))
 	{

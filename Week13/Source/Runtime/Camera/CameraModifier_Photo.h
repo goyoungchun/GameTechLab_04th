@@ -53,6 +53,7 @@ public:
 	void StepShutter(int32 Delta);
 	// 휠 한 칸(=120)을 Notches 1로 받는다
 	void AdjustFocus(float Notches);
+	void ToggleAutoFocus() { State.bAutoFocus = !State.bAutoFocus; }
 	void AdjustZoom(float DeltaMm);
 	// 셔터를 끊는다. 실제 저장은 FPhotoCapture가 다음 화면에서 한다
 	void TriggerShutter();
