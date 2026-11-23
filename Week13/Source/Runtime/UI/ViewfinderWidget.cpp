@@ -355,6 +355,9 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 			std::snprintf(Buffer, sizeof(Buffer), "%.1fm", State.FocusDistance);
 			DrawList.AddText({ PL + PW + 16.0f * S, PT, 120.0f * S, PH }, bInfinity ? FString("INF") : FString(Buffer),
 				*Font, 20.0f * S, Label, 0);
+			// 휠을 돌리면 MF로 바뀌므로 지금 누가 초점을 잡는지 보여 준다
+			DrawList.AddText({ PL - 136.0f * S, PT, 120.0f * S, PH }, State.bAutoFocus ? FString("AF") : FString("MF"),
+				*Font, 20.0f * S, Label, 2);
 		}
 	}
 
