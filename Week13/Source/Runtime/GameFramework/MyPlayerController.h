@@ -15,6 +15,10 @@ public:
 	virtual void InputKey(int32 Key, bool bDown) override;
 	virtual void InputAxis(EGameInputAxis Axis, float Delta) override;
 
+protected:
+	// 사진 모드 중에는 WASD·마우스를 캐릭터가 아니라 자유 카메라로 보낸다
+	virtual void ProcessPlayerInput(float DeltaTime) override;
+
 private:
 	// 처음 사진 모드를 켤 때 PCM에 붙인다. PCM이 소유하므로 여기서는 지우지 않는다
 	UCameraModifier_Photo* GetPhotoModifier(bool bCreate);

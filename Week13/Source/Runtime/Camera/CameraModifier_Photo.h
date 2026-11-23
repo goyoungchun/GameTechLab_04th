@@ -56,6 +56,10 @@ public:
 	// 셔터를 끊는다. 실제 저장은 FPhotoCapture가 다음 화면에서 한다
 	void TriggerShutter();
 
+	// 자유 카메라 입력. Move는 (앞, 오른쪽, 위) -1~1 축 값이고 이번 프레임 값으로 덮어쓴다.
+	// Yaw/Pitch는 도 단위 회전량이라 여러 번 불려도 쌓인다
+	void AddFreeCameraInput(const FVector& Move, float YawDelta, float PitchDelta, bool bFast);
+
 	// 마지막 셔터 뒤로 지난 시간. 뷰파인더가 셔터 막이 닫히는 연출에 쓴다
 	float GetTimeSinceShutter() const { return TimeSinceShutter; }
 	int32 GetShotCount() const { return ShotCount; }
@@ -66,4 +70,13 @@ private:
 	FPhotoCameraState State;
 	float TimeSinceShutter = 1000.0f;
 	int32 ShotCount = 0;
+
+	// 사진 모드에 들어간 순간의 POV에서 출발하는 자유 카메라 (캐릭터의 ControlRotation과는 따로 논다)
+	FVector FreeCamLocation;
+	FRotator FreeCamRotation;
+	bool bFreeCamValid = false;
+	FVector PendingMove;
+	float PendingYaw = 0.0f;
+	float PendingPitch = 0.0f;
+	bool bPendingFast = false;
 };

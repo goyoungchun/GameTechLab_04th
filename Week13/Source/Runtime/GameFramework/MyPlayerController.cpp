@@ -23,6 +23,27 @@ void AMyPlayerController::Tick(float DeltaTime)
 		GetPhotoModifier(false)->AdjustZoom(Zoom * PhotoZoomSpeedMm * DeltaTime);
 }
 
+void AMyPlayerController::ProcessPlayerInput(float DeltaTime)
+{
+	UCameraModifier_Photo* Photo = GetPhotoModifier(false);
+	if (!Photo || !Photo->IsPhotoModeActive())
+	{
+		Super::ProcessPlayerInput(DeltaTime);
+		return;
+	}
+
+	const auto Axis = [this](EKeyCode Positive, EKeyCode Negative)
+	{
+		return static_cast<float>(IsKeyDown(static_cast<int32>(Positive))) -
+			static_cast<float>(IsKeyDown(static_cast<int32>(Negative)));
+	};
+	// 캐릭터에는 이동 입력을 주지 않으므로 그 자리에 서 있고, ControlRotation도 그대로라 나오면 원래 시점으로 돌아간다
+	const FVector Move(Axis(EKeyCode::W, EKeyCode::S), Axis(EKeyCode::D, EKeyCode::A), Axis(EKeyCode::E, EKeyCode::Q));
+	Photo->AddFreeCameraInput(Move, MouseAxisX * LookSensitivity, MouseAxisY * LookSensitivity,
+		IsKeyDown(static_cast<int32>(EKeyCode::Shift)));
+	MouseAxisX = MouseAxisY = 0.0f;
+}
+
 void AMyPlayerController::InputAxis(EGameInputAxis Axis, float Delta)
 {
 	Super::InputAxis(Axis, Delta);
@@ -81,8 +102,9 @@ bool AMyPlayerController::HandlePhotoKey(int32 Key)
 		Photo->TriggerShutter();
 		return true;
 	}
-	// 카메라를 들고 있는 동안 우클릭 공격도 막는다
-	if (Key == static_cast<int32>(EKeyCode::RButton))
+	// 카메라를 들고 있는 동안 우클릭 공격, 점프, E 슬라이드·R 구르기는 막는다 (Q/E는 카메라 위아래로 쓴다)
+	if (Key == static_cast<int32>(EKeyCode::RButton) || Key == static_cast<int32>(EKeyCode::Space) ||
+		Key == static_cast<int32>(EKeyCode::E) || Key == static_cast<int32>(EKeyCode::R))
 		return true;
 	return false;
 }
