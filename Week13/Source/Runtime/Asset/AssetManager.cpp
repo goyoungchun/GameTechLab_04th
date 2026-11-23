@@ -28,6 +28,8 @@
 #include "Physics/PhysicalMaterial.h"
 #include "Physics/PhysicalMaterialFile.h"
 #include "Asset/AssetUtils.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetFile.h"
 
 #include "Render/ImageLoader.h"
 #include "Asset/AssetLoadProfiler.h"
@@ -1198,4 +1200,25 @@ UPhysicalMaterial* UAssetManager::LoadPhysicalMaterial(const FString& Path)
 
 	Get().PhysicalMaterialMap[Key] = Material;
 	return Material;
+}
+
+UPhysicsAsset* UAssetManager::LoadPhysicsAsset(const FString& Path)
+{
+	const FString Key = FAssetUtils::GetAssetKey(Path);
+	if (UPhysicsAsset** Found = Get().PhysicsAssetMap.Find(Key))
+		return *Found;   // 같은 메시를 쓰는 캐릭터 여러 명이 에셋 하나를 공유한다
+
+	const FString FilePath = FAssetUtils::ResolveAssetFilePath(Path);
+	UPhysicsAsset* Asset = NewObject<UPhysicsAsset>();
+
+	FString Error;
+	if (!PhysicsAssetFile::Read(std::filesystem::path(FilePath.empty() ? Path : FilePath), *Asset, Error))
+	{
+		KRS_LOG(Warning, "Failed to load PhysicsAsset: {} ({})", Path, Error);
+		delete Asset;
+		return nullptr;
+	}
+
+	Get().PhysicsAssetMap[Key] = Asset;
+	return Asset;
 }
