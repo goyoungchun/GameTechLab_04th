@@ -76,8 +76,13 @@ bool AMyPlayerController::HandlePhotoKey(int32 Key)
 	if (Key == static_cast<int32>(EKeyCode::Right)) { Photo->StepShutter(+1);  return true; }
 	if (Key == static_cast<int32>(EKeyCode::Left))  { Photo->StepShutter(-1);  return true; }
 
-	// 카메라를 들고 있는 동안 좌클릭은 셔터(6단계)라서 공격으로 넘기지 않는다
-	if (Key == static_cast<int32>(EKeyCode::LButton) || Key == static_cast<int32>(EKeyCode::RButton))
+	if (Key == static_cast<int32>(EKeyCode::LButton))
+	{
+		Photo->TriggerShutter();
+		return true;
+	}
+	// 카메라를 들고 있는 동안 우클릭 공격도 막는다
+	if (Key == static_cast<int32>(EKeyCode::RButton))
 		return true;
 	return false;
 }

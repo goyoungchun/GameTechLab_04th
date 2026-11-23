@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "Camera/CameraModifier_Photo.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Engine/PhotoCapture.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,6 +16,7 @@ UCameraModifier_Photo::UCameraModifier_Photo()
 bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
 	Super::ModifyCamera(DeltaTime, InOutPOV);
+	TimeSinceShutter += DeltaTime;
 	if (Alpha <= 0.0f) return false;
 
 	// 필름(36x24)은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
@@ -67,6 +69,14 @@ void UCameraModifier_Photo::AdjustFocus(float Notches)
 	// 실제 초점 링처럼 가까울수록 촘촘하고 멀수록 성기게 움직이도록 배율로 바꾼다
 	const float Scaled = State.FocusDistance * powf(1.15f, Notches);
 	State.FocusDistance = std::clamp(Scaled, FPhotoCameraState::MinFocusDistance, FPhotoCameraState::MaxFocusDistance);
+}
+
+void UCameraModifier_Photo::TriggerShutter()
+{
+	if (!IsPhotoModeActive()) return;
+	FPhotoCapture::Request(FPhotoCameraState::FrameHeightOnScreen, FPhotoCameraState::FilmAspect);
+	TimeSinceShutter = 0.0f;
+	++ShotCount;
 }
 
 void UCameraModifier_Photo::AdjustZoom(float DeltaMm)

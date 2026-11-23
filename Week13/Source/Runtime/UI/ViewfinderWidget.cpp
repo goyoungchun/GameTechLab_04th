@@ -340,6 +340,25 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 		}
 	}
 
+	// ---------- 아래 오른쪽: 필름 카운터 ----------
+	if (Font)
+	{
+		const FString Counter = "No. " + std::to_string(Photo->GetShotCount());
+		const float BandH = R.Y + R.H - WB;
+		DrawList.AddText({ WR - 300.0f * S, WB, 300.0f * S, BandH }, Counter, *Font, 20.0f * S, Label, 2);
+	}
+
+	// ---------- 셔터 막 ----------
+	// 화면 저장은 UI보다 먼저 일어나므로 이 검은 막은 사진에 찍히지 않는다
+	{
+		constexpr float ClosedTime = 0.05f;
+		constexpr float OpenTime = 0.15f;
+		const float T = Photo->GetTimeSinceShutter();
+		const float Blackout = T < ClosedTime ? 1.0f : std::clamp(1.0f - (T - ClosedTime) / OpenTime, 0.0f, 1.0f);
+		if (Blackout > 0.0f)
+			DrawList.AddRect({ WL, WT, WR - WL, WB - WT }, WithOpacity(MaskColor, Opacity * Blackout));
+	}
+
 	// ---------- 아래 왼쪽: 필름·렌즈 정보 ----------
 	if (Font)
 	{

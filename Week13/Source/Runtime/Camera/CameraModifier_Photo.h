@@ -52,9 +52,17 @@ public:
 	// 휠 한 칸(=120)을 Notches 1로 받는다
 	void AdjustFocus(float Notches);
 	void AdjustZoom(float DeltaMm);
+	// 셔터를 끊는다. 실제 저장은 FPhotoCapture가 다음 화면에서 한다
+	void TriggerShutter();
+
+	// 마지막 셔터 뒤로 지난 시간. 뷰파인더가 셔터 막이 닫히는 연출에 쓴다
+	float GetTimeSinceShutter() const { return TimeSinceShutter; }
+	int32 GetShotCount() const { return ShotCount; }
 
 	const FPhotoCameraState& GetState() const { return State; }
 
 private:
 	FPhotoCameraState State;
+	float TimeSinceShutter = 1000.0f;
+	int32 ShotCount = 0;
 };
