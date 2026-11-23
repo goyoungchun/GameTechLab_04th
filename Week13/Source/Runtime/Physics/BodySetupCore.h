@@ -19,6 +19,9 @@ class UBodySetupCore : public UObject
 {
 	GENERATED_BODY()
 public:
+
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+
 	FName BoneName;            // PhysicsAsset에서 이 바디가 붙는 본. StaticMesh에서는 비워 둔다.
 
 	UPROPERTY(EditAnywhere)

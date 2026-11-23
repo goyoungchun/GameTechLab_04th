@@ -59,6 +59,8 @@ class UBodySetup : public UBodySetupCore
 public:
 	virtual ~UBodySetup() override;   // Cooking한 PxConvexMesh·PxTriangleMesh를 해제한다
 
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+
 	FKAggregateGeom AggGeom;
 
 	// ConvexElems를 Cooking해 PxConvexMesh로 만든다. 이미 있으면 그대로 둔다. 하나라도 실패하면 false.
