@@ -931,7 +931,9 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		const uint32 HalfHeight = std::max(ViewHeight / 2, 1u);
 		const FRenderGraphTextureRef Bright = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBright");
 		const FRenderGraphTextureRef Ghost = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareGhost");
-		if (!Bright || !Ghost) return false;
+		const FRenderGraphTextureRef BlurTemp = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurTemp");
+		const FRenderGraphTextureRef Blurred = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurred");
+		if (!Bright || !Ghost || !BlurTemp || !Blurred) return false;
 
 		FRenderGraphRasterPassDesc BrightPass{};
 		BrightPass.Name = "LensFlareBright";
@@ -953,13 +955,34 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 					Flare->RenderGhosts(View, Graph.Resolve(Bright));
 			})) return false;
 
-		// Bright 패스가 LightingHDR을 다 읽은 뒤라 복사본 없이 그대로 위에 더해도 된다
-		FRenderGraphRasterPassDesc Composite = MakeViewportPass("LensFlareComposite", LightingHDR);
-		Composite.ReadTextures = { Ghost };
-		if (!Graph.AddRasterPass(std::move(Composite), [this, Renderer, &Graph, Ghost]
+		// 읽는 텍스처에 그대로 쓸 수 없으니 가로 결과는 Temp에, 세로 결과는 Blurred에 받는다
+		FRenderGraphRasterPassDesc BlurHPass{};
+		BlurHPass.Name = "LensFlareBlurH";
+		BlurHPass.ReadTextures = { Ghost };
+		BlurHPass.ColorAttachments = { { BlurTemp, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BlurHPass), [Renderer, &Graph, Ghost]
 			{
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
-					Flare->RenderComposite(View, Graph.Resolve(Ghost));
+					Flare->RenderBlur(Graph.Resolve(Ghost), 1.0f, 0.0f);
+			})) return false;
+
+		FRenderGraphRasterPassDesc BlurVPass{};
+		BlurVPass.Name = "LensFlareBlurV";
+		BlurVPass.ReadTextures = { BlurTemp };
+		BlurVPass.ColorAttachments = { { Blurred, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BlurVPass), [Renderer, &Graph, BlurTemp]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBlur(Graph.Resolve(BlurTemp), 0.0f, 1.0f);
+			})) return false;
+
+		// Bright 패스가 LightingHDR을 다 읽은 뒤라 복사본 없이 그대로 위에 더해도 된다
+		FRenderGraphRasterPassDesc Composite = MakeViewportPass("LensFlareComposite", LightingHDR);
+		Composite.ReadTextures = { Blurred };
+		if (!Graph.AddRasterPass(std::move(Composite), [this, Renderer, &Graph, Blurred]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderComposite(View, Graph.Resolve(Blurred));
 			})) return false;
 	}
 

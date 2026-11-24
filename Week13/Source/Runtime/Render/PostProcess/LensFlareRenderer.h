@@ -19,6 +19,16 @@ struct alignas(16) FLensFlareData
 };
 static_assert(sizeof(FLensFlareData) == 32);
 
+// LensFlareBlur.hlsl의 cbuffer b1. 가로/세로 패스가 방향만 바꿔 같은 셰이더를 쓴다
+struct alignas(16) FLensFlareBlurData
+{
+	float DirectionX;
+	float DirectionY;
+	float Padding0;
+	float Padding1;
+};
+static_assert(sizeof(FLensFlareBlurData) == 16);
+
 // 렌즈 플레어 셰이더를 돌릴 준비(상수, 바인딩, Draw)만 한다. 언제 어떤 텍스처로 부를지는 FSceneRenderer가 정한다.
 class FLensFlareRenderer
 {
@@ -28,6 +38,8 @@ public:
 	bool RenderBrightPass(const FSceneView& View, FTexture2D* SceneColor);
 	// 반해상도 밝은 부분 → 현재 바인딩된 반해상도 타깃(중앙 반전 고스트)
 	bool RenderGhosts(const FSceneView& View, FTexture2D* BrightTexture);
+	// 반해상도 텍스처 → 현재 바인딩된 반해상도 타깃(한 방향 가우시안 블러)
+	bool RenderBlur(FTexture2D* SourceTexture, float DirectionX, float DirectionY);
 	// 고스트 → 현재 바인딩된 SceneColor에 더한다
 	bool RenderComposite(const FSceneView& View, FTexture2D* GhostTexture);
 
@@ -39,8 +51,11 @@ private:
 	FShaderProgram* BrightShader = nullptr;
 	FShaderProgram* GhostShader = nullptr;
 	FShaderProgram* CompositeShader = nullptr;
+	FShaderProgram* BlurShader = nullptr;
 	FPipelineState BrightPipelineState;
 	FPipelineState GhostPipelineState;
 	FPipelineState CompositePipelineState;
+	FPipelineState BlurPipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
+	TUniquePtr<FConstantBuffer> BlurConstantBuffer;
 };

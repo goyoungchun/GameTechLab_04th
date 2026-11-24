@@ -25,12 +25,15 @@ void FLensFlareRenderer::Init(FRenderer* InRenderer)
 	BrightShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareBright.hlsl");
 	GhostShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareGhost.hlsl");
 	CompositeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareComposite.hlsl");
+	BlurShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareBlur.hlsl");
 	BrightPipelineState = MakeFullscreenPipeline(BrightShader, EBlendState::Opaque);
 	GhostPipelineState = MakeFullscreenPipeline(GhostShader, EBlendState::Opaque);
+	BlurPipelineState = MakeFullscreenPipeline(BlurShader, EBlendState::Opaque);
 	// 장면을 복사하지 않고 플레어만 위에 얹으면 되므로 가산 블렌드로 그린다
 	CompositePipelineState = MakeFullscreenPipeline(CompositeShader, EBlendState::Additive);
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareData));
-	assert(BrightShader && GhostShader && CompositeShader && ConstantBuffer);
+	BlurConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareBlurData));
+	assert(BrightShader && GhostShader && CompositeShader && BlurShader && ConstantBuffer && BlurConstantBuffer);
 }
 
 void FLensFlareRenderer::UploadConstants(const FSceneView& View)
@@ -74,6 +77,17 @@ bool FLensFlareRenderer::RenderGhosts(const FSceneView& View, FTexture2D* Bright
 	if (!ConstantBuffer) return false;
 	UploadConstants(View);
 	return DrawFullscreen(GhostPipelineState, BrightTexture);
+}
+
+bool FLensFlareRenderer::RenderBlur(FTexture2D* SourceTexture, float DirectionX, float DirectionY)
+{
+	if (!BlurConstantBuffer) return false;
+	FLensFlareBlurData Data{};
+	Data.DirectionX = DirectionX;
+	Data.DirectionY = DirectionY;
+	RenderCommand::UpdateBufferData(BlurConstantBuffer.get(), &Data, sizeof(Data));
+	RenderCommand::BindConstantBuffer(1, BlurConstantBuffer.get(), EShaderBindFlagBits::Pixel);
+	return DrawFullscreen(BlurPipelineState, SourceTexture);
 }
 
 bool FLensFlareRenderer::RenderComposite(const FSceneView& View, FTexture2D* GhostTexture)
