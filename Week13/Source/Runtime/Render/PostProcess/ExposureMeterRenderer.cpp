@@ -120,7 +120,7 @@ float FExposureMeterRenderer::UpdateAdaptedEV100(const FPostProcessSettings& Set
 	const float MinEV = std::min(Settings.AutoExposureMinEV100, Settings.AutoExposureMaxEV100);
 	const float MaxEV = std::max(Settings.AutoExposureMinEV100, Settings.AutoExposureMaxEV100);
 	// 첫 측정이 오기 전에는 카메라에 설정된 값을 목표로 둔다
-	const float TargetEV = std::clamp(bHasReading ? FPostProcessSettings::GetMeteredEV100(AverageLuminance)
+	const float TargetEV = std::clamp(bHasReading ? FPostProcessSettings::GetMeteredEV100(AverageLuminance, DisplayGamma)
 		: Settings.GetCameraEV100(), MinEV, MaxEV);
 
 	const float Now = EngineTimer::GetTotalTime();
