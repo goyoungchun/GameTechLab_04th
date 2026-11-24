@@ -318,7 +318,11 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 			if (Font)
 			{
 				char Buffer[16];
-				std::snprintf(Buffer, sizeof(Buffer), "%+.1f EV", ExposureOffsetEV);
+				// AE일 때는 카메라가 알아서 맞추므로 내 설정과의 차이 대신 모드를 보여 준다
+				if (State.bAutoExposure)
+					std::snprintf(Buffer, sizeof(Buffer), "AE");
+				else
+					std::snprintf(Buffer, sizeof(Buffer), "%+.1f EV", ExposureOffsetEV);
 				DrawList.AddText({ PL - 30.0f * S, PT + PH + 6.0f * S, PW + 60.0f * S, 28.0f * S }, Buffer, *Font, 18.0f * S, Label, 1);
 			}
 		}

@@ -29,6 +29,7 @@ struct FPhotoCameraState
 	float FocalLength = 35.0f;    // mm
 	float SensorWidth = 36.0f;    // mm, 35mm 필름 가로
 	bool bAutoFocus = true;       // 켜면 화면 중앙 물체에 초점을 맞춘다
+	bool bAutoExposure = false;   // 켜면 셔터·ISO 대신 노출계가 밝기를 맞춘다. 조리개는 DOF에만 남는다
 
 	float GetFstop() const { return ApertureStops[ApertureIndex]; }
 	float GetShutterSeconds() const { return ShutterStops[ShutterIndex]; }
@@ -54,6 +55,7 @@ public:
 	// 휠 한 칸(=120)을 Notches 1로 받는다
 	void AdjustFocus(float Notches);
 	void ToggleAutoFocus() { State.bAutoFocus = !State.bAutoFocus; }
+	void ToggleAutoExposure() { State.bAutoExposure = !State.bAutoExposure; }
 	void AdjustZoom(float DeltaMm);
 	// 셔터를 끊는다. 실제 저장은 FPhotoCapture가 다음 화면에서 한다
 	void TriggerShutter();

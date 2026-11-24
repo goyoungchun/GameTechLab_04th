@@ -11,9 +11,9 @@ void DispatchGameKeyboardInput(TReceiver&& Receive)
 		EKeyCode::W, EKeyCode::A, EKeyCode::S, EKeyCode::D,
 		EKeyCode::Q, EKeyCode::E, EKeyCode::Space, EKeyCode::Shift,
 		EKeyCode::C, EKeyCode::R,
-		// 사진 모드: 조리개(↑↓), 셔터(←→), 줌(Z/X), AF 토글(F)
+		// 사진 모드: 조리개(↑↓), 셔터(←→), 줌(Z/X), AF 토글(F), AE 토글(G)
 		EKeyCode::Up, EKeyCode::Down, EKeyCode::Left, EKeyCode::Right,
-		EKeyCode::Z, EKeyCode::X, EKeyCode::F
+		EKeyCode::Z, EKeyCode::X, EKeyCode::F, EKeyCode::G
 	};
 	for (EKeyCode Key : Keys)
 	{
