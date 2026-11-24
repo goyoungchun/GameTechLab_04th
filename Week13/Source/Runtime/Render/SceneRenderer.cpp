@@ -10,6 +10,7 @@
 #include "Core/Stats/LightweightStats.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SceneManagement.h"
+#include "Components/LightComponentBase.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Render/PostProcess/HeightFogRenderer.h"
 #include "Render/PostProcess/CameraOverlayRenderer.h"
@@ -341,10 +342,23 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 		Sky.ColorAttachments = {
 			{ LightingHDR, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } }
 		};
-		if (!Graph.AddRasterPass(std::move(Sky), [this, Skybox]
+		// VisibleLights는 업로드 때 재정렬되므로 포인터 대신 값으로 복사해 둔다.
+		bool bHasSun = false;
+		FLightRenderParameters SunLight{};
+		for (const FLightRenderParameters& Light : RenderData.VisibleLights)
+		{
+			if (Light.Type == static_cast<uint32>(ELightType::Directional))
+			{
+				SunLight = Light;
+				bHasSun = true;
+				break;
+			}
+		}
+
+		if (!Graph.AddRasterPass(std::move(Sky), [this, Skybox, bHasSun, SunLight]
 			{
 				if (bCorePassSucceeded)
-					Skybox->OnRender(View.ViewProjectionMatrix, View.ViewLocation);
+					Skybox->OnRender(View.ViewProjectionMatrix, View.ViewLocation, bHasSun ? &SunLight : nullptr);
 			})) return false;
 	}
 

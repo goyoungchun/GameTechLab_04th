@@ -4,6 +4,9 @@
 #include "RenderCommand.h"
 #include "RenderResourceManager.h"
 #include "ImageLoader.h"
+#include "Engine/SceneManagement.h"
+
+#include <cmath>
 
 namespace
 {
@@ -87,6 +90,15 @@ void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& Cam
 	Constants.InverseViewProjection = ViewProjection.Inverse();
 	Constants.CameraPosition = CameraPosition;
 	Constants.DecodeSRGB = bDecodeSRGBInShader ? 1.0f : 0.0f;
+	if (SunLight)
+	{
+		// 라이트 Direction은 빛이 나아가는 방향이라, 태양이 있는 쪽은 그 반대다.
+		Constants.SunDirection = -SunLight->Direction;
+		// SourceSize는 tan(각반경)으로 저장돼 있어 각도로 되돌린 뒤 cos로 바꾼다.
+		Constants.CosSunRadius = std::cos(std::atan(SunLight->SourceSize));
+		Constants.SunRadiance = SunLight->Color * SunLight->Intensity;
+		Constants.bHasSun = 1.0f;
+	}
 
 	RenderCommand::BindPipelineState(PipelineState);
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Constants);
