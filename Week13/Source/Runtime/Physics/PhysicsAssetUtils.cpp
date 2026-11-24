@@ -196,19 +196,14 @@ namespace
         return -1;
     }
 
-    void CreateConstraints(UPhysicsAsset& Asset, const TArray<FBoneInfo>& Bones)
+    void CreateConstraints(UPhysicsAsset& Asset, const USkeletalMesh& Mesh, const TArray<FTransform>& RefComp)
     {
-        TArray<FTransform> RefComp;
-        CalcRefPoseComponentSpace(Bones, RefComp);
-
+        const TArray<FBoneInfo>& Bones = Mesh.GetRefSkeleton();
         for (UBodySetup* ChildSetup : Asset.BodySetup)
         {
-            const int32 Child = -1 + 1 + [&] {   // 이름 → 본 인덱스
-                for (int32 i = 0; i < Bones.Num(); ++i)
-                    if (FName(Bones[i].Name) == ChildSetup->BoneName) return i;
-                return -1; }();
-                if (Child < 0)
-                    continue;
+            const int32 Child = Mesh.FindBoneIndex(ChildSetup->BoneName.ToString());
+            if (Child < 0)
+                continue;
 
                 const int32 Parent = FindParentBoneWithBody(Asset, Bones, Child);
                 if (Parent < 0)
@@ -217,7 +212,7 @@ namespace
                 UPhysicsConstraintTemplate* Template = Asset.AddConstraint(ChildSetup->BoneName, FName(Bones[Parent].Name));
                 FConstraintInstance& CI = Template->DefaultInstance;
 
-                // ── Frame1: 자식 로컬. 위치는 자식 본 원점, X(Twist)축은 캡슐의 긴 축 ──
+                // Frame1: 자식 로컬. 위치는 자식 본 원점, X(Twist)축은 캡슐의 긴 축 ──
                 // FKSphylElem은 로컬 Z로 서므로 Rotation×Z가 긴 축, Rotation×X는 그에 수직인 축
                 FQuat CapsuleRot = FQuat::Identity();
                 if (!ChildSetup->AggGeom.SphylElems.IsEmpty())
@@ -227,12 +222,103 @@ namespace
                 CI.PriAxis1 = CapsuleRot.RotateVector(FVector(0, 0, 1));
                 CI.SecAxis1 = CapsuleRot.RotateVector(FVector(1, 0, 0));
 
-                // ── Frame2: 같은 점·같은 축을 부모 본 공간에서 본 값 ──
+                // Frame2: 같은 점·같은 축을 부모 본 공간에서 본 값 ──
                 // 바인드 포즈에서 Frame1과 정확히 겹친다 → 시뮬 시작 때 튀지 않는다
                 const FTransform ChildInParent = RefComp[Child].GetRelativeTransform(RefComp[Parent]);
                 CI.Pos2 = ChildInParent.Location;   // Pos1이 원점이라 회전 항이 사라진다
                 CI.PriAxis2 = ChildInParent.Rotation.RotateVector(CI.PriAxis1);
                 CI.SecAxis2 = ChildInParent.Rotation.RotateVector(CI.SecAxis1);
+        }
+    }
+
+    FVector TransformPoint(const FTransform& T, const FVector& P)
+    {
+        const FVector Scaled(P.X * T.Scale.X, P.Y * T.Scale.Y, P.Z * T.Scale.Z);
+        return T.Location + T.Rotation.RotateVector(Scaled);
+    }
+
+    float SegmentSegmentDistSq(const FVector& P1, const FVector& Q1, const FVector& P2, const FVector& Q2)
+    {
+        constexpr float Eps = 1e-8f;
+        const FVector D1 = Q1 - P1;
+        const FVector D2 = Q2 - P2;
+        const FVector R = P1 - P2;
+        const float A = D1.Dot(D1);
+        const float E = D2.Dot(D2);
+        const float F = D2.Dot(R);
+
+        float S = 0.0f, T = 0.0f;
+        if (A <= Eps && E <= Eps)
+            return R.Dot(R);                                   // 둘 다 점
+        if (A <= Eps)
+        {
+            T = std::clamp(F / E, 0.0f, 1.0f);                 // 첫 번째가 점
+        }
+        else
+        {
+            const float C = D1.Dot(R);
+            if (E <= Eps)
+            {
+                S = std::clamp(-C / A, 0.0f, 1.0f);            // 두 번째가 점
+            }
+            else
+            {
+                const float B = D1.Dot(D2);
+                const float Denom = A * E - B * B;             // 0이면 평행
+                S = (Denom > Eps) ? std::clamp((B * F - C * E) / Denom, 0.0f, 1.0f) : 0.0f;
+                T = (B * S + F) / E;
+                // T가 선분 밖이면 끝점으로 자르고 S를 다시 구한다
+                if (T < 0.0f) { T = 0.0f; S = std::clamp(-C / A, 0.0f, 1.0f); }
+                else if (T > 1.0f) { T = 1.0f; S = std::clamp((B - C) / A, 0.0f, 1.0f); }
+            }
+        }
+        const FVector C1 = P1 + D1 * S;
+        const FVector C2 = P2 + D2 * T;
+        return (C1 - C2).SizeSquared();
+    }
+
+    // 바디의 첫 캡슐을 컴포넌트 공간 선분으로. 캡슐이 없으면 false
+    bool GetCapsuleSegment(const UBodySetup& Setup, const FTransform& BoneComp, FVector& OutA, FVector& OutB, float& OutRadius)
+    {
+        if (Setup.AggGeom.SphylElems.IsEmpty())
+            return false;
+        const FKSphylElem& S = Setup.AggGeom.SphylElems[0];
+        const FVector HalfAxis = S.Rotation.RotateVector(FVector(0, 0, 1)) * (S.Length * 0.5f);
+        OutA = TransformPoint(BoneComp, S.Center + HalfAxis);
+        OutB = TransformPoint(BoneComp, S.Center - HalfAxis);
+        OutRadius = S.Radius;   // 바인드 포즈 스케일은 1로 본다
+        return true;
+    }
+
+    void DisableAdjacentAndOverlappingCollisions(UPhysicsAsset& Asset, const USkeletalMesh& Mesh, const TArray<FTransform>& RefComp)
+    {
+        // 인접: 조인트로 이어진 쌍. PhysX 조인트도 기본으로 꺼 주지만,
+        //    테이블에도 넣어 두면 조인트 설정과 무관하게 의도가 에셋에 남는다
+        for (UPhysicsConstraintTemplate* Template : Asset.ConstraintSetup)
+            Asset.DisableCollision(Template->DefaultInstance.ConstraintBone1, Template->DefaultInstance.ConstraintBone2);
+
+        // 바인드 포즈에서 이미 겹치는 쌍 (양쪽 허벅지, 쇄골-가슴 등). 그대로 두면 첫 스텝에 서로 밀어낸다
+        const int32 N = Asset.BodySetup.Num();
+        for (int32 I = 0; I < N; ++I)
+        {
+            const UBodySetup* A = Asset.BodySetup[I];
+            const int32 BoneA = Mesh.FindBoneIndex(A->BoneName.ToString());
+            FVector A0, A1; float RA;
+            if (BoneA < 0 || !GetCapsuleSegment(*A, RefComp[BoneA], A0, A1, RA))
+                continue;
+
+            for (int32 J = I + 1; J < N; ++J)   // 쌍마다 한 번
+            {
+                const UBodySetup* B = Asset.BodySetup[J];
+                const int32 BoneB = Mesh.FindBoneIndex(B->BoneName.ToString());
+                FVector B0, B1; float RB;
+                if (BoneB < 0 || !GetCapsuleSegment(*B, RefComp[BoneB], B0, B1, RB))
+                    continue;
+
+                const float RSum = RA + RB;
+                if (SegmentSegmentDistSq(A0, A1, B0, B1) < RSum * RSum)   // sqrt 없이 제곱끼리 비교
+                    Asset.DisableCollision(A->BoneName, B->BoneName);
+            }
         }
     }
 }
@@ -307,8 +393,11 @@ bool FPhysicsAssetUtils::CreateFromSkeletalMesh(UPhysicsAsset& Asset, const USke
         return false;
     }
 
-    CreateConstraints(Asset, Bones);
+    TArray<FTransform> RefComp;
+    CalcRefPoseComponentSpace(Bones, RefComp);
 
+    CreateConstraints(Asset, Mesh, RefComp);
+    DisableAdjacentAndOverlappingCollisions(Asset, Mesh, RefComp);
     KRS_LOG(Info, "[Physics] PhysicsAsset generated: {} bodies from {} bones", Asset.BodySetup.Num(), Bones.Num());
     return true;
 }
