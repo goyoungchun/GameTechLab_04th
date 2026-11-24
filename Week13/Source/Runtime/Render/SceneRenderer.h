@@ -86,8 +86,11 @@ public:
 	const FSceneRenderData& GetRenderData() const { return RenderData; }
 	
 private:
+	// OutLightingHDR는 월드 노멀 보기처럼 HDR 단계가 없으면 비어 있다
 	bool AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
-		const FSceneRenderOptions& Options);
+		const FSceneRenderOptions& Options, FRenderGraphTextureRef& OutLightingHDR);
+	bool AddToneMapPasses(FRenderGraphBuilder& Graph, FRenderer* Renderer, const FSceneRenderOptions& Options,
+		FRenderGraphTextureRef LightingHDR, FRenderGraphTextureRef SceneColor);
 	bool AddWorldNormalPass(FRenderGraphBuilder& Graph, FRenderer* Renderer, FSceneViewTargets& Targets,
 		const FSceneRenderOptions& Options);
 	bool BindForwardLighting(FRenderer* Renderer, const FSceneRenderOptions& Options, FTexture2D* ShadowMask);
