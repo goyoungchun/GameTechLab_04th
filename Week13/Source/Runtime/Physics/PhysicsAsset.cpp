@@ -59,6 +59,34 @@ UBodySetup* UPhysicsAsset::FindBodySetup(FName BoneName) const
     return Index >= 0 ? BodySetup[Index] : nullptr;
 }
 
+int32 UPhysicsAsset::FindConstraintIndex(FName ChildBone) const
+{
+    for (int32 i = 0; i < ConstraintSetup.Num(); ++i)
+    {
+        if (ConstraintSetup[i] && ConstraintSetup[i]->DefaultInstance.ConstraintBone1 == ChildBone)
+            return i;
+    }
+    return -1;
+}
+
+UPhysicsConstraintTemplate* UPhysicsAsset::AddConstraint(FName ChildBone, FName ParentBone)
+{
+    const int32 Existing = FindConstraintIndex(ChildBone);
+    if (Existing >= 0)
+        return ConstraintSetup[Existing];
+
+    UPhysicsConstraintTemplate* Template = NewObject<UPhysicsConstraintTemplate>(this);
+    Template->DefaultInstance.ConstraintBone1 = ChildBone;
+    Template->DefaultInstance.ConstraintBone2 = ParentBone;
+    ConstraintSetup.Add(Template);
+    return Template;
+}
+
+void UPhysicsAsset::ClearAllConstraints()
+{
+    ConstraintSetup.Empty();
+}
+
 UBodySetup* UPhysicsAsset::AddBodySetup(FName BoneName)
 {
     if (UBodySetup* Existing = FindBodySetup(BoneName))
@@ -76,8 +104,14 @@ void UPhysicsAsset::RemoveBodySetup(FName BoneName)
 {
     const int32 Index = FindBodyIndex(BoneName);
     if (Index >= 0)
-    {
         BodySetup.RemoveAt(Index);
+
+    // 이 본에 매달린 조인트도 지운다. 지우는 중 인덱스가 밀리므로 뒤에서부터 돈다
+    for (int32 i = ConstraintSetup.Num() - 1; i >= 0; --i)
+    {
+        const FConstraintInstance& CI = ConstraintSetup[i]->DefaultInstance;
+        if (CI.ConstraintBone1 == BoneName || CI.ConstraintBone2 == BoneName)
+            ConstraintSetup.RemoveAt(i);
     }
 }
 
