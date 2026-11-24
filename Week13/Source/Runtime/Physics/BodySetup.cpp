@@ -6,9 +6,73 @@
 #include "PhysXFilterShader.h"
 #include "BodyInstance.h"
 #include "PhysicalMaterial.h"
+#include "Serialization/MathSerialization.h"
 
 namespace
 {
+	void SerializeQuat(FStructuredArchive::FSlot Slot, FQuat& Q)
+	{
+		FStructuredArchive::FRecord R = Slot.EnterRecord();
+		R << SA_VALUE("X", Q.X) << SA_VALUE("Y", Q.Y) << SA_VALUE("Z", Q.Z) << SA_VALUE("W", Q.W);
+	}
+
+	void SerializeShapeBase(FStructuredArchive::FRecord R, FKShapeElem& E)
+	{
+		R << SA_VALUE("Center", E.Center);
+		SerializeQuat(R.EnterField("Rotation"), E.Rotation);
+	}
+
+	void SerializeElem(FStructuredArchive::FRecord R, FKSphereElem& E)
+	{
+		SerializeShapeBase(R, E);
+		R << SA_VALUE("Radius", E.Radius);
+	}
+
+	void SerializeElem(FStructuredArchive::FRecord R, FKBoxElem& E)
+	{
+		SerializeShapeBase(R, E);
+		R << SA_VALUE("Extent", E.Extent);
+	}
+
+	void SerializeElem(FStructuredArchive::FRecord R, FKSphylElem& E)
+	{
+		SerializeShapeBase(R, E);
+		R << SA_VALUE("Radius", E.Radius) << SA_VALUE("Length", E.Length);
+	}
+
+	void SerializeElem(FStructuredArchive::FRecord R, FKConvexElem& E)
+	{
+		SerializeShapeBase(R, E);
+		int32 Num = E.VertexData.Num();
+		FStructuredArchive::FArray Verts = R.EnterArray("Vertices", Num);
+		if (R.GetUnderlyingArchive().IsLoading())
+		{
+			E.VertexData.SetNum(Num);
+		}
+
+		for (int32 i = 0; i < Num; ++i)
+		{
+			Verts.EnterElement() << E.VertexData[i];
+		}
+	}
+
+	template<typename ElemT>
+	void SerializeElemArray(FStructuredArchive::FRecord Parent, const char* Name, TArray<ElemT>& Elems)
+	{
+		const bool bLoading = Parent.GetUnderlyingArchive().IsLoading();
+		int32 Num = bLoading ? 0 : Elems.Num();
+		FStructuredArchive::FArray Arr = Parent.EnterArray(Name, Num);
+		if (bLoading)
+		{
+			Elems.SetNum(Num);
+		}
+
+		for (int32 i = 0; i < Num; ++i)
+		{
+			SerializeElem(Arr.EnterElement().EnterRecord(), Elems[i]);
+		}
+	}
+
 	// 스케일은 형상 크기에 반영한다. 캡슐·구는 균일해야 하므로 가장 큰 축을 쓴다.
 	float MaxAbsXY(const FVector& S) { return std::max(std::abs(S.X), std::abs(S.Y)); }
 	float MaxAbs3(const FVector& S) { return std::max({ std::abs(S.X), std::abs(S.Y), std::abs(S.Z) }); }
@@ -52,6 +116,23 @@ UBodySetup::~UBodySetup()
 {
 	// UObject는 PhysX SDK 정리(FPhysicsCore::Shutdown)보다 먼저 지워지므로 여기서 release해도 된다.
 	ClearPhysicsMeshes();
+}
+
+void UBodySetup::Serialize(FStructuredArchive::FRecord Record)
+{
+	Super::Serialize(Record);
+
+	FStructuredArchive::FRecord Geom = Record.EnterRecord("AggGeom");
+
+	SerializeElemArray(Geom, "Sphere", AggGeom.SphereElems);
+	SerializeElemArray(Geom, "Box", AggGeom.BoxElems);
+	SerializeElemArray(Geom, "Spyls", AggGeom.SphylElems);
+	SerializeElemArray(Geom, "Convexes", AggGeom.ConvexElems);
+
+	if (Record.GetUnderlyingArchive().IsLoading())
+	{
+		ClearPhysicsMeshes();
+	}
 }
 
 bool UBodySetup::CreatePhysicsMeshes()

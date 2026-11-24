@@ -3,6 +3,7 @@
 #include "UObject/Object.h"
 #include "Math/Vector.h"
 #include "Math/Quat.h"
+#include "BodySetupCore.h"
 #include "BodySetup.generated.h"
 
 namespace physx
@@ -64,13 +65,14 @@ enum class ECollisionTraceFlag : uint8
 
 // 바디의 형상 정의. StaticMesh는 하나, PhysicsAsset은 본마다 하나 갖는다.
 UCLASS()
-class UBodySetup : public UObject
+class UBodySetup : public UBodySetupCore
 {
 	GENERATED_BODY()
 public:
 	virtual ~UBodySetup() override;   // Cooking한 PxConvexMesh·PxTriangleMesh를 해제한다
 
-	FName BoneName;            // PhysicsAsset에서 이 바디가 붙는 본. StaticMesh에서는 비워 둔다.
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+
 	FKAggregateGeom AggGeom;
 
 	// 형상을 만드는 쪽(StaticMesh 등)이 정한다. 저장하지 않는다.

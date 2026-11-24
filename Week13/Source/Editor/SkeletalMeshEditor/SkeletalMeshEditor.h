@@ -4,6 +4,7 @@
 #include "Editor/Gizmo/Gizmo.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
+class UPhysicsAsset;
 class UClothingAssetCommon;
 
 enum class EClothPaintTool : uint8
@@ -24,7 +25,6 @@ struct FClothPaintSettings
 	float BrushFalloff = 0.5f;
 	bool bIgnoreBackfacing = false;
 };
-
 
 class FSkeletalMeshEditor : public FSkeletalPreviewEditor
 {
@@ -60,6 +60,14 @@ public:
 
 	// 에셋 브라우저에서 선택한 애니메이션 시퀀스 에디터를 연다.
 	void OpenAnimationAsset(const FString& InAssetPath);
+
+	// Physics Asset 생성
+	void GeneratePhysicsAsset();
+	UPhysicsAsset* GetPhysicsAsset() const { return PhysicsAsset; }
+
+	void LoadPhysicsAsset();
+
+	bool bShowPhysicsBodies = true;
 
 	// ---------- Clothing & Cloth Paint (언리얼 SkeletalMeshEditor 워크플로우) ----------
 	void OnRenderLine(FLineBatcher& LineBatcher) override;
@@ -111,6 +119,7 @@ protected:
 	void CancelViewportInteraction() override { BoneGizmo.EndDrag(); }
 
 private:
+	void DrawPhysicsBodies(FLineBatcher& LineBatcher) const;
 	void UpdateClothPainting(float DeltaTime);
 	void DrawClothBrushOverlay(FLineBatcher& LineBatcher) const;
 	bool RaycastPreviewMesh(const FVector2& MouseUV, FVector& OutLocalHitPos, FVector& OutLocalHitNormal, int32& OutSectionIndex) const;
@@ -138,6 +147,8 @@ private:
 	TArray<FTransform> CommittedBonePose;
 	bool bPoseUndoPending = false;
 	static constexpr int32 MaxUndoSteps = 100;
+
+	UPhysicsAsset* PhysicsAsset = nullptr;
 
 	// Cloth Paint 편집 상태
 	struct FClothPaintUndoEntry
