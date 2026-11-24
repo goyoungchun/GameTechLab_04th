@@ -12,11 +12,11 @@
     "Properties": {},
     "SamplerState": "LinearWrap",
     "ShadingModel": "DefaultLit",
-    "Shininess": 32.0,
+    "Shininess": 8.0,
     "SpecularColor": {
-        "X": 1.0,
-        "Y": 1.0,
-        "Z": 1.0
+        "X": 0.03,
+        "Y": 0.03,
+        "Z": 0.03
     },
     "Textures": [
         "C:/Users/JUNGLE/Desktop/Jungle/JG_Week13/DefaultProject/Content/FBX/Flag/Textures/Taegeukgi.png",

@@ -360,6 +360,9 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 					continue;
 				FMeshDrawBatch Batch{};
 				Batch.Pipeline = *Pipeline;
+				// 두께 없는 양면 메시(천, 잎)는 광원 쪽에서 뒷면만 보일 수 있으므로 컬링하지 않는다
+				if (Packet.Material && Packet.Material->bTwoSided)
+					Batch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
 				Batch.VertexFactory = VertexFactory;
 				if (!ApplyVertexFactory(Batch)) continue;
 				Batch.bUseObjectSlots = false;
@@ -393,6 +396,10 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 		}
 		if (!ApplyVertexFactory(Batch)) continue;
 
+		// 양면 섹션은 컬링을 끈 배치로 따로 모은다
+		FMeshDrawBatch TwoSidedBatch = Batch;
+		TwoSidedBatch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
+
 		for (uint32 Index = 0; Index < MeshState.Sections.Num(); ++Index)
 		{
 			const FCachedMeshSection& Section = Proxy->GetSection(Index);
@@ -401,11 +408,14 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 			if (Section.Material && Section.Material->IsTranslucent())
 				continue;
 
-			Batch.Items.Add(std::move(MakeShadowItem(Proxy, Section.StartIndex, Section.IndexCount, PreTranslation)));
+			FMeshDrawBatch& Target = (Section.Material && Section.Material->bTwoSided) ? TwoSidedBatch : Batch;
+			Target.Items.Add(MakeShadowItem(Proxy, Section.StartIndex, Section.IndexCount, PreTranslation));
 		}
 
 		if (!Batch.Items.IsEmpty())
 			OutBatches.Add(std::move(Batch));
+		if (!TwoSidedBatch.Items.IsEmpty())
+			OutBatches.Add(std::move(TwoSidedBatch));
 	}
 	return true;
 }
