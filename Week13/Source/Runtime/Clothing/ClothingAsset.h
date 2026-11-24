@@ -22,9 +22,13 @@ struct FClothConfigNv
 	float TetherStiffness = 1.0f;
 	float TetherScale = 1.0f;
 	float MaxDistanceScale = 1.0f;
-	float SolverFrequency = 120.0f;
+	float SolverFrequency = 60.0f;
 	float LinearInertiaScale = 0.5f;
 	float AngularInertiaScale = 0.5f;
+
+	// 자기충돌 (Self-Collision): Distance > 0이면 천 파티클끼리 겹침/관통을 방지 (로컬 메시 단위, FBX cm 기준 1~5 추천)
+	float SelfCollisionDistance = 0.0f;
+	float SelfCollisionStiffness = 0.2f;
 };
 
 UCLASS()

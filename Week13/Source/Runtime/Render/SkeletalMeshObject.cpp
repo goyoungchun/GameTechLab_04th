@@ -28,6 +28,8 @@ FSkeletalMeshObject::FSkeletalMeshObject(USkeletalMesh* InMesh)
 	:SkeletalMesh(InMesh)
 {
 	RefToLocal.SetNum(InMesh->GetNumBones());
+	for (FMatrix& Matrix : RefToLocal)
+		Matrix = FMatrix::Identity;
 	Bounds = SkinnedBounds = InMesh->GetRenderData().LODRenderData[0].BindAABB;
 }
 

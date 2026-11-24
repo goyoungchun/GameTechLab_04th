@@ -12,7 +12,25 @@
 namespace
 {
 	constexpr uint32 ClothBinaryMagic = 0x544C434Bu; // "KCLT"
-	constexpr uint32 ClothBinaryVersion = 1u;
+	constexpr uint32 ClothBinaryVersion = 2u;
+
+	struct FClothConfigNvV1
+	{
+		FVector Gravity;
+		FVector WindVelocity;
+		float DragCoefficient;
+		float LiftCoefficient;
+		float Damping;
+		float StretchStiffness;
+		float BendStiffness;
+		float ShearStiffness;
+		float TetherStiffness;
+		float TetherScale;
+		float MaxDistanceScale;
+		float SolverFrequency;
+		float LinearInertiaScale;
+		float AngularInertiaScale;
+	};
 
 	struct FPosKey
 	{
@@ -390,7 +408,7 @@ namespace ClothingAssetFile
 			return false;
 
 		uint32 Magic = 0, Ver = 0;
-		if (!ReadPod(In, Magic) || Magic != ClothBinaryMagic || !ReadPod(In, Ver) || Ver != ClothBinaryVersion)
+		if (!ReadPod(In, Magic) || Magic != ClothBinaryMagic || !ReadPod(In, Ver) || (Ver != 1u && Ver != ClothBinaryVersion))
 		{
 			OutError = "Invalid cloth binary header: " + FilePath;
 			return false;
@@ -413,9 +431,47 @@ namespace ClothingAssetFile
 			FClothConfigNv Cfg{};
 			uint32 NumWeights = 0;
 
-			if (!ReadString(In, Name) || !ReadPod(In, SectionIdx) || !ReadPod(In, Cfg) || !ReadPod(In, NumWeights))
+			if (!ReadString(In, Name) || !ReadPod(In, SectionIdx))
 			{
 				OutError = "Truncated cloth binary asset entry: " + FilePath;
+				return false;
+			}
+
+			if (Ver == 1u)
+			{
+				FClothConfigNvV1 OldCfg{};
+				if (!ReadPod(In, OldCfg))
+				{
+					OutError = "Truncated cloth binary config (v1): " + FilePath;
+					return false;
+				}
+				Cfg.Gravity = OldCfg.Gravity;
+				Cfg.WindVelocity = OldCfg.WindVelocity;
+				Cfg.DragCoefficient = OldCfg.DragCoefficient;
+				Cfg.LiftCoefficient = OldCfg.LiftCoefficient;
+				Cfg.Damping = OldCfg.Damping;
+				Cfg.StretchStiffness = OldCfg.StretchStiffness;
+				Cfg.BendStiffness = OldCfg.BendStiffness;
+				Cfg.ShearStiffness = OldCfg.ShearStiffness;
+				Cfg.TetherStiffness = OldCfg.TetherStiffness;
+				Cfg.TetherScale = OldCfg.TetherScale;
+				Cfg.MaxDistanceScale = OldCfg.MaxDistanceScale;
+				Cfg.SolverFrequency = OldCfg.SolverFrequency;
+				Cfg.LinearInertiaScale = OldCfg.LinearInertiaScale;
+				Cfg.AngularInertiaScale = OldCfg.AngularInertiaScale;
+			}
+			else
+			{
+				if (!ReadPod(In, Cfg))
+				{
+					OutError = "Truncated cloth binary config (v2): " + FilePath;
+					return false;
+				}
+			}
+
+			if (!ReadPod(In, NumWeights))
+			{
+				OutError = "Truncated cloth binary weight count: " + FilePath;
 				return false;
 			}
 			if (NumWeights > 10000000u)

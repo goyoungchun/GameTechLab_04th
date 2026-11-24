@@ -82,9 +82,27 @@ bool FClothingSimulationNv::CreateCloth(const FClothPhysicalMeshData& MeshData)
 	// 기본 물리 파라미터 설정
 	Cloth->setGravity(physx::PxVec3(CachedConfig.Gravity.X, CachedConfig.Gravity.Y, CachedConfig.Gravity.Z));
 	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
-	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setSolverFrequency(FMath::Clamp(CachedConfig.SolverFrequency, 30.0f, 240.0f));
 	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
 	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
+
+	// 로컬 메시 크기를 1회만 계산해 cm 단위 여부를 캐싱 (매 프레임 AABB 순회 제거)
+	bLocalMeshIsCm = false;
+	if (NumVertices > 1)
+	{
+		FVector MinP = MeshData.Vertices[0];
+		FVector MaxP = MeshData.Vertices[0];
+		for (uint32 i = 1; i < NumVertices; ++i)
+		{
+			MinP.X = FMath::Min(MinP.X, MeshData.Vertices[i].X);
+			MinP.Y = FMath::Min(MinP.Y, MeshData.Vertices[i].Y);
+			MinP.Z = FMath::Min(MinP.Z, MeshData.Vertices[i].Z);
+			MaxP.X = FMath::Max(MaxP.X, MeshData.Vertices[i].X);
+			MaxP.Y = FMath::Max(MaxP.Y, MeshData.Vertices[i].Y);
+			MaxP.Z = FMath::Max(MaxP.Z, MeshData.Vertices[i].Z);
+		}
+		bLocalMeshIsCm = ((MaxP - MinP).Size() > 15.0f);
+	}
 
 	// 솔버 생성 및 등록
 	Solver = Factory->createSolver();
@@ -109,13 +127,15 @@ bool FClothingSimulationNv::CreateClothFromAsset(const UClothingAssetCommon& Ass
 	SetGravity(CachedConfig.Gravity);
 	SetWindVelocity(CachedConfig.WindVelocity, CachedConfig.DragCoefficient, CachedConfig.LiftCoefficient);
 	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
-	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setSolverFrequency(FMath::Clamp(CachedConfig.SolverFrequency, 30.0f, 240.0f));
 	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
 	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
 	Cloth->setLinearInertia(physx::PxVec3(CachedConfig.LinearInertiaScale));
 	Cloth->setAngularInertia(physx::PxVec3(CachedConfig.AngularInertiaScale));
 	Cloth->setMotionConstraintScaleBias(CachedConfig.MaxDistanceScale, 0.0f);
 	Cloth->setMotionConstraintStiffness(1.0f);
+	Cloth->setSelfCollisionDistance(FMath::Max(0.0f, CachedConfig.SelfCollisionDistance));
+	Cloth->setSelfCollisionStiffness(FMath::Clamp(CachedConfig.SelfCollisionStiffness, 0.0f, 1.0f));
 
 	SkinnedPositions.SetNum(CachedMeshData.Vertices.Num());
 	return true;
@@ -194,28 +214,10 @@ void FClothingSimulationNv::UpdateSkeletalPose(
 
 	// 3. 엔진 월드(m) -> 컴포넌트 로컬 공간 스케일 자동 보정
 	//    - 레벨에서 Scale=0.01 배치된 cm 메시: InvScale = 100 -> -980 cm/s^2 (1G)
-	//    - 프리뷰 에디터에서 Scale=1.0으로 띄운 cm 메시: 로컬 크기가 크면 cm 단위로 간주해 100x 보정
+	//    - 프리뷰 에디터에서 Scale=1.0으로 띄운 cm 메시: CreateCloth에서 캐싱한 bLocalMeshIsCm으로 100x 보정
 	const float UniformScale = FMath::Max(std::fabs(ComponentToWorld.Scale.Z), 0.001f);
 	const float InvScale = 1.0f / UniformScale;
-	float PhysicsUnitScale = InvScale;
-	if (UniformScale > 0.5f && NumVerts > 1)
-	{
-		FVector MinP = CachedMeshData.Vertices[0];
-		FVector MaxP = CachedMeshData.Vertices[0];
-		for (uint32 i = 1; i < NumVerts; ++i)
-		{
-			MinP.X = FMath::Min(MinP.X, CachedMeshData.Vertices[i].X);
-			MinP.Y = FMath::Min(MinP.Y, CachedMeshData.Vertices[i].Y);
-			MinP.Z = FMath::Min(MinP.Z, CachedMeshData.Vertices[i].Z);
-			MaxP.X = FMath::Max(MaxP.X, CachedMeshData.Vertices[i].X);
-			MaxP.Y = FMath::Max(MaxP.Y, CachedMeshData.Vertices[i].Y);
-			MaxP.Z = FMath::Max(MaxP.Z, CachedMeshData.Vertices[i].Z);
-		}
-		if ((MaxP - MinP).Size() > 15.0f)
-		{
-			PhysicsUnitScale = 100.0f;
-		}
-	}
+	const float PhysicsUnitScale = (UniformScale > 0.5f && bLocalMeshIsCm) ? 100.0f : InvScale;
 
 	const FVector LocalGravity = CachedConfig.Gravity * PhysicsUnitScale;
 	const FVector LocalWind = CachedConfig.WindVelocity * PhysicsUnitScale;
@@ -369,10 +371,12 @@ void FClothingSimulationNv::ApplyConfig(const FClothConfigNv& InConfig)
 	Cloth->setDragCoefficient(CachedConfig.DragCoefficient);
 	Cloth->setLiftCoefficient(CachedConfig.LiftCoefficient);
 	Cloth->setDamping(physx::PxVec3(CachedConfig.Damping));
-	Cloth->setSolverFrequency(CachedConfig.SolverFrequency);
+	Cloth->setSolverFrequency(FMath::Clamp(CachedConfig.SolverFrequency, 30.0f, 240.0f));
 	Cloth->setTetherConstraintScale(CachedConfig.TetherScale);
 	Cloth->setTetherConstraintStiffness(CachedConfig.TetherStiffness);
 	Cloth->setLinearInertia(physx::PxVec3(CachedConfig.LinearInertiaScale));
 	Cloth->setAngularInertia(physx::PxVec3(CachedConfig.AngularInertiaScale));
 	Cloth->setMotionConstraintScaleBias(CachedConfig.MaxDistanceScale, 0.0f);
+	Cloth->setSelfCollisionDistance(FMath::Max(0.0f, CachedConfig.SelfCollisionDistance));
+	Cloth->setSelfCollisionStiffness(FMath::Clamp(CachedConfig.SelfCollisionStiffness, 0.0f, 1.0f));
 }

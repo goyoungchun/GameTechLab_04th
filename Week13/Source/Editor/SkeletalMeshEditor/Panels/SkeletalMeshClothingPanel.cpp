@@ -258,8 +258,21 @@ void FSkeletalMeshClothingPanel::DrawContent()
 		bCfgChanged |= ImGui::SliderFloat("Shear Stiffness", &Cfg.ShearStiffness, 0.0f, 1.0f, "%.2f");
 		bCfgChanged |= ImGui::SliderFloat("Tether Stiffness", &Cfg.TetherStiffness, 0.0f, 1.0f, "%.2f");
 		bCfgChanged |= ImGui::SliderFloat("Max Distance Scale", &Cfg.MaxDistanceScale, 0.0f, 3.0f, "%.2f");
+		bCfgChanged |= ImGui::SliderFloat("Solver Frequency", &Cfg.SolverFrequency, 30.0f, 240.0f, "%.0f Hz");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Substeps per second. Lower (30-60 Hz) improves FPS; higher (120 Hz) makes cloth stiffer.");
+		}
 		bCfgChanged |= ImGui::SliderFloat("Linear Inertia", &Cfg.LinearInertiaScale, 0.0f, 1.0f, "%.2f");
 		bCfgChanged |= ImGui::SliderFloat("Angular Inertia", &Cfg.AngularInertiaScale, 0.0f, 1.0f, "%.2f");
+		ImGui::Separator();
+		ImGui::TextDisabled("Self-Collision");
+		bCfgChanged |= ImGui::SliderFloat("Self Collision Dist", &Cfg.SelfCollisionDistance, 0.0f, 20.0f, "%.2f");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Minimum separation between cloth particles in local mesh units (cm for FBX). 0 disables self-collision.");
+		}
+		bCfgChanged |= ImGui::SliderFloat("Self Collision Stiff", &Cfg.SelfCollisionStiffness, 0.0f, 1.0f, "%.2f");
 
 		if (bCfgChanged)
 		{

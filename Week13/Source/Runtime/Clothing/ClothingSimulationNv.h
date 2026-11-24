@@ -46,4 +46,5 @@ private:
 	FClothPhysicalMeshData CachedMeshData;
 	FClothConfigNv CachedConfig;
 	TArray<FVector> SkinnedPositions;
+	bool bLocalMeshIsCm = false;
 };
