@@ -107,6 +107,7 @@ void FViewportsPanel::DrawRenderMenu()
 
     ImGui::SeparatorText("Post Process");
     ImGui::Checkbox("FXAA", &Settings.ShowFlags.AntiAliasing);
+    ImGui::Checkbox("Eye Adaptation", &Settings.ShowFlags.EyeAdaptation);
     ImGui::Checkbox("Gamma Correction", &Settings.bGammaCorrection);
     ImGui::BeginDisabled(!Settings.bGammaCorrection);
     ImGui::SliderFloat("Display Gamma", &Settings.DisplayGamma, 1.0f, 3.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);

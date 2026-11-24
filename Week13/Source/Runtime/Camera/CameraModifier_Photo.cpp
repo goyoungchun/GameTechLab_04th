@@ -112,6 +112,9 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.CameraISO = State.ISO;
 	PP.bOverride_bApplyPhysicalCameraExposure = true;
 	PP.bApplyPhysicalCameraExposure = true;
+	// 카메라에 들어 있는 자동 노출 값과 상관없이, 사진 모드는 AE 스위치가 노출 방식을 정한다
+	PP.bOverride_bAutoExposure = true;
+	PP.bAutoExposure = State.bAutoExposure;
 	// 카메라가 후처리를 꺼 둔 상태(가중치 0)여도 사진 모드 값은 들어가야 한다
 	InOutPOV.PostProcessBlendWeight = std::max(InOutPOV.PostProcessBlendWeight, Alpha);
 	return false;

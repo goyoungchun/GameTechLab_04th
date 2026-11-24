@@ -1030,6 +1030,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 					FSceneRenderSettings& RenderSettings = Context->GameViewport->RenderSettings;
 					// 게임 화면에 의미 있는 표시 플래그만 넘긴다. Grid·Bounds 같은 에디터 오버레이 플래그는 게임 기본값을 유지한다.
 					ShowFlags.AntiAliasing = S.ShowFlags.AntiAliasing;
+					ShowFlags.EyeAdaptation = S.ShowFlags.EyeAdaptation;
 					ShowFlags.Vignette = S.ShowFlags.Vignette;
 					ShowFlags.CameraOverlay = S.ShowFlags.CameraOverlay;
 					ShowFlags.DepthOfField = S.ShowFlags.DepthOfField;

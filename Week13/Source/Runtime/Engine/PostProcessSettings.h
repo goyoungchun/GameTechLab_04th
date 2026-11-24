@@ -60,6 +60,42 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere)
 	bool bApplyPhysicalCameraExposure = false;
 
+	// ---------- Auto Exposure (눈 적응) ----------
+	// 켜면 카메라 조리개·셔터·ISO 대신 노출계가 잰 장면 밝기를 천천히 따라간다 (UE의 AutoExposureMethod != Manual)
+	UPROPERTY(EditAnywhere)
+	bool bOverride_bAutoExposure = false;
+	// UE처럼 기본으로 켜 두고, 뷰포트는 Eye Adaptation Show Flag로, 카메라는 bOverride_로 끈다
+	UPROPERTY(EditAnywhere)
+	bool bAutoExposure = true;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureMinEV100 = false;
+	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
+	float AutoExposureMinEV100 = 11.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureMaxEV100 = false;
+	// 이보다 더 어둡게 하지 않는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
+	float AutoExposureMaxEV100 = 18.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureSpeedUp = false;
+	// 어두운 곳으로 갈 때(화면을 밝혀야 할 때) 따라가는 속도. 클수록 빠르다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.02, ClampMax=20, Delta=0.05))
+	float AutoExposureSpeedUp = 3.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureSpeedDown = false;
+	// 밝은 곳으로 갈 때(화면을 어둡게 해야 할 때) 따라가는 속도
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.02, ClampMax=20, Delta=0.05))
+	float AutoExposureSpeedDown = 1.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureBias = false;
+	// 스톱 단위. +1이면 자동으로 맞춘 밝기보다 2배 밝게 (UE의 Exposure Compensation)
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-8, ClampMax=8, Delta=0.1))
+	float AutoExposureBias = 0.5f;
+
+	// 노출계가 돌아야 하는지. 노출 배율이 장면 밝기에 따라 달라지는 모드일 때만 잰다
+	bool NeedsExposureMeter() const { return bAutoExposure || bApplyPhysicalCameraExposure; }
+
 	// 조리개·셔터·ISO를 ISO 100 기준 노출값(EV100)으로 바꾼다. 클수록 빛을 적게 받는다
 	float GetCameraEV100() const;
 	static float ComputeEV100(float Fstop, float ShutterSpeed, float ISO);
@@ -67,6 +103,10 @@ struct FPostProcessSettings
 	static float GetMeteredEV100(float AverageLuminance);
 	// 톤매핑 전에 곱할 배율. Sunny 16(f/16, 1/200초, ISO 200)에서 1이 되도록 맞췄다
 	float GetPhysicalCameraExposureScale() const;
+	// 어떤 EV100이든 톤매핑 배율로 바꾼다. 물리 노출과 자동 노출이 같은 기준점을 쓰게 한다
+	static float EV100ToExposureScale(float EV100);
+	// 이번 프레임에 쓸 노출 배율. 자동 노출이면 적응된 EV, 아니면 카메라 EV(또는 1)
+	float GetExposureScale(float AdaptedEV100) const;
 
 	// Src에서 bOverride_가 켜진 값만 Weight(0~1)만큼 이 값 쪽에서 Src 쪽으로 섞는다.
 	void OverrideBlend(const FPostProcessSettings& Src, float Weight);

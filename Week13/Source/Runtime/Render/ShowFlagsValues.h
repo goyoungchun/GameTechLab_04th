@@ -34,6 +34,8 @@ SHOWFLAG(VisualizeDepthOfField, false, false, Developer, "Camera", "Visualize De
 
 // ---------- Render: Show 메뉴 대신 Render 메뉴가 바꾼다 ----------
 SHOWFLAG(AntiAliasing,          false, false, Render, nullptr, "Anti-Aliasing (FXAA)")
+// 후처리 값(bAutoExposure)이 자동 노출을 원해도, 이 뷰에서 끄면 노출을 고정해 조명 작업을 할 수 있다
+SHOWFLAG(EyeAdaptation,         true,  true,  Render, nullptr, "Eye Adaptation")
 
 // ---------- Hidden: 뷰 모드·코드가 매 프레임 정한다. 메뉴에 나오지 않고 저장하지 않는다 ----------
 SHOWFLAG(Fog,                   true,  true,  Hidden, nullptr, "Fog")
