@@ -161,6 +161,7 @@ void FSkeletalMeshEditor::GeneratePhysicsAsset()
 
 	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys). 로드와 같은 경로 함수를 쓴다
 	const FString Path = MakePhysicsAssetPath(*Mesh);
+	Mesh->SetPhysicsAsset(PhysicsAsset);
 	if (!PhysicsAssetFile::Write(std::filesystem::path(Path), *PhysicsAsset, Error))
 		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
 	else
