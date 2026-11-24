@@ -162,6 +162,79 @@ namespace
 
         return true;
     }
+
+    FTransform ComposeTransform(const FTransform& Local, const FTransform& Parent)
+    {
+        FTransform Out;
+        Out.Rotation = (Parent.Rotation * Local.Rotation).Normalized();
+        Out.Scale = FVector(Local.Scale.X * Parent.Scale.X, Local.Scale.Y * Parent.Scale.Y, Local.Scale.Z * Parent.Scale.Z);
+        const FVector Scaled(Local.Location.X * Parent.Scale.X, Local.Location.Y * Parent.Scale.Y, Local.Location.Z * Parent.Scale.Z);
+        Out.Location = Parent.Location + Parent.Rotation.RotateVector(Scaled);
+        return Out;
+    }
+
+    // 바인드 포즈의 본별 컴포넌트 공간 트랜스폼. 부모가 항상 앞 인덱스라 앞에서부터 한 번에 된다.
+    void CalcRefPoseComponentSpace(const TArray<FBoneInfo>& Bones, TArray<FTransform>& Out)
+    {
+        Out.SetNum(Bones.Num());
+        for (int32 B = 0; B < Bones.Num(); ++B)
+        {
+            const int32 P = Bones[B].ParentIndex;
+            Out[B] = (P >= 0) ? ComposeTransform(Bones[B].LocalBindPose, Out[P]) : Bones[B].LocalBindPose;
+        }
+    }
+
+    // B의 조상 중 바디가 있는 가장 가까운 본. 없으면 -1.
+    // 루트·IK 본·병합된 본은 바디가 없으므로 건너뛴다 (작업 3에서 생긴 구멍을 여기서 메운다)
+    int32 FindParentBoneWithBody(const UPhysicsAsset& Asset, const TArray<FBoneInfo>& Bones, int32 B)
+    {
+        for (int32 P = Bones[B].ParentIndex; P >= 0; P = Bones[P].ParentIndex)
+        {
+            if (Asset.FindBodyIndex(FName(Bones[P].Name)) >= 0)
+                return P;
+        }
+        return -1;
+    }
+
+    void CreateConstraints(UPhysicsAsset& Asset, const TArray<FBoneInfo>& Bones)
+    {
+        TArray<FTransform> RefComp;
+        CalcRefPoseComponentSpace(Bones, RefComp);
+
+        for (UBodySetup* ChildSetup : Asset.BodySetup)
+        {
+            const int32 Child = -1 + 1 + [&] {   // 이름 → 본 인덱스
+                for (int32 i = 0; i < Bones.Num(); ++i)
+                    if (FName(Bones[i].Name) == ChildSetup->BoneName) return i;
+                return -1; }();
+                if (Child < 0)
+                    continue;
+
+                const int32 Parent = FindParentBoneWithBody(Asset, Bones, Child);
+                if (Parent < 0)
+                    continue;   // 최상위 바디(보통 pelvis)는 조인트가 없다
+
+                UPhysicsConstraintTemplate* Template = Asset.AddConstraint(ChildSetup->BoneName, FName(Bones[Parent].Name));
+                FConstraintInstance& CI = Template->DefaultInstance;
+
+                // ── Frame1: 자식 로컬. 위치는 자식 본 원점, X(Twist)축은 캡슐의 긴 축 ──
+                // FKSphylElem은 로컬 Z로 서므로 Rotation×Z가 긴 축, Rotation×X는 그에 수직인 축
+                FQuat CapsuleRot = FQuat::Identity();
+                if (!ChildSetup->AggGeom.SphylElems.IsEmpty())
+                    CapsuleRot = ChildSetup->AggGeom.SphylElems[0].Rotation;
+
+                CI.Pos1 = FVector(0, 0, 0);
+                CI.PriAxis1 = CapsuleRot.RotateVector(FVector(0, 0, 1));
+                CI.SecAxis1 = CapsuleRot.RotateVector(FVector(1, 0, 0));
+
+                // ── Frame2: 같은 점·같은 축을 부모 본 공간에서 본 값 ──
+                // 바인드 포즈에서 Frame1과 정확히 겹친다 → 시뮬 시작 때 튀지 않는다
+                const FTransform ChildInParent = RefComp[Child].GetRelativeTransform(RefComp[Parent]);
+                CI.Pos2 = ChildInParent.Location;   // Pos1이 원점이라 회전 항이 사라진다
+                CI.PriAxis2 = ChildInParent.Rotation.RotateVector(CI.PriAxis1);
+                CI.SecAxis2 = ChildInParent.Rotation.RotateVector(CI.SecAxis1);
+        }
+    }
 }
 
 bool FPhysicsAssetUtils::CreateFromSkeletalMesh(UPhysicsAsset& Asset, const USkeletalMesh& Mesh, const FPhysAssetCreateParams& Params, FString& OutError)
@@ -175,6 +248,7 @@ bool FPhysicsAssetUtils::CreateFromSkeletalMesh(UPhysicsAsset& Asset, const USke
     }
 
     Asset.ClearAllBodies();
+    Asset.ClearAllConstraints();
 
     // 정점 배정
     TArray<TArray<FVector>> BoneVerts;
@@ -232,6 +306,8 @@ bool FPhysicsAssetUtils::CreateFromSkeletalMesh(UPhysicsAsset& Asset, const USke
         OutError = "PhysicsAsset : no bone had enough vertices to make a body";
         return false;
     }
+
+    CreateConstraints(Asset, Bones);
 
     KRS_LOG(Info, "[Physics] PhysicsAsset generated: {} bodies from {} bones", Asset.BodySetup.Num(), Bones.Num());
     return true;
