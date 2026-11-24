@@ -12,6 +12,7 @@ cbuffer LensFlareConstants : register(b0)
 };
 
 Texture2D GhostTexture : register(t0);
+Texture2D DirtTexture : register(t1); // 화면 UV에 고정된 렌즈 먼지 (흑백)
 SamplerState LinearClamp : register(s0);
 
 struct VSOutput
@@ -47,5 +48,10 @@ float4 mainPS(VSOutput Input) : SV_Target
     // 고스트를 읽어 Intensity를 곱해 돌려준다 (블렌드가 더하기를 해 준다)
     float4 Color = GhostTexture.Sample(LinearClamp, UV);
     Color.rgb *= Intensity;
+
+    // Dirt — DirtTexture를 화면 UV로 읽어 DirtIntensity만큼 플레어(Color.rgb)에 곱한다
+    float4 DirtColor = DirtTexture.Sample(LinearClamp, UV);
+    Color.rgb *= (1 + DirtColor.r * DirtIntensity);
+
     return float4(Color.rgb, 0);
 }

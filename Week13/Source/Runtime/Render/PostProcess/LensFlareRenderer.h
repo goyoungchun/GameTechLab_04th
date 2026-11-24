@@ -58,4 +58,5 @@ private:
 	FPipelineState BlurPipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
 	TUniquePtr<FConstantBuffer> BlurConstantBuffer;
+	TUniquePtr<FTexture2D> DirtTexture;
 };

@@ -4,6 +4,8 @@
 #include "Render/RenderResourceManager.h"
 #include "Render/SceneView.h"
 #include "Render/Texture2D.h"
+#include "Render/ImageLoader.h"
+#include "Core/Misc/Paths.h"
 
 namespace
 {
@@ -34,6 +36,17 @@ void FLensFlareRenderer::Init(FRenderer* InRenderer)
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareData));
 	BlurConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareBlurData));
 	assert(BrightShader && GhostShader && CompositeShader && BlurShader && ConstantBuffer && BlurConstantBuffer);
+
+	// 먼지는 렌즈에 붙어 있어 화면 UV에 고정이므로 한 번만 읽어 둔다. 없으면 먼지 없이 플레어만 나온다
+	const FImageData DirtImage = ImageLoader::Load(FPaths::EngineFileUtf8("EngineResources/Textures/LensDirt.png"));
+	if (DirtImage.IsValid())
+	{
+		FTextureDesc Desc{};
+		Desc.Width = DirtImage.Width;
+		Desc.Height = DirtImage.Height;
+		Desc.Usage = ETextureUsage::Immutable;
+		DirtTexture = RenderCommand::CreateTexture2D(Desc, DirtImage);
+	}
 }
 
 void FLensFlareRenderer::UploadConstants(const FSceneView& View)
@@ -95,5 +108,7 @@ bool FLensFlareRenderer::RenderComposite(const FSceneView& View, FTexture2D* Gho
 {
 	if (!ConstantBuffer) return false;
 	UploadConstants(View);
+	if (DirtTexture)
+		RenderCommand::BindShaderResource(1, DirtTexture.get(), EShaderBindFlagBits::Pixel);
 	return DrawFullscreen(CompositePipelineState, GhostTexture);
 }
