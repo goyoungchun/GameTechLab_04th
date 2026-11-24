@@ -1,4 +1,4 @@
-// 반해상도 밝은 부분 → 반해상도 고스트. 화면 중앙을 기준으로 뒤집어 여러 번 샘플링한다.
+// 반해상도 밝은 부분 → 반해상도 고스트. 화면 중앙 기준으로 고스트마다 다른 배율·색으로 샘플링한다.
 cbuffer LensFlareConstants : register(b0)
 {
     float Intensity;
@@ -33,11 +33,17 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
     return Output;
 }
 
-// 실제 렌즈는 면마다 곡률이 달라 고스트가 제각각 떨어지므로, i 대신 이 표에서 간격을 꺼낸다.
-// 음수는 거울상보다 중앙 쪽에 생긴다. 4에 가까우면(Dispersal 0.25 기준) 고스트가 너무 커져서 피했다
-static const float GhostOffsets[16] = { 0.0, 1.35, -0.55, 2.1, 0.6, -1.2, 2.7, 1.7, -0.25, 0.95, 2.4, -0.85, 1.15, 3.0, 0.3, -1.5 };
-// 크게 퍼지는 고스트일수록 빛이 넓게 흩어져 어두워 보이도록 세기도 따로 준다
-static const float GhostWeights[16] = { 1.0, 0.55, 0.8, 0.35, 0.7, 0.45, 0.25, 0.5, 0.9, 0.6, 0.3, 0.5, 0.65, 0.2, 0.75, 0.4 };
+// 고스트 i는 광원을 화면 중앙 기준으로 1/Scale배 옮기고 1/Scale배 키운 상이다.
+// 음수면 중앙 반대편, |Scale| < 1이면 바깥쪽에 크게, > 1이면 중앙 가까이 작게 생긴다. 1 근처는 광원과 겹쳐서 피했다
+static const float GhostScales[16] = { -1.0, -0.45, -2.4, 1.8, -0.7, -3.5, 2.8, -0.32, -1.4, 1.35, -0.58, -5.0, 2.2, -0.85, -1.9, 4.0 };
+// 렌즈 면마다 코팅이 달라 반사되는 파장이 다르므로 고스트마다 색을 다르게 준다
+static const float3 GhostTints[16] =
+{
+    float3(1.0, 0.9, 0.8),  float3(0.5, 0.8, 1.0),  float3(1.0, 0.6, 0.3),  float3(0.6, 1.0, 0.6),
+    float3(0.9, 0.5, 1.0),  float3(1.0, 1.0, 0.6),  float3(0.4, 0.7, 1.0),  float3(1.0, 0.5, 0.5),
+    float3(0.7, 1.0, 0.9),  float3(1.0, 0.8, 0.4),  float3(0.6, 0.6, 1.0),  float3(1.0, 0.7, 0.9),
+    float3(0.5, 1.0, 0.8),  float3(1.0, 0.85, 0.6), float3(0.8, 0.6, 1.0),  float3(0.9, 1.0, 0.7)
+};
 
 float4 mainPS(VSOutput Input) : SV_Target
 {
@@ -45,19 +51,22 @@ float4 mainPS(VSOutput Input) : SV_Target
     BrightTexture.GetDimensions(Size.x, Size.y);
     float2 UV = Input.Position.xy / Size;
 
-    // 뒤집은 UV에서 중앙 방향으로 GhostDispersal 간격씩 GhostCount번 샘플링해 더한다
-    float2 FlipUV = 1 - UV;
-    float2 GhostVector = (0.5f - FlipUV) * GhostDispersal;
-    
+    // Dispersal 기본값 0.25에서 표의 배율이 그대로 쓰이도록 맞춘다. 클수록 고스트가 바깥으로 퍼지고 커진다
+    const float Spread = max(GhostDispersal * 4.0f, 0.05f);
+
     float3 Result = 0;
     const int Count = min((int)GhostCount, 16);
     for (int i = 0; i < Count; ++i)
     {
-        float2 SampleUV = FlipUV + GhostVector * GhostOffsets[i];
+        // P에 찍힐 고스트의 광원은 중앙에서 Scale배 떨어진 곳에 있다 (gather)
+        const float Scale = GhostScales[i] / Spread;
+        float2 SampleUV = 0.5f + (UV - 0.5f) * Scale;
         float3 SampleColor = BrightTexture.Sample(LinearClamp, SampleUV).rgb;
         float EdgeWeight = pow(1 - saturate(length(0.5 - SampleUV) / 0.7071), 2);
-        Result += SampleColor * EdgeWeight * GhostWeights[i];
+        // 1/Scale배 커진 고스트는 같은 빛이 넓이 1/Scale²에 퍼지므로 그만큼 어두워진다
+        float Energy = saturate(Scale * Scale);
+        Result += SampleColor * GhostTints[i] * EdgeWeight * Energy;
     }
-    
+
     return float4(Result, 1);
 }

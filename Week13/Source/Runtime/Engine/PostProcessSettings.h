@@ -58,10 +58,10 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareGhostCount = false;
 	// 광원 반대편 직선 위에 줄지어 생기는 고스트 개수
 	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=16))
-	int32 LensFlareGhostCount = 4;
+	int32 LensFlareGhostCount = 6;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareGhostDispersal = false;
-	// 고스트 사이 간격(화면 중앙까지 거리 대비 비율)
+	// 고스트가 퍼지는 정도. 0.25에서 셰이더 배율표 그대로이고, 클수록 고스트가 바깥으로 퍼지며 커진다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float LensFlareGhostDispersal = 0.25f;
 
