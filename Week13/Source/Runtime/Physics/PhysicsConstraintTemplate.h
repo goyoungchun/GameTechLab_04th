@@ -9,6 +9,9 @@ class UPhysicsConstraintTemplate : public UObject
 {
 	GENERATED_BODY()
 public:
+	
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
+
 	UPROPERTY(EditAnywhere)
 	FConstraintInstance DefaultInstance;
 };

@@ -6,10 +6,10 @@ void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
     FArchive& Ar = Record.GetUnderlyingArchive();
     Super::Serialize(Record);
 
-    int32 Version = Ar.IsSaving() ? 1 : 0;
+    int32 Version = Ar.IsSaving() ? 2 : 0;
     Record << SA_VALUE("Version", Version);
 
-    if (Version != 1)
+    if (Version < 1 || Version > 2)
     {
         Ar.SetError();
         return;
@@ -21,6 +21,7 @@ void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
     if (Ar.IsLoading())
     {
         ClearAllBodies();
+        ClearAllConstraints();
     }
 
     for (int32 i = 0; i < Num; ++i)
@@ -39,6 +40,26 @@ void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
         }
     }
 
+    if (Version >= 2)
+    {
+        int32 NumCon = Ar.IsSaving() ? ConstraintSetup.Num() : 0;
+        FStructuredArchive::FArray Cons = Record.EnterArray("Constraints", NumCon);
+
+        for (int32 i = 0; i < NumCon; ++i)
+        {
+            FStructuredArchive::FRecord ConRecord = Cons.EnterElement().EnterRecord();
+            if (Ar.IsLoading())
+            {
+                UPhysicsConstraintTemplate* Template = NewObject<UPhysicsConstraintTemplate>(this);
+                Template->Serialize(ConRecord);
+                ConstraintSetup.Add(Template);
+            }
+            else
+            {
+                ConstraintSetup[i]->Serialize(ConRecord);
+            }
+        }
+    }
 }
 
 int32 UPhysicsAsset::FindBodyIndex(FName BoneName) const
