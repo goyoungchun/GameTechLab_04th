@@ -8,8 +8,19 @@
 #include "Physics/PhysicsAssetUtils.h"
 #include "Physics/PhysicsAssetFile.h"
 #include "Asset/AssetUtils.h"
+#include "Asset/AssetManager.h"
 
 #include <filesystem>
+
+namespace
+{
+	FString MakePhysicsAssetPath(const USkeletalMesh& Mesh)
+	{
+		std::filesystem::path Path(FAssetUtils::ResolveAssetFilePath(Mesh.GetPath()));
+		Path.replace_extension(".phys");
+		return Path.generic_string();
+	}
+}
 
 bool FSkeletalMeshEditor::InitializeResources()
 {
@@ -18,6 +29,7 @@ bool FSkeletalMeshEditor::InitializeResources()
 	if (!BoneGizmoTarget) return false;
 	BoneGizmoTarget->DetachFromParent();
 	ResetBonePoseHistory();
+	LoadPhysicsAsset();   // 이전에 Generate해 둔 .phys가 있으면 읽어 온다
 	return true;
 }
 
@@ -73,6 +85,8 @@ void FSkeletalMeshEditor::GeneratePhysicsAsset()
 	if (!Mesh)
 		return;
 
+	// 로드된 에셋이 있으면 그 객체를 그대로 덮어쓴다.
+	// 새로 NewObject하면 AssetManager 캐시에 옛 객체가 남아, 다른 곳에서 Load하면 예전 결과가 나온다.
 	if (!PhysicsAsset)
 		PhysicsAsset = NewObject<UPhysicsAsset>();
 
@@ -84,13 +98,25 @@ void FSkeletalMeshEditor::GeneratePhysicsAsset()
 		return;
 	}
 
-	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys)
-	std::filesystem::path Path(FAssetUtils::ResolveAssetFilePath(Mesh->GetPath()));
-	Path.replace_extension(".phys");
-	if (!PhysicsAssetFile::Write(Path, *PhysicsAsset, Error))
+	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys). 로드와 같은 경로 함수를 쓴다
+	const FString Path = MakePhysicsAssetPath(*Mesh);
+	if (!PhysicsAssetFile::Write(std::filesystem::path(Path), *PhysicsAsset, Error))
 		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
 	else
-		KRS_LOG(Info, "[Physics] Saved {}", Path.generic_string());
+		KRS_LOG(Info, "[Physics] Saved {}", Path);
+}
+
+void FSkeletalMeshEditor::LoadPhysicsAsset()
+{
+	PhysicsAsset = nullptr;
+	if (!Mesh)
+		return;
+
+	const FString Path = MakePhysicsAssetPath(*Mesh);
+	if (!std::filesystem::exists(Path))
+		return;   // 아직 Generate한 적 없음 → 조용히 넘어간다 (경고 X)
+
+	PhysicsAsset = UAssetManager::LoadPhysicsAsset(Path);
 }
 
 void FSkeletalMeshEditor::OnRenderLine(FLineBatcher& LineBatcher)

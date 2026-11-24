@@ -26,7 +26,8 @@ void FSkeletalMeshDetailsPanel::DrawContent()
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Physics");
-	if (ImGui::Button("Generate Physics Asset"))
+	const char* GenerateLabel = Editor.GetPhysicsAsset() ? "Regenerate Physics Asset" : "Generate Physics Asset";
+	if (ImGui::Button(GenerateLabel))
 	{
 		Editor.GeneratePhysicsAsset();
 	}

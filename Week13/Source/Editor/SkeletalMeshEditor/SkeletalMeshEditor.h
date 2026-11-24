@@ -45,6 +45,8 @@ public:
 	void GeneratePhysicsAsset();
 	UPhysicsAsset* GetPhysicsAsset() const { return PhysicsAsset; }
 
+	void LoadPhysicsAsset();
+
 	bool bShowPhysicsBodies = true;
 
 protected:
