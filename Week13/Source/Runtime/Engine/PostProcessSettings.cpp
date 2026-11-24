@@ -84,7 +84,8 @@ float FPostProcessSettings::EV100ToExposureScale(float EV100)
 
 float FPostProcessSettings::GetExposureScale(float AdaptedEV100) const
 {
-	// Bias는 EV를 낮추는 쪽이 밝아지는 쪽이라 빼 준다
+	// Bias는 EV를 낮추는 쪽이 밝아지는 쪽이라 빼 준다. UE처럼 수동 카메라에도 똑같이 얹어 두 방식의 밝기를 맞춘다
 	if (bAutoExposure) return EV100ToExposureScale(AdaptedEV100 - AutoExposureBias);
-	return GetPhysicalCameraExposureScale();
+	if (bApplyPhysicalCameraExposure) return EV100ToExposureScale(GetCameraEV100() - AutoExposureBias);
+	return 1.0f;
 }

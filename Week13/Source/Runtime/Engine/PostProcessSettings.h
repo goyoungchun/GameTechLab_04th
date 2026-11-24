@@ -89,7 +89,7 @@ struct FPostProcessSettings
 	float AutoExposureSpeedDown = 1.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_AutoExposureBias = false;
-	// 스톱 단위. +1이면 자동으로 맞춘 밝기보다 2배 밝게 (UE의 Exposure Compensation)
+	// 스톱 단위. +1이면 2배 밝게. 자동 노출과 물리 카메라 노출 둘 다에 얹는다 (UE의 Exposure Compensation)
 	UPROPERTY(EditAnywhere, meta=(ClampMin=-8, ClampMax=8, Delta=0.1))
 	float AutoExposureBias = 0.5f;
 
