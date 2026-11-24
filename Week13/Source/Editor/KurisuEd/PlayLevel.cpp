@@ -48,8 +48,6 @@
 #include "Components/ShapeComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 
-#include "Physics/Collision.h"
-
 #include "Audio/AudioDevice.h"
 #include "Core/SplashScreen.h"
 #include "Core/Misc/Paths.h"

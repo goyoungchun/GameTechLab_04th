@@ -4545,6 +4545,18 @@ void FDetailsPanel::OnRender()
 							ImGui::TableSetColumnIndex(1);
 							ImGui::TextWrapped("Choose None in Animation Blueprint to use a single animation.");
 						}
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						DrawPropertyGridLabel("Enable Cloth Sim");
+						ImGui::TableSetColumnIndex(1);
+						if (ImGui::Checkbox("##EnableClothingSimulation", &SkelComp->bEnableClothingSimulation))
+						{
+							if (SkelComp->bEnableClothingSimulation)
+								SkelComp->CreateClothingSimulation();
+							else
+								SkelComp->DestroyClothingSimulation();
+						}
 					}
 					EndPropertyGridTable();
 				}

@@ -36,6 +36,7 @@ struct FViewportPointerInput
 	bool bMousePressed = false;
 	bool bMouseDown = false;
 	bool bCancel = false;
+	bool bShiftDown = false;
 };
 
 class FSkeletalPreviewEditor : public FAssetEditor

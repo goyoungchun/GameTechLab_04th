@@ -3,6 +3,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor/MyCharacter.h"
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
 #include "Collision/HitResult.h"
 
 void UAnimNotifyState_AttackWindow::NotifyBegin(USkeletalMeshComponent* MeshComp, const UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -16,15 +17,19 @@ void UAnimNotifyState_AttackWindow::NotifyTick(USkeletalMeshComponent* MeshComp,
 	// 이 Notify가 붙은 시퀀스를 재생하는 메시의 주인이 공격한다.
 	AActor* Attacker = MeshComp ? MeshComp->GetOwner() : nullptr;
 	UWorld* World = Attacker ? Attacker->GetWorld() : nullptr;
-	if (!World)
+	FPhysScene* PhysicsScene = World ? World->GetPhysicsScene() : nullptr;
+	if (!PhysicsScene || !PhysicsScene->IsValid())
 		return;
 
 	// 캐릭터는 이동 방향을 향하므로(bOrientRotationToMovement) 액터 전방이 주먹 방향이다
 	const FVector Forward = Attacker->GetActorRotation().Quaternion().GetForwardVector();
-	const FRay AttackRay{ Attacker->GetActorLocation() + FVector(0.0f, 0.0f, AttackHeight), Forward };
+	const FVector Start = Attacker->GetActorLocation() + FVector(0.0f, 0.0f, AttackHeight);
 
+	// 주먹 경로에서 처음 막히는 바디 (벽이 앞에 있으면 벽에서 멈춘다)
+	FCollisionQueryParams Params;
+	Params.IgnoreActor = Attacker;
 	FHitResult Hit;
-	if (!World->SweepSingle(AttackRay, AttackRange, AttackRadius, Hit, Attacker))
+	if (!PhysicsScene->SweepSingle(FCollisionShape::MakeSphere(AttackRadius), FQuat::Identity(), Start, Start + Forward * AttackRange, Hit, Params))
 		return;
 
 	AActor* HitActor = Hit.HitComponent ? Hit.HitComponent->GetOwner() : nullptr;

@@ -14,10 +14,11 @@ namespace physx
 	class PxPhysics;
 	class PxPvd;
 	class PxPvdTransport;
-	class PxMaterial;
 	class PxDefaultCpuDispatcher;
 	class PxCooking;
 }
+
+class UPhysicalMaterial;
 
 class FPhysicsCore
 {
@@ -29,7 +30,8 @@ public:
 	bool IsInitialized() const { return Physics != nullptr; }
 
 	physx::PxPhysics* GetPhysics() const { return Physics; }
-	physx::PxMaterial* GetDefaultMaterial() const { return DefaultMaterial; }
+	// 머티리얼 오버라이드가 없는 바디가 쓰는 표면 물성과 밀도.
+	UPhysicalMaterial* GetDefaultPhysMaterial() const { return DefaultPhysMaterial; }
 	physx::PxDefaultCpuDispatcher* GetDispatcher() const { return Dispatcher; }
 	physx::PxPvd* GetPvd() const { return Pvd; }
 	physx::PxCooking* GetCooking() const { return Cooking; }
@@ -57,7 +59,8 @@ private:
 	physx::PxPvd* Pvd = nullptr;
 	physx::PxPvdTransport* PvdTransport = nullptr;
 	physx::PxPhysics* Physics = nullptr;
-	physx::PxMaterial* DefaultMaterial = nullptr;
+	// UObject라 해제는 FEngineLoop::Exit의 DestroyAllObjectsExceptEngine이 한다 (Shutdown보다 먼저).
+	UPhysicalMaterial* DefaultPhysMaterial = nullptr;
 	physx::PxDefaultCpuDispatcher* Dispatcher = nullptr;
 	physx::PxCooking* Cooking = nullptr;
 

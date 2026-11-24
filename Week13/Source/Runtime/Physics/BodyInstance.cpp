@@ -5,52 +5,12 @@
 #include "PhysicsCore.h"
 #include "PhysXConversions.h"
 #include "PhysXIncludes.h"
-#include "PhysXFilterShader.h"
 #include "PhysicsLock.h"
 #include "PhysicalMaterial.h"
 #include "Components/PrimitiveComponent.h"
 
 namespace
 {
-	// 스케일은 형상 크기에 반영한다. 캡슐·구는 균일해야 하므로 가장 큰 축을 쓴다.
-	float MaxAbsXY(const FVector& S) { return std::max(std::abs(S.X), std::abs(S.Y)); }
-	float MaxAbs3(const FVector& S) { return std::max({ std::abs(S.X), std::abs(S.Y), std::abs(S.Z) }); }
-
-	physx::PxTransform MakeLocalPose(const FVector& Center, const FQuat& Rotation, const FVector& Scale)
-	{
-		const FVector ScaledCenter(Center.X * Scale.X, Center.Y * Scale.Y, Center.Z * Scale.Z);
-		return physx::PxTransform(K2PVector(ScaledCenter), K2PQuat(Rotation));
-	}
-
-	void AttachShape(physx::PxRigidActor& Actor, const physx::PxGeometry& Geometry, const physx::PxTransform& LocalPose, FBodyInstance* Owner)
-	{
-		physx::PxMaterial* Material = FPhysicsCore::Get().GetDefaultMaterial();
-		if (Owner->PhysMaterialOverride)
-		{
-			if (physx::PxMaterial* Override = Owner->PhysMaterialOverride->GetPxMaterial())
-				Material = Override;
-		}
-		physx::PxShape* Shape = physx::PxRigidActorExt::createExclusiveShape(Actor, Geometry, *Material);
-		if (!Shape)
-		{
-			KRS_LOG(Error, "[Physics] Failed to create shape.");
-			return;
-		}
-		Shape->setLocalPose(LocalPose);
-
-		// 시뮬레이션(밀고 밀림)과 쿼리(레이캐스트·스윕) 참여를 따로 켠다.
-		const ECollisionEnabled Collision = Owner->CollisionEnabled;
-		Shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE,
-			Collision == ECollisionEnabled::PhysicsOnly || Collision == ECollisionEnabled::QueryAndPhysics);
-		Shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE,
-			Collision == ECollisionEnabled::QueryOnly || Collision == ECollisionEnabled::QueryAndPhysics);
-		Shape->userData = Owner;
-
-		const physx::PxFilterData FilterData = K2PFilterData(Owner->MakeMaskFilter());
-		Shape->setSimulationFilterData(FilterData);   // 바디끼리 충돌 판정 (Filter Shader)
-		Shape->setQueryFilterData(FilterData);        // 레이캐스트·스윕 판정 (A7-2)
-	}
-
 	// Kinematic에 CCD를 켜면 PhysX가 경고한다. 시뮬레이트 중일 때만 켠다.
 	void ApplyDynamicFlags(physx::PxRigidDynamic& Dynamic, bool bSimulate, bool bUseCCD)
 	{
@@ -77,9 +37,14 @@ FMaskFilter FBodyInstance::MakeMaskFilter() const
 	return Filter;
 }
 
-float FBodyInstance::GetEffectiveDensity() const
+bool FBodyInstance::IsTriggerBody() const
 {
-	return PhysMaterialOverride ? PhysMaterialOverride->Density : Density;
+	return CollisionEnabled == ECollisionEnabled::QueryOnly && OwnerComponent && OwnerComponent->bGenerateOverlapEvents;
+}
+
+UPhysicalMaterial* FBodyInstance::GetPhysicalMaterial() const
+{
+	return PhysMaterialOverride ? PhysMaterialOverride : FPhysicsCore::Get().GetDefaultPhysMaterial();
 }
 
 bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform, UPrimitiveComponent* PrimComp, FPhysScene* InScene)
@@ -123,63 +88,9 @@ bool FBodyInstance::InitBody(UBodySetup* Setup, const FTransform& WorldTransform
 	Scale3D = WorldTransform.Scale;
 	Actor->userData = this;
 
-	// Static이고 삼각형 충돌이 있으면 그것만 쓴다 (UE의 Use Complex As Simple).
-	// 계단·지형처럼 오목한 배경을 정확히 막고, 평면 바닥도 두께 없이 그대로 쓸 수 있다.
-	if (Mobility == EBodyMobility::Static)
-	{
-		if (physx::PxTriangleMesh* TriMesh = Setup->GetOrCreateTriMesh())
-		{
-			const FVector MeshScale(std::abs(Scale3D.X), std::abs(Scale3D.Y), std::abs(Scale3D.Z));
-			const physx::PxTriangleMeshGeometry Geometry(TriMesh, physx::PxMeshScale(K2PVector(MeshScale)));
-			AttachShape(*Actor, Geometry, physx::PxTransform(physx::PxIdentity), this);
-
-			SCOPED_SCENE_WRITE_LOCK(Scene->GetPxScene());
-			Scene->GetPxScene()->addActor(*Actor);
-			return true;   // Static은 질량 계산이 없다
-		}
-	}
-
-	const FKAggregateGeom& Geom = Setup->AggGeom;
-	for (const FKSphereElem& Elem : Geom.SphereElems)
-	{
-		const physx::PxSphereGeometry Sphere(Elem.Radius * MaxAbs3(Scale3D));
-		AttachShape(*Actor, Sphere, MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), this);
-	}
-	for (const FKBoxElem& Elem : Geom.BoxElems)
-	{
-		const physx::PxBoxGeometry Box(
-			std::abs(Elem.Extent.X * Scale3D.X), std::abs(Elem.Extent.Y * Scale3D.Y), std::abs(Elem.Extent.Z * Scale3D.Z));
-		AttachShape(*Actor, Box, MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), this);
-	}
-	for (const FKSphylElem& Elem : Geom.SphylElems)
-	{
-		// PhysX 캡슐은 로컬 X축으로 눕는다. 엔진 캡슐은 Z축으로 서므로 Y축 기준 90도 돌려 세운다.
-		const physx::PxCapsuleGeometry Capsule(Elem.Radius * MaxAbsXY(Scale3D), Elem.Length * 0.5f * std::abs(Scale3D.Z));
-		physx::PxTransform LocalPose = MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D);
-		LocalPose.q = LocalPose.q * physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0));
-		AttachShape(*Actor, Capsule, LocalPose, this);
-	}
-
-	if (!Geom.ConvexElems.IsEmpty())
-	{
-		Setup->CreatePhysicsMeshes();
-		for (int32 Index = 0; Index < Geom.ConvexElems.Num(); ++Index)
-		{
-			physx::PxConvexMesh* Mesh = Setup->GetConvexMesh(Index);
-			if (!Mesh)
-				continue;   // Cooking 실패한 요소는 건너뛴다 (경고는 CreatePhysicsMeshes가 남겼다)
-
-			const FKConvexElem& Elem = Geom.ConvexElems[Index];
-			// 구·캡슐과 달리 볼록 메시는 축마다 다른 스케일을 그대로 받는다.
-			// 음수(뒤집기) 스케일은 PhysX가 유효하지 않은 지오메트리로 거부하므로 크기만 쓴다.
-			const FVector MeshScale(std::abs(Scale3D.X), std::abs(Scale3D.Y), std::abs(Scale3D.Z));
-			const physx::PxConvexMeshGeometry Convex(Mesh, physx::PxMeshScale(K2PVector(MeshScale)));
-			AttachShape(*Actor, Convex, MakeLocalPose(Elem.Center, Elem.Rotation, Scale3D), this);
-		}
-	}
-
 	// 여기까지는 씬에 들어가기 전이라 락이 필요 없다. 씬을 바꾸는 addActor만 잠근다.
-	UpdateMassProperties();
+	Setup->AddShapesToRigidActor(this, *Actor, Scale3D);
+	UpdateMassProperties();   // Static 바디는 질량이 없어 아무 일도 하지 않는다
 	{
 		SCOPED_SCENE_WRITE_LOCK(Scene->GetPxScene());
 		Scene->GetPxScene()->addActor(*Actor);
@@ -253,7 +164,7 @@ void FBodyInstance::UpdateMassProperties()
 	if (MassInKgOverride > 0.0f)
 		physx::PxRigidBodyExt::setMassAndUpdateInertia(*Dynamic, MassInKgOverride, nullptr, bIncludeNonSimShapes);
 	else
-		physx::PxRigidBodyExt::updateMassAndInertia(*Dynamic, GetEffectiveDensity(), nullptr, bIncludeNonSimShapes);
+		physx::PxRigidBodyExt::updateMassAndInertia(*Dynamic, GetPhysicalMaterial()->Density, nullptr, bIncludeNonSimShapes);
 }
 
 FTransform FBodyInstance::GetWorldTransform() const

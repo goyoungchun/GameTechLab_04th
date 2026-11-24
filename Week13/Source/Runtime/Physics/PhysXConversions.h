@@ -31,6 +31,13 @@ inline FQuat P2KQuat(const physx::PxQuat& Q)
 	return FQuat(Q.x, Q.y, Q.z, Q.w);
 }
 
+// PhysX 캡슐은 로컬 X축으로 눕고 엔진 캡슐은 로컬 Z축으로 선다. Y축 기준 90도 돌려 X를 Z에 맞춘다.
+// 바디 shape의 로컬 포즈와 캡슐 쿼리의 회전에 오른쪽으로 곱한다.
+inline physx::PxQuat CapsuleAxisFix()
+{
+	return physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0));
+}
+
 // FTransform <-> PxTransform
 // PxTransform에는 스케일이 없다. 스케일은 shape 크기(반지름, 반높이, extent)에 곱해서 반영한다 (A4/A5).
 inline physx::PxTransform K2PTransform(const FTransform& T)

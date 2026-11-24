@@ -4,6 +4,7 @@
 #include "Panels/SkeletalMeshViewportPanel.h"
 #include "Panels/SkeletalMeshInfoPanel.h"
 #include "Panels/SkeletalMeshDetailsPanel.h"
+#include "Panels/SkeletalMeshClothingPanel.h"
 #include "Panels/BoneHierarchyPanel.h"
 #include "Panels/SkeletalMeshEditorPanel.h"
 #include "Editor/AnimSequenceEditor/Panels/AnimBrowserPanels.h"
@@ -48,6 +49,7 @@ FSkeletalMeshEditorTab::FSkeletalMeshEditorTab(FSkeletalMeshEditor& InEditor)
 	Panels.Add(MakeUnique<FBoneHierarchyPanel>(InEditor));
 	Panels.Add(MakeUnique<FSkeletalMeshDetailsPanel>(InEditor));
 	Panels.Add(MakeUnique<FSkeletalMeshAssetBrowserPanel>(InEditor));
+	Panels.Add(MakeUnique<FSkeletalMeshClothingPanel>(InEditor));
 	for (auto& Panel : Panels)
 	{
 		Panel->SetDockClass(PanelClassId);
@@ -60,6 +62,11 @@ void FSkeletalMeshEditorTab::DrawMenuBar()
 	// 레벨 에디터와 같은 순서: File → Edit → Window
 	if (ImGui::BeginMenu("File"))
 	{
+		if (ImGui::MenuItem("Save Clothing (.cloth.bin)"))
+		{
+			MeshEditor.SaveClothingAssets();
+		}
+		ImGui::Separator();
 		if (ImGui::MenuItem("Close Editor"))
 		{
 			MeshEditor.Close();
@@ -69,13 +76,27 @@ void FSkeletalMeshEditorTab::DrawMenuBar()
 
 	if (ImGui::BeginMenu("Edit"))
 	{
-		if (ImGui::MenuItem("Undo", "Ctrl+Z", false, MeshEditor.CanUndoPoseEdit()))
+		if (MeshEditor.IsClothPaintActive())
 		{
-			MeshEditor.UndoPoseEdit();
+			if (ImGui::MenuItem("Undo Cloth Paint", "Ctrl+Z", false, MeshEditor.CanUndoClothPaint()))
+			{
+				MeshEditor.UndoClothPaint();
+			}
+			if (ImGui::MenuItem("Redo Cloth Paint", "Ctrl+Y", false, MeshEditor.CanRedoClothPaint()))
+			{
+				MeshEditor.RedoClothPaint();
+			}
 		}
-		if (ImGui::MenuItem("Redo", "Ctrl+Y", false, MeshEditor.CanRedoPoseEdit()))
+		else
 		{
-			MeshEditor.RedoPoseEdit();
+			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, MeshEditor.CanUndoPoseEdit()))
+			{
+				MeshEditor.UndoPoseEdit();
+			}
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, MeshEditor.CanRedoPoseEdit()))
+			{
+				MeshEditor.RedoPoseEdit();
+			}
 		}
 		ImGui::EndMenu();
 	}
@@ -100,6 +121,7 @@ void FSkeletalMeshEditorTab::BuildDefaultLayout(ImGuiID InDockSpaceId, const ImV
 	ImGui::DockBuilderDockWindow(Panels[1]->GetWindowName(), InfoId);
 	ImGui::DockBuilderDockWindow(Panels[2]->GetWindowName(), HierarchyId);
 	ImGui::DockBuilderDockWindow(Panels[3]->GetWindowName(), DetailsId);
+	ImGui::DockBuilderDockWindow(Panels[5]->GetWindowName(), DetailsId);
 	ImGui::DockBuilderDockWindow(Panels[4]->GetWindowName(), BrowserId);
 	ImGui::DockBuilderFinish(InDockSpaceId);
 }
@@ -132,6 +154,12 @@ void FSkeletalMeshEditorTab::OnRender(bool bActive)
 		}
 	}
 
+	const bool bFocusClothingPanel = bActive && MeshEditor.ConsumeFocusClothingPanelRequest();
+	if (bFocusClothingPanel && Panels.Num() > 5)
+	{
+		Panels[5]->SetOpen(true);
+	}
+
 	for (auto& Panel : Panels)
 	{
 		// 분리된 패널은 부모 탭이 가려져도 독립적으로 표시합니다.
@@ -139,6 +167,11 @@ void FSkeletalMeshEditorTab::OnRender(bool bActive)
 		{
 			Panel->OnRender();
 		}
+	}
+
+	if (bFocusClothingPanel && Panels.Num() > 5)
+	{
+		ImGui::SetWindowFocus(Panels[5]->GetWindowName());
 	}
 
 	MeshEditor.CommitBonePoseUndo(MeshEditor.IsGizmoDragging() || ImGui::IsAnyItemActive());
@@ -150,12 +183,21 @@ void FSkeletalMeshEditorTab::OnRender(bool bActive)
 	{
 		if (ImGui::IsKeyPressed(ImGuiKey_Z, false))
 		{
-			if (IO.KeyShift) MeshEditor.RedoPoseEdit();
-			else             MeshEditor.UndoPoseEdit();
+			if (MeshEditor.IsClothPaintActive())
+			{
+				if (IO.KeyShift) MeshEditor.RedoClothPaint();
+				else             MeshEditor.UndoClothPaint();
+			}
+			else
+			{
+				if (IO.KeyShift) MeshEditor.RedoPoseEdit();
+				else             MeshEditor.UndoPoseEdit();
+			}
 		}
 		else if (ImGui::IsKeyPressed(ImGuiKey_Y, false))
 		{
-			MeshEditor.RedoPoseEdit();
+			if (MeshEditor.IsClothPaintActive()) MeshEditor.RedoClothPaint();
+			else                                 MeshEditor.RedoPoseEdit();
 		}
 	}
 }
