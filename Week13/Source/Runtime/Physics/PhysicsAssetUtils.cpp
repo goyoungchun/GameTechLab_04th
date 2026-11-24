@@ -40,15 +40,15 @@ namespace
                 if (BestBone >= 0)
                 {
                     OutVerts[BestBone].Add(Pos);
-                }
-                else
+                }   
+            }
+            else
+            {
+                for (int32 K = 0; K < MaxBoneInfluences; ++K)
                 {
-                    for (int32 K = 0; K < MaxBoneInfluences; ++K)
+                    if (W.Weight[K] > 0.0f)
                     {
-                        if (W.Weight[K] > 0.0f)
-                        {
-                            OutVerts[W.BoneIndex[K]].Add(Pos);
-                        }
+                        OutVerts[W.BoneIndex[K]].Add(Pos);
                     }
                 }
             }
