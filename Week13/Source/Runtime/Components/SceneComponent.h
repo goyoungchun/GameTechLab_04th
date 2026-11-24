@@ -4,6 +4,7 @@
 #include "ActorComponent.h"
 #include "Math/Box.h"
 #include "Collision/HitResult.h"
+#include "Physics/PhysicsQueryTypes.h"
 #include "SceneComponent.generated.h"
 
 enum class EAttachmentRule
@@ -83,6 +84,8 @@ public:
 
 	virtual bool MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit = nullptr);
 	virtual float GetCollisionRadius() const;
+	// MoveComponent가 물리 씬에 스윕할 모양(월드 크기). 기본은 GetCollisionRadius 반지름의 구. Shape 컴포넌트가 자기 모양으로 바꾼다.
+	virtual FCollisionShape GetCollisionShape() const { return FCollisionShape::MakeSphere(GetCollisionRadius()); }
 	void SetCollisionRadiusOverride(float Radius) { CollisionRadiusOverride = Radius; }
 
 	void MarkTransformDirty();

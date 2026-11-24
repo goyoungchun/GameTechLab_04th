@@ -23,6 +23,7 @@ class FLineBatcher;
 class UBillboardComponent;
 class APawn;
 class APlayerController;
+class FPhysScene;
 
 struct FViewContext;
 
@@ -146,6 +147,8 @@ public:
 	void AddRenderedViewLocation(const FVector& ViewLocation);
 	const TArray<FVector>& GetViewLocationsRenderedLastFrame() const { return ViewLocationsRenderedLastFrame; }
 
+	FPhysScene* GetPhysicsScene() const { return PhysicsScene.get(); }
+
 private:
 
 	void GameWorldTick(float DeltaTime);
@@ -198,4 +201,6 @@ private:
 
 	static constexpr float MinTimeDilation = 0.0001f;
 	static constexpr float MaxTimeDilation = 20.0f;
+
+	TUniquePtr<FPhysScene> PhysicsScene;
 };

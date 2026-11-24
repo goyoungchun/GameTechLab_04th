@@ -28,6 +28,8 @@
 #include "Components/ParticleSystemComponent.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Animation/AnimSequence.h"
@@ -38,6 +40,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Asset/AssetUtils.h"
+#include "Asset/FbxImporter/FbxMeshBake.h"
 #include "Render/Material.h"
 #include "Render/MaterialFile.h"
 #include "Render/Texture2D.h"
@@ -528,6 +531,130 @@ namespace
 		return Callback;
 	}
 
+	std::function<ImTextureID(const FString&)>& GetMaterialThumbnailQuery()
+	{
+		static std::function<ImTextureID(const FString&)> Query;
+		return Query;
+	}
+
+	ImTextureID QueryMaterialThumbnail(const FString& Path)
+	{
+		if (Path.empty())
+		{
+			return ImTextureID_Invalid;
+		}
+		if (auto& Query = GetMaterialThumbnailQuery())
+		{
+			return Query(Path);
+		}
+		return ImTextureID_Invalid;
+	}
+
+	// 체커보드 배경 + 3D 에셋 썸네일(또는 머티리얼 폴백) + 하단 에셋 타입별 액센트 바
+	void DrawAssetThumbnailVisual(const ImVec2& Min, float Size, ImTextureID ThumbId, ImU32 AccentColor, const UMaterial* FallbackMat, bool bHovered)
+	{
+		ImDrawList* DrawList = ImGui::GetWindowDrawList();
+		const ImVec2 Max(Min.x + Size, Min.y + Size);
+		const float Rounding = EditorStyle::Scale(3.0f);
+		const float StripeH = std::max(2.0f, EditorStyle::Scale(Size >= 40.0f ? 3.0f : 2.0f));
+
+		// 체커보드 배경 (썸네일 미생성 또는 투명 폴백 시 표시)
+		const ImU32 BgA = EditorColor::BgDeepest;
+		const ImU32 BgB = EditorColor::BgRaised;
+		DrawList->AddRectFilled(Min, Max, BgA, Rounding);
+		if (ThumbId == ImTextureID_Invalid)
+		{
+			const int Cells = Size >= 40.0f ? 6 : 4;
+			const float CellSize = Size / static_cast<float>(Cells);
+			for (int Y = 0; Y < Cells; ++Y)
+			{
+				for (int X = 0; X < Cells; ++X)
+				{
+					if ((X + Y) & 1)
+					{
+						const ImVec2 C0(Min.x + X * CellSize, Min.y + Y * CellSize);
+						const ImVec2 C1(std::min(Max.x, C0.x + CellSize), std::min(Max.y, C0.y + CellSize));
+						DrawList->AddRectFilled(C0, C1, BgB);
+					}
+				}
+			}
+		}
+
+		const ImVec2 ImgMax(Max.x, Max.y - StripeH);
+		if (ThumbId != ImTextureID_Invalid)
+		{
+			DrawList->AddImageRounded(ThumbId, Min, ImgMax, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
+				IM_COL32_WHITE, Rounding, ImDrawFlags_RoundCornersTop);
+		}
+		else if (FallbackMat)
+		{
+			UTexture2D* BaseTex = FallbackMat->GetBaseColorTexture();
+			const ImU32 TintCol = ImGui::ColorConvertFloat4ToU32(ImVec4(
+				std::clamp(FallbackMat->BaseColor.X, 0.0f, 1.0f),
+				std::clamp(FallbackMat->BaseColor.Y, 0.0f, 1.0f),
+				std::clamp(FallbackMat->BaseColor.Z, 0.0f, 1.0f),
+				std::clamp(FallbackMat->BaseColor.W, 0.25f, 1.0f)));
+			if (BaseTex && BaseTex->GetResource() && BaseTex->GetResource()->GetSRV()
+				&& BaseTex->GetPath() != "WhiteTexture")
+			{
+				DrawList->AddImageRounded((ImTextureID)BaseTex->GetResource()->GetSRV(), Min, ImgMax,
+					ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), TintCol, Rounding, ImDrawFlags_RoundCornersTop);
+			}
+			else
+			{
+				const ImVec2 Center((Min.x + ImgMax.x) * 0.5f, (Min.y + ImgMax.y) * 0.5f);
+				const float Radius = std::min(ImgMax.x - Min.x, ImgMax.y - Min.y) * 0.38f;
+				DrawList->AddCircleFilled(Center, Radius, TintCol, 24);
+			}
+		}
+
+		// 언리얼 스타일 에셋 타입별 하단 액센트 스트라이프
+		DrawList->AddRectFilled(ImVec2(Min.x, Max.y - StripeH), Max, AccentColor,
+			Rounding, ImDrawFlags_RoundCornersBottom);
+		DrawList->AddRect(Min, Max, bHovered ? EditorColor::Accent : EditorColor::Border, Rounding, 0, 1.0f);
+	}
+
+	void DrawMaterialThumbnailVisual(const ImVec2& Min, float Size, ImTextureID ThumbId, const UMaterial* FallbackMat, bool bHovered)
+	{
+		DrawAssetThumbnailVisual(Min, Size, ThumbId, IM_COL32(76, 185, 128, 255), FallbackMat, bHovered);
+	}
+
+	ImTextureID GetPhysicalMaterialIconTextureId()
+	{
+		if (UTexture2D* Icon = UAssetManager::GetAssetByPath<UTexture2D>("Engine/Icons/PhysicalMaterial.png"))
+		{
+			if (Icon->GetResource() && Icon->GetResource()->GetSRV())
+			{
+				return reinterpret_cast<ImTextureID>(Icon->GetResource()->GetSRV());
+			}
+		}
+		return ImTextureID_Invalid;
+	}
+
+	void DrawPhysicalMaterialThumbnailVisual(const ImVec2& Min, float Size, bool bShowIcon, bool bHovered)
+	{
+		constexpr ImU32 PhysicalMaterialAccent = IM_COL32(232, 148, 64, 255);
+		DrawAssetThumbnailVisual(Min, Size, ImTextureID_Invalid, PhysicalMaterialAccent, nullptr, bHovered);
+		if (bShowIcon)
+		{
+			const ImTextureID IconId = GetPhysicalMaterialIconTextureId();
+			if (IconId != ImTextureID_Invalid)
+			{
+				const float StripeH = std::max(2.0f, EditorStyle::Scale(Size >= 40.0f ? 3.0f : 2.0f));
+				const float Rounding = EditorStyle::Scale(3.0f);
+				ImGui::GetWindowDrawList()->AddImageRounded(
+					IconId,
+					Min,
+					ImVec2(Min.x + Size, Min.y + Size - StripeH),
+					ImVec2(0.0f, 0.0f),
+					ImVec2(1.0f, 1.0f),
+					IM_COL32_WHITE,
+					Rounding,
+					ImDrawFlags_RoundCornersTop);
+			}
+		}
+	}
+
 	FString GetMaterialDisplayName(const UMaterial* Material)
 	{
 		if (!Material)
@@ -550,19 +677,84 @@ namespace
 		return "Material";
 	}
 
-	// .mat 에셋 선택 콤보 + 드래그앤드롭 + Edit 버튼
-	template <typename FOnPick>
-	bool DrawMaterialAssetPicker(UMaterial* Current, const char* ComboId, FOnPick&& OnPick, bool bAllowClear = true, bool bMixed = false)
+	// 언리얼 스타일 머티리얼 피커: 좌측 3D 썸네일 + 우측 드롭다운 리스트(검색·항목별 썸네일) + 하단 Edit/Reset/슬롯 배지
+	template <typename FOnPick, typename FOnReset = std::nullptr_t>
+	bool DrawMaterialAssetPicker(
+		UMaterial* Current,
+		const char* ComboId,
+		FOnPick&& OnPick,
+		bool bAllowClear = true,
+		bool bMixed = false,
+		const char* SlotBadgeName = nullptr,
+		bool bShowResetButton = false,
+		FOnReset&& OnReset = nullptr)
 	{
 		bool bChanged = false;
 		const FString CurrentPath = (Current && !bMixed) ? Current->GetPath() : "";
 		const FString DisplayName = bMixed ? "Multiple Values" : GetMaterialDisplayName(Current);
 		const bool bCanEdit = !bMixed && Current && !CurrentPath.empty() && MaterialFile::IsMaterialPath(CurrentPath);
-		const float EditBtnW = bCanEdit ? EditorStyle::Scale(42.0f) : 0.0f;
-		const float Spacing = bCanEdit ? ImGui::GetStyle().ItemSpacing.x : 0.0f;
 
-		ImGui::SetNextItemWidth(std::max(EditorStyle::Scale(80.0f), ImGui::GetContentRegionAvail().x - EditBtnW - Spacing));
-		const bool bOpen = ImGui::BeginCombo(ComboId, DisplayName.c_str());
+		const float ThumbSize = EditorStyle::Scale(50.0f);
+		const float ItemThumbSize = EditorStyle::Scale(24.0f);
+
+		ImGui::PushID(ComboId);
+
+		// ── 좌측: 3D 머티리얼 썸네일 타일 ──
+		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
+		ImGui::InvisibleButton("##MatThumb", ImVec2(ThumbSize, ThumbSize));
+		const bool bThumbHovered = ImGui::IsItemHovered();
+
+		ImTextureID MainThumb = ImTextureID_Invalid;
+		if (!bMixed && Current)
+		{
+			if (!CurrentPath.empty())
+			{
+				MainThumb = QueryMaterialThumbnail(CurrentPath);
+			}
+			else if (const UMaterial* Base = Current->GetBaseAsset(); Base && !Base->GetPath().empty())
+			{
+				MainThumb = QueryMaterialThumbnail(Base->GetPath());
+			}
+		}
+		DrawMaterialThumbnailVisual(ThumbMin, ThumbSize, MainThumb, bMixed ? nullptr : Current, bThumbHovered);
+
+		if (bThumbHovered && !bMixed && Current)
+		{
+			if (!CurrentPath.empty())
+			{
+				ImGui::SetTooltip("%s%s", CurrentPath.c_str(), bCanEdit ? "\nDouble-click to open Material Editor" : "");
+			}
+			if (bCanEdit && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
+				}
+			}
+		}
+
+		// 썸네일 위 드래그앤드롭 수신
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::Material))
+			{
+				const FString DroppedPath(static_cast<const char*>(Payload->Data));
+				if (UMaterial* Loaded = UAssetManager::Get().LoadMaterial(DroppedPath))
+				{
+					OnPick(Loaded);
+					bChanged = true;
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		ImGui::SameLine(0.0f, EditorStyle::Scale(8.0f));
+
+		// ── 우측: 1행 드롭다운 리스트 / 2행 액션 버튼 + 슬롯 이름 ──
+		ImGui::BeginGroup();
+
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo("##MatCombo", DisplayName.c_str(), ImGuiComboFlags_HeightLarge);
 		if (ImGui::IsItemHovered() && !bMixed && Current && !CurrentPath.empty())
 		{
 			ImGui::SetTooltip("%s", CurrentPath.c_str());
@@ -584,23 +776,65 @@ namespace
 
 		if (bOpen)
 		{
-			if (bAllowClear && ImGui::Selectable("None", !bMixed && Current == nullptr))
+			static char SearchBuf[128] = {};
+			if (ImGui::IsWindowAppearing())
 			{
-				if (bMixed || Current != nullptr)
+				SearchBuf[0] = '\0';
+				ImGui::SetKeyboardFocusHere();
+			}
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##MatSearch", "Search materials...", SearchBuf, sizeof(SearchBuf));
+			ImGui::Separator();
+
+			FString FilterLower(SearchBuf);
+			std::transform(FilterLower.begin(), FilterLower.end(), FilterLower.begin(),
+				[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+
+			if (bAllowClear && FilterLower.empty())
+			{
+				const bool bNoneSelected = !bMixed && Current == nullptr;
+				const ImVec2 NoneMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawMaterialThumbnailVisual(NoneMin, ItemThumbSize, ImTextureID_Invalid, nullptr, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable("None", bNoneSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
-					OnPick(nullptr);
-					bChanged = true;
+					if (bMixed || Current != nullptr)
+					{
+						OnPick(nullptr);
+						bChanged = true;
+					}
 				}
 			}
 
 			const TArray<FString> AllMaterials = UAssetManager::GetAllMaterialAssetPaths();
 			for (const FString& Path : AllMaterials)
 			{
+				const FString ItemLabel = fs::path(Path).stem().string();
+				if (!FilterLower.empty())
+				{
+					FString PathLower = Path;
+					std::transform(PathLower.begin(), PathLower.end(), PathLower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (PathLower.find(FilterLower) == FString::npos)
+					{
+						continue;
+					}
+				}
+
 				const bool bSelected = !bMixed && Current && !CurrentPath.empty()
 					&& FAssetUtils::GetAssetKey(CurrentPath) == FAssetUtils::GetAssetKey(Path);
-				const FString ItemLabel = fs::path(Path).stem().string();
+
 				ImGui::PushID(Path.c_str());
-				if (ImGui::Selectable(ItemLabel.c_str(), bSelected))
+
+				const ImVec2 ItemThumbMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				const ImTextureID ItemThumb = QueryMaterialThumbnail(Path);
+				const UMaterial* LoadedMat = Cast<UMaterial>(UAssetManager::FindLoadedAsset(Path));
+				DrawMaterialThumbnailVisual(ItemThumbMin, ItemThumbSize, ItemThumb, LoadedMat, bSelected);
+
+				ImGui::SameLine();
+				if (ImGui::Selectable(ItemLabel.c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
 					UMaterial* Picked = UAssetManager::GetAssetByPath<UMaterial>(Path);
 					if (!Picked && MaterialFile::IsMaterialPath(Path))
@@ -626,10 +860,11 @@ namespace
 			ImGui::EndCombo();
 		}
 
+		// 2행: Edit / Reset / Clear 버튼 및 슬롯 이름 배지
+		bool bHasPrevItem = false;
 		if (bCanEdit)
 		{
-			ImGui::SameLine();
-			if (ImGui::Button("Edit", ImVec2(EditBtnW, 0.0f)))
+			if (ImGui::SmallButton("Edit"))
 			{
 				if (auto& OpenCb = GetOpenAssetEditorCallback())
 				{
@@ -640,7 +875,46 @@ namespace
 			{
 				ImGui::SetTooltip("Open Material Editor (%s)", CurrentPath.c_str());
 			}
+			bHasPrevItem = true;
 		}
+
+		if constexpr (!std::is_same_v<std::decay_t<FOnReset>, std::nullptr_t>)
+		{
+			if (bShowResetButton)
+			{
+				if (bHasPrevItem) ImGui::SameLine();
+				if (ImGui::SmallButton("Reset"))
+				{
+					OnReset();
+					bChanged = true;
+				}
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("Reset to mesh default material");
+				}
+				bHasPrevItem = true;
+			}
+		}
+
+		if (bAllowClear && !bMixed && Current != nullptr)
+		{
+			if (bHasPrevItem) ImGui::SameLine();
+			if (ImGui::SmallButton("Clear"))
+			{
+				OnPick(nullptr);
+				bChanged = true;
+			}
+			bHasPrevItem = true;
+		}
+
+		if (SlotBadgeName && SlotBadgeName[0] != '\0')
+		{
+			if (bHasPrevItem) ImGui::SameLine();
+			ImGui::TextDisabled("Slot: %s", SlotBadgeName);
+		}
+
+		ImGui::EndGroup();
+		ImGui::PopID();
 
 		return bChanged;
 	}
@@ -807,41 +1081,167 @@ namespace
 
 	void DrawSkeletalMeshSlot(USkinnedMeshComponent* Component)
 	{
+		constexpr ImU32 SkeletalAccent = IM_COL32(228, 130, 232, 255);
 		USkeletalMesh* Current = Component->GetSkeletalMesh();
 		const FString CurrentPath = Current ? Current->GetPath() : "";
 		const FString CurrentName = Current ? (CurrentPath.empty() ? Current->GetName() : GetAssetDisplayName(CurrentPath)) : "None";
-		ImGui::SetNextItemWidth(-1.0f);
-		const bool bOpen = ImGui::BeginCombo("##SkeletalMesh", CurrentName.c_str());
-		if (ImGui::IsItemHovered() && Current) ImGui::SetTooltip("%s", CurrentPath.c_str());
-		if (!bOpen) return;
-		if (ImGui::Selectable("None", Current == nullptr)) Component->SetSkeletalMesh(nullptr);
-		for (TObjectIterator<USkeletalMesh> Itr; Itr; ++Itr)
+		const bool bCanEdit = Current && !CurrentPath.empty() && FFbxMeshBake::IsBakedPath(CurrentPath);
+
+		const float ThumbSize = EditorStyle::Scale(50.0f);
+		const float ItemThumbSize = EditorStyle::Scale(24.0f);
+
+		ImGui::PushID("SkeletalMeshSlot");
+
+		// ── 좌측: 3D 스켈레탈 메시 썸네일 ──
+		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
+		ImGui::InvisibleButton("##SkelThumb", ImVec2(ThumbSize, ThumbSize));
+		const bool bThumbHovered = ImGui::IsItemHovered();
+		const ImTextureID MainThumb = CurrentPath.empty() ? ImTextureID_Invalid : QueryMaterialThumbnail(CurrentPath);
+		DrawAssetThumbnailVisual(ThumbMin, ThumbSize, MainThumb, SkeletalAccent, nullptr, bThumbHovered);
+
+		if (bThumbHovered && Current && !CurrentPath.empty())
 		{
-			const FString Path = Itr->GetPath();
-			if (Path.empty()) continue;
-			const bool bSelected = *Itr == Current;
-			ImGui::PushID(*Itr);
-			if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected)) Component->SetSkeletalMesh(*Itr);
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Path.c_str());
-			if (bSelected) ImGui::SetItemDefaultFocus();
-			ImGui::PopID();
+			ImGui::SetTooltip("%s%s", CurrentPath.c_str(), bCanEdit ? "\nDouble-click to open Skeletal Mesh Editor" : "");
+			if (bCanEdit && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback()) OpenCb(CurrentPath);
+			}
 		}
 
-		// 아직 로드되지 않은 메시는 경로만 보여 주고 고를 때 로드한다
-		for (const FString& ItemPath : UAssetManager::GetUnloadedAssetPaths(EAssetType::SkeletalMesh))
+		auto AcceptDrop = [&]()
 		{
-			ImGui::PushID(ItemPath.c_str());
-			if (ImGui::Selectable(GetAssetDisplayName(ItemPath).c_str(), false))
+			if (ImGui::BeginDragDropTarget())
 			{
-				if (USkeletalMesh* Mesh = UAssetManager::GetAssetByPath<USkeletalMesh>(ItemPath))
+				if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::SkeletalMesh))
 				{
-					Component->SetSkeletalMesh(Mesh);
+					const FString DroppedPath(static_cast<const char*>(Payload->Data));
+					if (USkeletalMesh* Mesh = UAssetManager::GetAssetByPath<USkeletalMesh>(DroppedPath))
+					{
+						Component->SetSkeletalMesh(Mesh);
+					}
+					else
+					{
+						FString Err;
+						if (USkeletalMesh* Loaded = Cast<USkeletalMesh>(UAssetManager::LoadFbxMesh(DroppedPath, Err)))
+							Component->SetSkeletalMesh(Loaded);
+					}
 				}
+				ImGui::EndDragDropTarget();
 			}
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", ItemPath.c_str());
-			ImGui::PopID();
+		};
+		AcceptDrop();
+
+		ImGui::SameLine(0.0f, EditorStyle::Scale(8.0f));
+
+		// ── 우측: 드롭다운 리스트 + Edit / Clear 버튼 ──
+		ImGui::BeginGroup();
+
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo("##SkeletalMesh", CurrentName.c_str(), ImGuiComboFlags_HeightLarge);
+		if (ImGui::IsItemHovered() && Current && !CurrentPath.empty())
+		{
+			ImGui::SetTooltip("%s", CurrentPath.c_str());
 		}
-		ImGui::EndCombo();
+		AcceptDrop();
+
+		if (bOpen)
+		{
+			static char SearchBuf[128] = {};
+			if (ImGui::IsWindowAppearing())
+			{
+				SearchBuf[0] = '\0';
+				ImGui::SetKeyboardFocusHere();
+			}
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##SkelSearch", "Search skeletal meshes...", SearchBuf, sizeof(SearchBuf));
+			ImGui::Separator();
+
+			FString FilterLower(SearchBuf);
+			std::transform(FilterLower.begin(), FilterLower.end(), FilterLower.begin(),
+				[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+
+			if (FilterLower.empty())
+			{
+				const ImVec2 NoneMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawAssetThumbnailVisual(NoneMin, ItemThumbSize, ImTextureID_Invalid, SkeletalAccent, nullptr, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable("None", Current == nullptr, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+					Component->SetSkeletalMesh(nullptr);
+			}
+
+			for (TObjectIterator<USkeletalMesh> Itr; Itr; ++Itr)
+			{
+				const FString Path = Itr->GetPath();
+				if (Path.empty()) continue;
+				if (!FilterLower.empty())
+				{
+					FString Lower = Path;
+					std::transform(Lower.begin(), Lower.end(), Lower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (Lower.find(FilterLower) == FString::npos) continue;
+				}
+				const bool bSelected = (*Itr == Current);
+				ImGui::PushID(*Itr);
+				const ImVec2 ItemMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawAssetThumbnailVisual(ItemMin, ItemThumbSize, QueryMaterialThumbnail(Path), SkeletalAccent, nullptr, bSelected);
+				ImGui::SameLine();
+				if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+					Component->SetSkeletalMesh(*Itr);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Path.c_str());
+				if (bSelected) ImGui::SetItemDefaultFocus();
+				ImGui::PopID();
+			}
+
+			for (const FString& ItemPath : UAssetManager::GetUnloadedAssetPaths(EAssetType::SkeletalMesh))
+			{
+				if (!FilterLower.empty())
+				{
+					FString Lower = ItemPath;
+					std::transform(Lower.begin(), Lower.end(), Lower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (Lower.find(FilterLower) == FString::npos) continue;
+				}
+				ImGui::PushID(ItemPath.c_str());
+				const ImVec2 ItemMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawAssetThumbnailVisual(ItemMin, ItemThumbSize, QueryMaterialThumbnail(ItemPath), SkeletalAccent, nullptr, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable(GetAssetDisplayName(ItemPath).c_str(), false, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+				{
+					if (USkeletalMesh* Mesh = UAssetManager::GetAssetByPath<USkeletalMesh>(ItemPath))
+					{
+						Component->SetSkeletalMesh(Mesh);
+					}
+				}
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", ItemPath.c_str());
+				ImGui::PopID();
+			}
+			ImGui::EndCombo();
+		}
+
+		bool bHasBtn = false;
+		if (bCanEdit)
+		{
+			if (ImGui::SmallButton("Edit"))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback()) OpenCb(CurrentPath);
+			}
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open Skeletal Mesh Editor (%s)", CurrentPath.c_str());
+			bHasBtn = true;
+		}
+		if (Current != nullptr)
+		{
+			if (bHasBtn) ImGui::SameLine();
+			if (ImGui::SmallButton("Clear"))
+			{
+				Component->SetSkeletalMesh(nullptr);
+			}
+		}
+
+		ImGui::EndGroup();
+		ImGui::PopID();
 	}
 
     void DrawAnimBlueprintSlot(USkeletalMeshComponent* Component)
@@ -999,60 +1399,152 @@ namespace
 
 	void DrawMeshSlot(UObject* Owner, UStaticMesh** StaticMeshPtr)
 	{
+		constexpr ImU32 StaticMeshAccent = IM_COL32(72, 178, 255, 255);
 		UStaticMesh* Current = *StaticMeshPtr;
 
-		FString CurrentPath = Current ? Current->GetPath() : "";
-		FString CurrentFileName = Current ? GetAssetDisplayName(CurrentPath) : "None";
+		const FString CurrentPath = Current ? Current->GetPath() : "";
+		const FString CurrentFileName = Current ? GetAssetDisplayName(CurrentPath) : "None";
+		const bool bCanEdit = Current && !CurrentPath.empty()
+			&& (fs::path(CurrentPath).extension() == ".obj" || FFbxMeshBake::IsBakedPath(CurrentPath));
+
+		auto AssignMesh = [&](UStaticMesh* Mesh)
+		{
+			if (UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(Owner))
+				MeshComponent->SetStaticMesh(Mesh);
+			else
+				*StaticMeshPtr = Mesh;
+		};
+
+		const float ThumbSize = EditorStyle::Scale(50.0f);
+		const float ItemThumbSize = EditorStyle::Scale(24.0f);
+
+		ImGui::PushID("StaticMeshSlot");
+
+		// ── 좌측: 3D 스태틱 메시 썸네일 ──
+		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
+		ImGui::InvisibleButton("##StaticMeshThumb", ImVec2(ThumbSize, ThumbSize));
+		const bool bThumbHovered = ImGui::IsItemHovered();
+		const ImTextureID MainThumb = CurrentPath.empty() ? ImTextureID_Invalid : QueryMaterialThumbnail(CurrentPath);
+		DrawAssetThumbnailVisual(ThumbMin, ThumbSize, MainThumb, StaticMeshAccent, nullptr, bThumbHovered);
+
+		if (bThumbHovered && Current && !CurrentPath.empty())
+		{
+			ImGui::SetTooltip("%s%s", CurrentPath.c_str(), bCanEdit ? "\nDouble-click to open Static Mesh Editor" : "");
+			if (bCanEdit && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback()) OpenCb(CurrentPath);
+			}
+		}
+
+		auto AcceptDrop = [&]()
+		{
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::StaticMesh))
+				{
+					const FString DroppedPath(static_cast<const char*>(Payload->Data));
+					if (UStaticMesh* Mesh = UAssetManager::GetAssetByPath<UStaticMesh>(DroppedPath))
+					{
+						AssignMesh(Mesh);
+					}
+					else if (fs::path(DroppedPath).extension() == ".obj")
+					{
+						if (UStaticMesh* Loaded = UAssetManager::LoadObjStaticMesh(DroppedPath))
+							AssignMesh(Loaded);
+					}
+					else if (FFbxMeshBake::IsBakedPath(DroppedPath))
+					{
+						FString Err;
+						if (UStaticMesh* Loaded = Cast<UStaticMesh>(UAssetManager::LoadFbxMesh(DroppedPath, Err)))
+							AssignMesh(Loaded);
+					}
+				}
+				ImGui::EndDragDropTarget();
+			}
+		};
+		AcceptDrop();
+
+		ImGui::SameLine(0.0f, EditorStyle::Scale(8.0f));
+
+		// ── 우측: 드롭다운 리스트 + Edit 버튼 ──
+		ImGui::BeginGroup();
 
 		ImGui::SetNextItemWidth(-1.0f);
-
-		bool bOpen = ImGui::BeginCombo("##StaticMesh", CurrentFileName.c_str());
-		if (ImGui::IsItemHovered() && Current)
+		const bool bOpen = ImGui::BeginCombo("##StaticMesh", CurrentFileName.c_str(), ImGuiComboFlags_HeightLarge);
+		if (ImGui::IsItemHovered() && Current && !CurrentPath.empty())
 		{
 			ImGui::SetTooltip("%s", CurrentPath.c_str());
 		}
+		AcceptDrop();
 
 		if (bOpen)
 		{
+			static char SearchBuf[128] = {};
+			if (ImGui::IsWindowAppearing())
+			{
+				SearchBuf[0] = '\0';
+				ImGui::SetKeyboardFocusHere();
+			}
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##MeshSearch", "Search static meshes...", SearchBuf, sizeof(SearchBuf));
+			ImGui::Separator();
+
+			FString FilterLower(SearchBuf);
+			std::transform(FilterLower.begin(), FilterLower.end(), FilterLower.begin(),
+				[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+
 			for (TObjectIterator<UStaticMesh> Itr; Itr; ++Itr)
 			{
-				bool bSelected = (*Itr == Current);
-
-				FString ItemPath = Itr->GetPath();
-				FString ItemFileName = GetAssetDisplayName(ItemPath);
+				const FString ItemPath = Itr->GetPath();
+				if (ItemPath.empty()) continue;
+				if (!FilterLower.empty())
+				{
+					FString Lower = ItemPath;
+					std::transform(Lower.begin(), Lower.end(), Lower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (Lower.find(FilterLower) == FString::npos) continue;
+				}
+				const bool bSelected = (*Itr == Current);
+				const FString ItemFileName = GetAssetDisplayName(ItemPath);
 
 				ImGui::PushID(*Itr);
-
-				if (ImGui::Selectable(ItemFileName.c_str(), bSelected))
+				const ImVec2 ItemMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawAssetThumbnailVisual(ItemMin, ItemThumbSize, QueryMaterialThumbnail(ItemPath), StaticMeshAccent, nullptr, bSelected);
+				ImGui::SameLine();
+				if (ImGui::Selectable(ItemFileName.c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::SetTooltip("%s", ItemPath.c_str());
-					}
-
-					// 메모리를 직접 바꾸지 않고 SetFont를 거친다
-					if (UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(Owner))
-						MeshComponent->SetStaticMesh(*Itr);
-					else
-						*StaticMeshPtr = *Itr;
+					AssignMesh(*Itr);
 				}
-				ImGui::PopID();
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", ItemPath.c_str());
+				}
 				if (bSelected)
 					ImGui::SetItemDefaultFocus();
+				ImGui::PopID();
 			}
 
-			// 아직 로드되지 않은 메시는 경로만 보여 주고 고를 때 로드한다
+			// 아직 로드되지 않은 메시는 썸네일/경로를 보여 주고 고를 때 로드한다
 			for (const FString& ItemPath : UAssetManager::GetUnloadedAssetPaths(EAssetType::StaticMesh))
 			{
+				if (!FilterLower.empty())
+				{
+					FString Lower = ItemPath;
+					std::transform(Lower.begin(), Lower.end(), Lower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (Lower.find(FilterLower) == FString::npos) continue;
+				}
 				ImGui::PushID(ItemPath.c_str());
-				if (ImGui::Selectable(GetAssetDisplayName(ItemPath).c_str(), false))
+				const ImVec2 ItemMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawAssetThumbnailVisual(ItemMin, ItemThumbSize, QueryMaterialThumbnail(ItemPath), StaticMeshAccent, nullptr, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable(GetAssetDisplayName(ItemPath).c_str(), false, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
 				{
 					if (UStaticMesh* Mesh = UAssetManager::GetAssetByPath<UStaticMesh>(ItemPath))
 					{
-						if (UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(Owner))
-							MeshComponent->SetStaticMesh(Mesh);
-						else
-							*StaticMeshPtr = Mesh;
+						AssignMesh(Mesh);
 					}
 				}
 				if (ImGui::IsItemHovered())
@@ -1063,6 +1555,18 @@ namespace
 			}
 			ImGui::EndCombo();
 		}
+
+		if (bCanEdit)
+		{
+			if (ImGui::SmallButton("Edit"))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback()) OpenCb(CurrentPath);
+			}
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open Static Mesh Editor (%s)", CurrentPath.c_str());
+		}
+
+		ImGui::EndGroup();
+		ImGui::PopID();
 	}
 
 	// ParticleSystem Template
@@ -1200,6 +1704,227 @@ namespace
 	{
 		return DrawParticleSystemPicker(*TemplatePtr, false, "##ParticleSystem",
 			[Owner, TemplatePtr](UParticleSystem* Picked) { ApplyParticleTemplate(Owner, TemplatePtr, Picked); });
+	}
+
+	// .pmat 선택 피커: 좌측 3D 썸네일(더블클릭 편집·드롭) + 우측 검색/썸네일 드롭다운 + 하단 Edit/Clear 버튼
+	bool DrawPhysicalMaterialPicker(UPhysicalMaterial* Current, bool bMixed, const char* Id, const std::function<void(UPhysicalMaterial*)>& OnPick)
+	{
+		static std::vector<FString> Paths;
+		static FString ScanMessage;
+
+		if (bMixed)
+		{
+			Current = nullptr;
+		}
+		const FString CurrentPath = Current ? Current->GetAssetPath() : "";
+		const FString CurrentName = bMixed ? "Multiple Values"
+			: (Current ? (CurrentPath.empty() ? Current->GetName() : GetAssetDisplayName(CurrentPath)) : "None");
+		const bool bCanEdit = !bMixed && Current && !CurrentPath.empty() && PhysicalMaterialFile::IsPhysicalMaterialPath(CurrentPath);
+
+		bool bChanged = false;
+		auto Apply = [&](UPhysicalMaterial* NewMaterial)
+		{
+			if (!bMixed && NewMaterial == Current)
+			{
+				return;
+			}
+			OnPick(NewMaterial);
+			bChanged = true;
+		};
+
+		auto AcceptDrop = [&]()
+		{
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload(EditorDragDrop::PhysicalMaterial))
+				{
+					const FString DroppedPath(static_cast<const char*>(Payload->Data));
+					if (UPhysicalMaterial* Dropped = UAssetManager::LoadPhysicalMaterial(DroppedPath))
+					{
+						Apply(Dropped);
+					}
+				}
+				ImGui::EndDragDropTarget();
+			}
+		};
+
+		const float ThumbSize = EditorStyle::Scale(50.0f);
+		const float ItemThumbSize = EditorStyle::Scale(24.0f);
+
+		ImGui::PushID(Id);
+
+		// ── 좌측: 물리 머티리얼 고정 썸네일 타일 ──
+		const ImVec2 ThumbMin = ImGui::GetCursorScreenPos();
+		ImGui::InvisibleButton("##PmatThumb", ImVec2(ThumbSize, ThumbSize));
+		const bool bThumbHovered = ImGui::IsItemHovered();
+		DrawPhysicalMaterialThumbnailVisual(ThumbMin, ThumbSize, !bMixed && Current != nullptr, bThumbHovered);
+
+		if (bThumbHovered && !bMixed && Current)
+		{
+			if (!CurrentPath.empty())
+			{
+				ImGui::SetTooltip("%s%s", CurrentPath.c_str(), bCanEdit ? "\nDouble-click to open Physical Material Editor" : "");
+			}
+			if (bCanEdit && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
+				}
+			}
+		}
+		AcceptDrop();
+
+		ImGui::SameLine(0.0f, EditorStyle::Scale(8.0f));
+
+		// ── 우측: 1행 드롭다운 리스트 / 2행 Edit·Clear 버튼 ──
+		ImGui::BeginGroup();
+
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool bOpen = ImGui::BeginCombo("##PmatCombo", CurrentName.c_str(), ImGuiComboFlags_HeightLarge);
+		if (ImGui::IsItemHovered() && !CurrentPath.empty() && !ImGui::GetDragDropPayload())
+		{
+			ImGui::SetTooltip("%s", CurrentPath.c_str());
+		}
+		AcceptDrop();
+
+		if (bOpen)
+		{
+			static char SearchBuf[128] = {};
+			if (ImGui::IsWindowAppearing())
+			{
+				SearchBuf[0] = '\0';
+				ImGui::SetKeyboardFocusHere();
+
+				Paths.clear();
+				ScanMessage.clear();
+				std::error_code Error;
+				std::filesystem::recursive_directory_iterator It(FPaths::ProjectContentDir(), Error);
+				const std::filesystem::recursive_directory_iterator End;
+				while (!Error && It != End)
+				{
+					if (It->is_regular_file(Error))
+					{
+						const FString Path = FPaths::ToUtf8(It->path());
+						if (PhysicalMaterialFile::IsPhysicalMaterialPath(Path))
+						{
+							Paths.push_back(FAssetUtils::GetAssetKey(Path));
+						}
+					}
+					if (!Error)
+					{
+						It.increment(Error);
+					}
+				}
+				std::sort(Paths.begin(), Paths.end());
+				if (Error)
+				{
+					ScanMessage = "Cannot read the asset folder: " + Error.message();
+				}
+			}
+
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::InputTextWithHint("##PmatSearch", "Search physical materials...", SearchBuf, sizeof(SearchBuf));
+			ImGui::Separator();
+
+			FString FilterLower(SearchBuf);
+			std::transform(FilterLower.begin(), FilterLower.end(), FilterLower.begin(),
+				[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+
+			if (FilterLower.empty())
+			{
+				const bool bNoneSelected = !bMixed && Current == nullptr;
+				const ImVec2 NoneMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawPhysicalMaterialThumbnailVisual(NoneMin, ItemThumbSize, false, false);
+				ImGui::SameLine();
+				if (ImGui::Selectable("None", bNoneSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+				{
+					Apply(nullptr);
+				}
+			}
+
+			const FString CurrentKey = CurrentPath.empty() ? FString() : FAssetUtils::GetAssetKey(CurrentPath);
+			for (const FString& Path : Paths)
+			{
+				if (!FilterLower.empty())
+				{
+					FString PathLower = Path;
+					std::transform(PathLower.begin(), PathLower.end(), PathLower.begin(),
+						[](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+					if (PathLower.find(FilterLower) == FString::npos)
+					{
+						continue;
+					}
+				}
+
+				ImGui::PushID(Path.c_str());
+				const bool bSelected = !CurrentKey.empty() && CurrentKey == Path;
+
+				const ImVec2 ItemThumbMin = ImGui::GetCursorScreenPos();
+				ImGui::Dummy(ImVec2(ItemThumbSize, ItemThumbSize));
+				DrawPhysicalMaterialThumbnailVisual(ItemThumbMin, ItemThumbSize, true, bSelected);
+
+				ImGui::SameLine();
+				if (ImGui::Selectable(GetAssetDisplayName(Path).c_str(), bSelected, ImGuiSelectableFlags_None, ImVec2(0.0f, ItemThumbSize)))
+				{
+					if (UPhysicalMaterial* Picked = UAssetManager::LoadPhysicalMaterial(Path))
+					{
+						Apply(Picked);
+					}
+				}
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("%s", Path.c_str());
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+				ImGui::PopID();
+			}
+
+			if (!ScanMessage.empty())
+			{
+				ImGui::TextWrapped("%s", ScanMessage.c_str());
+			}
+			else if (Paths.empty())
+			{
+				ImGui::TextUnformatted("No physical material files in Assets.");
+			}
+
+			ImGui::EndCombo();
+		}
+
+		bool bHasPrevItem = false;
+		if (bCanEdit)
+		{
+			if (ImGui::SmallButton("Edit"))
+			{
+				if (auto& OpenCb = GetOpenAssetEditorCallback())
+				{
+					OpenCb(CurrentPath);
+				}
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Open Physical Material Editor (%s)", CurrentPath.c_str());
+			}
+			bHasPrevItem = true;
+		}
+
+		if (!bMixed && Current != nullptr)
+		{
+			if (bHasPrevItem) ImGui::SameLine();
+			if (ImGui::SmallButton("Clear"))
+			{
+				Apply(nullptr);
+			}
+		}
+
+		ImGui::EndGroup();
+		ImGui::PopID();
+		return bChanged;
 	}
 
 	UMaterial* EnsureMaterialOverride(UMeshComponent* MeshComponent, int32 Slot, UMaterial* Effective, UMaterial* Override)
@@ -1382,51 +2107,55 @@ namespace
 			return;
 		}
 
-		// 메쉬 내의 매터리얼 별 Slot 순회
+		// 메쉬 내의 매터리얼 별 Slot 순회 (언리얼 스타일: 좌측 Element N / 우측 썸네일 + 드롭다운 + Edit/Reset/Slot)
 		for (int32 Slot = 0; Slot < NumSlots; ++Slot)
 		{
 			ImGui::PushID(Slot);
 
-			FString SlotLabel = std::format("[{}] {}", Slot, MeshComponent->GetMaterialSlotName(Slot));
-			bool bOpen = ImGui::TreeNode(SlotLabel.c_str());
-
 			UMaterial* Override = MeshComponent->GetOverrideMaterial(Slot);
 			UMaterial* Effective = MeshComponent->GetMaterial(Slot);
+			const FString SlotName = MeshComponent->GetMaterialSlotName(Slot);
+			const FString ElementLabel = std::format("Element {}", Slot);
 
-			ImGui::SameLine();
-
-			if (Override)
+			bool bOpen = false;
+			if (BeginPropertyGridTable("MaterialSlotHeader"))
 			{
-				ImGui::TextDisabled(Override->bIsInstance ? "Override (Instance)" : "Override");
-				ImGui::SameLine();
-
-				if (ImGui::SmallButton("Reset"))
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::AlignTextToFramePadding();
+				bOpen = ImGui::TreeNodeEx(ElementLabel.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+				if (Override && Override->bIsInstance)
 				{
-					MeshComponent->SetMaterial(Slot, nullptr);
-					Override = nullptr;
-					Effective = MeshComponent->GetMaterial(Slot);
+					ImGui::TextDisabled("(Instance)");
 				}
-			}
-			else
-			{
-				ImGui::TextDisabled("Default");
-			}
 
-			// 항상 보이는 머티리얼 에셋 할당 줄 (.mat 콤보 + 드래그앤드롭 + Edit)
-			if (DrawMaterialAssetPicker(Effective, "##MaterialAsset",
-				[&](UMaterial* Picked)
-				{
-					MeshComponent->SetMaterial(Slot, Picked);
-					Override = MeshComponent->GetOverrideMaterial(Slot);
-					Effective = MeshComponent->GetMaterial(Slot);
-				}, /*bAllowClear=*/false))
-			{
-				Override = MeshComponent->GetOverrideMaterial(Slot);
-				Effective = MeshComponent->GetMaterial(Slot);
+				ImGui::TableSetColumnIndex(1);
+				DrawMaterialAssetPicker(
+					Effective,
+					"##MaterialAsset",
+					[&](UMaterial* Picked)
+					{
+						MeshComponent->SetMaterial(Slot, Picked);
+						Override = MeshComponent->GetOverrideMaterial(Slot);
+						Effective = MeshComponent->GetMaterial(Slot);
+					},
+					/*bAllowClear=*/false,
+					/*bMixed=*/false,
+					SlotName.c_str(),
+					/*bShowResetButton=*/Override != nullptr,
+					[&]()
+					{
+						MeshComponent->SetMaterial(Slot, nullptr);
+						Override = nullptr;
+						Effective = MeshComponent->GetMaterial(Slot);
+					});
+
+				EndPropertyGridTable();
 			}
 
 			if (bOpen)
 			{
+				ImGui::Indent();
 				if (BeginPropertyGridTable("MaterialProperties"))
 				{
 					DrawMaterialTextureSlot(MeshComponent, Slot, 0, "Texture", Effective, Override);
@@ -1605,7 +2334,7 @@ namespace
 
 					EndPropertyGridTable();
 				}
-				ImGui::TreePop();
+				ImGui::Unindent();
 			}
 			ImGui::PopID();
 
@@ -1810,6 +2539,12 @@ namespace
 			else if (PropertyClass == UParticleSystem::StaticClass())
 			{
 				return DrawParticleSystemSlot(Object, reinterpret_cast<UParticleSystem**>(ObjPtr));
+			}
+			else if (PropertyClass == UPhysicalMaterial::StaticClass())
+			{
+				UPhysicalMaterial** MaterialPtr = reinterpret_cast<UPhysicalMaterial**>(ObjPtr);
+				return DrawPhysicalMaterialPicker(*MaterialPtr, false, "##PhysicalMaterial",
+					[MaterialPtr](UPhysicalMaterial* Picked) { *MaterialPtr = Picked; });
 			}
 			else if (PropertyClass == UTexture2D::StaticClass())
 			{
@@ -2809,6 +3544,17 @@ namespace
 						}
 					});
 			}
+			else if (PropertyClass == UPhysicalMaterial::StaticClass())
+			{
+				return DrawPhysicalMaterialPicker(Cast<UPhysicalMaterial>(First), bMixed, "##MultiPhysicalMaterial",
+					[&](UPhysicalMaterial* Picked)
+					{
+						for (void* Ptr : ValuePtrs)
+						{
+							ObjectProp->GetPropertyValue(Ptr) = Picked;
+						}
+					});
+			}
 			else if (PropertyClass == UTexture2D::StaticClass())
 			{
 				UTexture2D* Current = bMixed ? nullptr : Cast<UTexture2D>(First);
@@ -3094,7 +3840,7 @@ namespace
 				ImGui::TextDisabled("Default");
 			}
 
-			// 다중 선택 시에도 머티리얼 에셋을 한 번에 할당할 수 있다
+			// 다중 선택 시에도 언리얼 스타일 썸네일 + 드롭다운으로 머티리얼 에셋을 한 번에 할당
 			{
 				UMaterial* FirstMat = MeshComps[0]->GetMaterial(Slot);
 				bool bMatMixed = false;
@@ -3102,12 +3848,18 @@ namespace
 				{
 					if (MeshComps[i]->GetMaterial(Slot) != FirstMat) { bMatMixed = true; break; }
 				}
-				DrawMaterialAssetPicker(FirstMat, "##MultiMatAsset",
+				const FString SlotName = MeshComps[0]->GetMaterialSlotName(Slot);
+				DrawMaterialAssetPicker(
+					FirstMat,
+					"##MultiMatAsset",
 					[&](UMaterial* Picked)
 					{
 						for (UMeshComponent* MC : MeshComps)
 							MC->SetMaterial(Slot, Picked);
-					}, /*bAllowClear=*/false, bMatMixed);
+					},
+					/*bAllowClear=*/false,
+					bMatMixed,
+					SlotName.c_str());
 			}
 
 			if (bOpen)
@@ -3331,6 +4083,11 @@ namespace FPropertyEditor
 	void SetOpenAssetEditorCallback(std::function<void(const FString&)> InCallback)
 	{
 		GetOpenAssetEditorCallback() = std::move(InCallback);
+	}
+
+	void SetMaterialThumbnailQuery(std::function<ImTextureID(const FString&)> InQuery)
+	{
+		GetMaterialThumbnailQuery() = std::move(InQuery);
 	}
 
 	void RegisterStructDrawer(const UScriptStruct* Struct, FStructDrawer Drawer)

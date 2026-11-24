@@ -5,6 +5,7 @@
 #include "ShapeComponent.generated.h"
 
 class FLineBatcher;
+class UBodySetup;
 
 // World의 모든 도형을 그린다. Selected가 있으면 bDrawOnlyIfSelected인 도형은 그 액터 것만
 void DrawCollisionShapes(UWorld* World, FLineBatcher* LineBatcher, const AActor* Selected);
@@ -31,8 +32,20 @@ public:
 	UPROPERTY(EditAnywhere)
 	bool bDrawOnlyIfSelected = false;
 
+	// 처음 불릴 때 ShapeBodySetup을 만들고, 매번 현재 크기로 형상을 갱신해 돌려준다.
+	virtual UBodySetup* GetBodySetup() override;
+
+	// 크기(반지름·Extent 등)가 바뀌면 PhysX shape 크기가 달라지므로 바디를 새로 만든다.
+	virtual void PostEditChangeProperty(const FProperty& Property) override;
+
 protected:
 	virtual bool ShouldCreateRenderState() const override { return false; }
+
+	// 자식이 자기 크기로 ShapeBodySetup->AggGeom을 채운다. 형상 요소는 정확히 하나다.
+	virtual void UpdateBodySetup() {}
+
+	// 이 컴포넌트 전용 형상. 컴포넌트 크기로 다시 만들 수 있으므로 저장하지 않는다.
+	UBodySetup* ShapeBodySetup = nullptr;
 
 	// 중심, 원이 놓일 평면의 두 축, 반지름, 시작~끝 각도(라디안)
 	static void AddWireArc(FLineBatcher* LineBatcher, const FVector& Center, const FVector& AxisA, const FVector& AxisB,

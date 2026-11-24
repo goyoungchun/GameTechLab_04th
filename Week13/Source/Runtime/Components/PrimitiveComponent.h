@@ -7,9 +7,11 @@
 #include "Render/GeometryGenerator.h"
 #include "Collision/HitResult.h"
 #include "Core/Delegate/Delegate.h"
+#include "Physics/BodyInstance.h"
 #include "PrimitiveComponent.generated.h"
 
 class FPrimitiveSceneProxy;
+class UBodySetup;
 class AActor;
 class UPrimitiveComponent;
 
@@ -109,8 +111,22 @@ public:
 	void EndComponentOverlap(UPrimitiveComponent* OtherComp);
 	void DispatchHit(UPrimitiveComponent* OtherComp);
 
+	// 이 컴포넌트의 물리 바디. 설정(UPROPERTY)만 저장·복제되고 PhysX 액터 포인터는 컴포넌트마다 새로 만든다.
+	UPROPERTY(EditAnywhere)
+	FBodyInstance BodyInstance;
+
+	// 바디를 만들 형상. 없으면 물리 바디를 만들지 않는다. StaticMesh·Shape 컴포넌트가 오버라이드한다.
+	virtual UBodySetup* GetBodySetup() { return nullptr; }
+
+	// 시뮬레이트 여부를 바꾼다. 바디가 있으면 바로 Kinematic ↔ Dynamic 전환한다.
+	void SetSimulatePhysics(bool bSimulate);
+
 protected:
 	virtual void OnUnregister() override;
+
+	virtual bool ShouldCreatePhysicsState() const override;
+	virtual void OnCreatePhysicsState() override;
+	virtual void OnDestroyPhysicsState() override;
 	TArray<FOverlapInfo> OverlapInfos;
 
 	virtual bool ShouldCreateRenderState() const override

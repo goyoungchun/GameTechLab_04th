@@ -3,6 +3,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
 
 namespace
 {
@@ -306,7 +307,21 @@ bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRot
 		if (UWorld* World = Owner->GetWorld())
 		{
 			Result.Init(Start, Destination);
-			bBlocked = World->SweepSingle(FRay(Start, Delta.Normalized()), Delta.Size(), GetCollisionRadius(), Result, Owner);
+			FPhysScene* PhysicsScene = World->GetPhysicsScene();
+			if (PhysicsScene && PhysicsScene->IsValid())
+			{
+				// 물리 씬의 충돌 형상(StaticMesh 볼록/삼각형, Shape 컴포넌트, 캐릭터 캡슐)에 이 컴포넌트 모양을 밀어 본다.
+				FCollisionQueryParams Params;
+				Params.IgnoreActor = Owner;                  // 자기 액터의 바디(자기 캡슐 등)는 제외
+				Params.bIgnoreTouchesMovingAway = true;      // 딛고 선 바닥에 걸려 옆으로 못 가는 일을 막는다
+				bBlocked = PhysicsScene->SweepSingle(GetCollisionShape(), GetWorldRotation().Quaternion(),
+					Start, Destination, Result, Params);
+			}
+			else
+			{
+				// PhysX가 꺼져 있으면 예전 판정(메시 AABB를 반지름만큼 키운 박스)을 쓴다.
+				bBlocked = World->SweepSingle(FRay(Start, Delta.Normalized()), Delta.Size(), GetCollisionRadius(), Result, Owner);
+			}
 			if (bBlocked)
 				Destination = Start + Delta * Result.Time + Result.ImpactNormal * 0.001f;
 		}

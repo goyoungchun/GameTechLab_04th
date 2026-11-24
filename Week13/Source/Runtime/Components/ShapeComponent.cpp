@@ -2,11 +2,30 @@
 #include "ShapeComponent.h"
 #include "Render/LineBatcher.h"
 #include "UObject/UObjectIterator.h"
+#include "Physics/BodySetup.h"
 
 UShapeComponent::UShapeComponent()
 {
 	bCastShadow = false;
 	bReceiveShadow = false;
+}
+
+UBodySetup* UShapeComponent::GetBodySetup()
+{
+	if (!ShapeBodySetup)
+		ShapeBodySetup = NewObject<UBodySetup>(this);
+	UpdateBodySetup();
+	return ShapeBodySetup;
+}
+
+void UShapeComponent::PostEditChangeProperty(const FProperty& Property)
+{
+	Super::PostEditChangeProperty(Property);
+	if (IsPhysicsStateCreated())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
+	}
 }
 
 FBox UShapeComponent::GetWorldAABB() const

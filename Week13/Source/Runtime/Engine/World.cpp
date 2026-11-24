@@ -22,6 +22,7 @@
 #include "Components/ParticleSystemComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 
+#include "Components/ShapeComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkinnedMeshComponent.h"
 
@@ -41,8 +42,9 @@
 #include "UObject/UObjectGlobals.h"
 
 #include "Script/LuaBindings.h"
+
 #include "Physics/Collision.h"
-#include "Components/ShapeComponent.h"
+#include "Physics/PhysScene.h"
 
 namespace
 {
@@ -93,6 +95,8 @@ bool UWorld::Init()
 	// 디버그 선 도구를 만든다. FLineBatcher::Init의 렌더러 인자는 쓰이지 않는다.
 	LineBatcher = MakeUnique<FLineBatcher>();
 	LineBatcher->Init(nullptr, this);
+
+	PhysicsScene = MakeUnique<FPhysScene>(this);
 
 	return true;
 }
@@ -233,10 +237,23 @@ void UWorld::GameWorldTick(float DeltaTime)
 		return;
 	}
 
-	// 모든 Actor를 도는 대신 등록된 Tick 함수만 실행한다
+	// 모든 Actor를 도는 대신 등록된 Tick 함수만 실행한다.
+	// 물리는 PrePhysics(Kinematic 이동·힘 적용) 다음, 물리 결과를 쓰는 PostPhysics(카메라 추적 등) 전에 돈다.
 	{
 		SCOPE_CYCLE_COUNTER(STAT_ActorTick);
-		TickTaskManager.RunAllTickGroups(DeltaTime);
+		TickTaskManager.RunTickGroup(ETickingGroup::PrePhysics, DeltaTime);
+	}
+
+	if (PhysicsScene)
+	{
+		PhysicsScene->Tick(DeltaTime);
+	}
+
+	{
+		SCOPE_CYCLE_COUNTER(STAT_ActorTick);
+		TickTaskManager.RunTickGroup(ETickingGroup::DuringPhysics, DeltaTime);
+		TickTaskManager.RunTickGroup(ETickingGroup::PostPhysics, DeltaTime);
+		TickTaskManager.RunTickGroup(ETickingGroup::PostUpdateWork, DeltaTime);
 	}
 
 	// 코루틴 Tick

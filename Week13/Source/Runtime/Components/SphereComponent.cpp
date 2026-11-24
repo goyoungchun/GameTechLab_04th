@@ -2,6 +2,7 @@
 #include "SphereComponent.h"
 #include "Physics/Collision.h"
 #include "Render/LineBatcher.h"
+#include "Physics/BodySetup.h"
 
 float USphereComponent::GetScaledSphereRadius() const
 {
@@ -23,4 +24,12 @@ void USphereComponent::DrawDebug(FLineBatcher* LineBatcher, const FVector4& Colo
 	AddWireArc(LineBatcher, C, FVector(1, 0, 0), FVector(0, 1, 0), R, 0, TwoPi, Color);
 	AddWireArc(LineBatcher, C, FVector(1, 0, 0), FVector(0, 0, 1), R, 0, TwoPi, Color);
 	AddWireArc(LineBatcher, C, FVector(0, 1, 0), FVector(0, 0, 1), R, 0, TwoPi, Color);
+}
+
+void USphereComponent::UpdateBodySetup()
+{
+	FKAggregateGeom& Geom = ShapeBodySetup->AggGeom;
+	Geom = FKAggregateGeom();
+	FKSphereElem& Sphere = Geom.SphereElems.Emplace_GetRef();
+	Sphere.Radius = SphereRadius;   // 월드 스케일은 InitBody가 곱한다
 }

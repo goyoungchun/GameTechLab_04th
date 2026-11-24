@@ -16,6 +16,8 @@
 #include "Animation/BlendSpaceFile.h"
 #include "Animation/AnimBlueprintFile.h"
 #include "Particles/ParticleSystemFile.h"
+#include "Physics/PhysicalMaterial.h"
+#include "Physics/PhysicalMaterialFile.h"
 #include "Render/MaterialFile.h"
 
 namespace
@@ -359,6 +361,10 @@ namespace
 		if (ParticleSystemFile::IsParticleSystemPath(PathString))
 		{
 			return { "Particle System", IM_COL32(1, 202, 252, 255), true };
+		}
+		if (PhysicalMaterialFile::IsPhysicalMaterialPath(PathString))
+		{
+			return { "Physical Material", IM_COL32(232, 148, 64, 255), true };
 		}
 		if (FFbxMeshBake::IsBakedPath(PathString))
 		{
@@ -805,6 +811,11 @@ void FContentDrawerPanel::RenderContents()
 				strcpy_s(NewAssetName, "NewMaterial");
 				bOpenCreateMaterial = true;
 			}
+			if (ImGui::MenuItem("Create Physical Material"))
+			{
+				strcpy_s(NewAssetName, "NewPhysicalMaterial");
+				bOpenCreatePhysicalMaterial = true;   // 메뉴 팝업 안에서 바로 다른 팝업을 열 수 없어 다음 줄에서 연다
+			}
 			if (ImGui::MenuItem("Create Widget"))
 			{
 				strcpy_s(NewAssetName, "NewWidget");
@@ -838,6 +849,45 @@ void FContentDrawerPanel::RenderContents()
 			if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 			ImGui::EndPopup();
 		}
+		if (bOpenCreatePhysicalMaterial) { ImGui::OpenPopup("Create Physical Material"); bOpenCreatePhysicalMaterial = false; }
+
+		if (ImGui::BeginPopupModal("Create Physical Material", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+			const bool bEnter = ImGui::InputText("Name", NewAssetName, sizeof(NewAssetName), ImGuiInputTextFlags_EnterReturnsTrue);
+			const FString AssetName = NewAssetName;
+			const bool bInvalidName = AssetName.empty() || AssetName == "." || AssetName == ".."
+				|| AssetName.find_first_of("\\/:*?\"<>|") != FString::npos;
+			const fs::path Target = CurrentPath / FPaths::FromUtf8(AssetName + ".pmat");
+			std::error_code ExistsError;
+			const bool bExists = !bInvalidName && fs::exists(Target, ExistsError);
+			if (bExists) ImGui::TextColored(EditorColor::ToVec4(EditorColor::Error), "A physical material with this name already exists.");
+			else if (bInvalidName && !AssetName.empty()) ImGui::TextColored(EditorColor::ToVec4(EditorColor::Error), "Invalid name.");
+
+			ImGui::BeginDisabled(bExists || bInvalidName);
+			if (ImGui::Button("Create") || (bEnter && !bExists && !bInvalidName))
+			{
+				// 기본값으로 파일을 만든 뒤 에디터로 연다. 연 에디터는 AssetManager가 파일에서 다시 읽은 객체를 쓴다.
+				UPhysicalMaterial* NewMaterial = NewObject<UPhysicalMaterial>();
+				FString Error;
+				const bool bWritten = PhysicalMaterialFile::Write(Target, *NewMaterial, Error);
+				delete NewMaterial;
+				if (!bWritten)
+				{
+					KRS_LOG(Warning, "Failed to create physical material '{}': {}", FPaths::ToUtf8(Target), Error);
+				}
+				else if (OnOpenMesh)
+				{
+					OnOpenMesh(FPaths::ToUtf8(Target));
+				}
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+
 		if (bOpenCreateWidget) { ImGui::OpenPopup("Create Widget"); bOpenCreateWidget = false; }
 
 		if (ImGui::BeginPopupModal("Create Widget", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -1135,6 +1185,10 @@ void FContentDrawerPanel::RenderContents()
 					{
 						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(ParticleSystemIconPath);
 					}
+					else if (PhysicalMaterialFile::IsPhysicalMaterialPath(PathString))
+					{
+						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(PhysicalMaterialIconPath);
+					}
 					else if (Path.extension() == ".scene")
 					{
 						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(SceneIconPath);
@@ -1149,6 +1203,7 @@ void FContentDrawerPanel::RenderContents()
 				const bool bIsSelected = (SelectedAssetPath == Path);
 				const bool bRenamingThis = (!bInlineRenameInTree && InlineRenameTarget == Path);
 				const FAssetCardStyle CardStyle = ClassifyAssetCard(Path, PathString, bIsDirectory);
+				const bool bIsPhysicalMaterial = !bIsDirectory && PhysicalMaterialFile::IsPhysicalMaterialPath(PathString);
 
 				const ImTextureID TileTextureId = (MeshThumbId != ImTextureID_Invalid)
 					? MeshThumbId
@@ -1156,7 +1211,7 @@ void FContentDrawerPanel::RenderContents()
 						? reinterpret_cast<ImTextureID>(Thumbnail->GetResource()->GetSRV())
 						: ImTextureID_Invalid);
 				const bool bIsRenderedMeshThumb = (MeshThumbId != ImTextureID_Invalid);
-				const bool bIsFullImageThumb = (!bIsRenderedMeshThumb && (TextureAsset != nullptr || FontAsset != nullptr));
+				const bool bIsFullImageThumb = (!bIsRenderedMeshThumb && (TextureAsset != nullptr || FontAsset != nullptr || bIsPhysicalMaterial));
 
 				const ImVec2 CardMin = ImGui::GetCursorScreenPos();
 				bool bHovered = false;
@@ -1226,10 +1281,40 @@ void FContentDrawerPanel::RenderContents()
 
 						ImGui::EndDragDropSource();
 					}
+					// 물리 머티리얼(.pmat)은 경로를 페이로드로 전달한다 (BodyInstance의 PhysMaterialOverride 칸에 놓는다)
+					if (!bIsDirectory && PhysicalMaterialFile::IsPhysicalMaterialPath(PathString) && ImGui::BeginDragDropSource())
+					{
+						ImGui::SetDragDropPayload(EditorDragDrop::PhysicalMaterial, PathString.c_str(), PathString.size() + 1);
+
+						if (TileTextureId != ImTextureID_Invalid)
+						{
+							ImGui::Image(TileTextureId, { ThumbSize, ThumbSize });
+						}
+						ImGui::TextUnformatted(FilenameString.c_str());
+
+						ImGui::EndDragDropSource();
+					}
 					// 머티리얼(.mat)은 경로를 페이로드로 전달한다
 					if (!bIsDirectory && MaterialFile::IsMaterialPath(PathString) && ImGui::BeginDragDropSource())
 					{
 						ImGui::SetDragDropPayload(EditorDragDrop::Material, PathString.c_str(), PathString.size() + 1);
+
+						if (MeshThumbId != ImTextureID_Invalid)
+						{
+							ImGui::Image(MeshThumbId, { ThumbSize, ThumbSize });
+						}
+						ImGui::TextUnformatted(FilenameString.c_str());
+
+						ImGui::EndDragDropSource();
+					}
+					// 스태틱/스켈레탈 메시(.obj / .fbx.bin) 드래그앤드롭
+					if (!bIsDirectory && (Path.extension() == ".obj" || FFbxMeshBake::IsBakedPath(PathString)) && ImGui::BeginDragDropSource())
+					{
+						const std::string LowerPath = ToLowerAscii(PathString);
+						const bool bIsStaticMeshFile = (Path.extension() == ".obj")
+							|| (LowerPath.size() >= 15 && LowerPath.compare(LowerPath.size() - 15, 15, "_static.fbx.bin") == 0);
+						const char* PayloadType = bIsStaticMeshFile ? EditorDragDrop::StaticMesh : EditorDragDrop::SkeletalMesh;
+						ImGui::SetDragDropPayload(PayloadType, PathString.c_str(), PathString.size() + 1);
 
 						if (MeshThumbId != ImTextureID_Invalid)
 						{
@@ -1266,7 +1351,8 @@ void FContentDrawerPanel::RenderContents()
 						}
 
 						else if ((BlendSpaceFile::IsBlendSpacePath(PathString) || AnimBlueprintFile::IsAnimBlueprintPath(PathString)
-							|| ParticleSystemFile::IsParticleSystemPath(PathString) || MaterialFile::IsMaterialPath(PathString)) && OnOpenMesh)
+							|| ParticleSystemFile::IsParticleSystemPath(PathString) || MaterialFile::IsMaterialPath(PathString)
+							|| PhysicalMaterialFile::IsPhysicalMaterialPath(PathString)) && OnOpenMesh)
 						{
 							OnOpenMesh(PathString);
 						}

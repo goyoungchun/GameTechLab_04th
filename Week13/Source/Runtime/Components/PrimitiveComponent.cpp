@@ -8,6 +8,8 @@
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Engine/Scene.h"
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
+#include "Physics/BodySetup.h"
 
 namespace
 {
@@ -93,6 +95,15 @@ void UPrimitiveComponent::OnTransformDirty()
 {
 	if (SceneProxy)
 		SceneProxy->GetScene()->MarkDirty(SceneProxy);
+
+	// 시뮬레이트 중인 바디는 물리가 주인이다. 여기서 되돌려 보내면 SyncActiveActors와 서로 덮어써 속도가 망가진다.
+	if (BodyInstance.IsValidBodyInstance() && !BodyInstance.IsSimulatingPhysics())
+	{
+		const FTransform WorldTransform(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+		// 게임 월드에서는 Kinematic target으로 옮겨 부딪힌 물체를 밀어낸다. 시뮬레이트하지 않는 월드(에디터)는 즉시 옮긴다.
+		const bool bTeleport = !(GetWorld() && GetWorld()->IsGameWorld());
+		BodyInstance.SetWorldTransform(WorldTransform, bTeleport);
+	}
 }
 
 bool UPrimitiveComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit)
@@ -108,6 +119,21 @@ void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 		Property.Name == "bReceivesDecals")
 	{
 		MarkRenderStateDirty();
+	}
+
+	// 디테일 창은 구조체 멤버가 바뀌어도 바깥 프로퍼티(BodyInstance)를 알린다.
+	// Static 바디는 시뮬레이트할 수 없으므로, Simulate Physics가 켜져 있으면 Movable로 바꾼다 (UE 에디터와 같은 동작).
+	// 어느 멤버가 바뀌었는지는 알 수 없으므로 둘 다 켜진 상태면 시뮬레이트 쪽을 따른다.
+	if (Property.Name == "BodyInstance" && BodyInstance.bSimulatePhysics && BodyInstance.Mobility == EBodyMobility::Static)
+	{
+		BodyInstance.Mobility = EBodyMobility::Movable;
+	}
+
+	// Mobility(Static↔Movable)는 액터 종류가 달라지므로 바디를 새로 만든다.
+	if (Property.Name == "BodyInstance" && IsPhysicsStateCreated())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
 	}
 }
 
@@ -244,4 +270,34 @@ void UPrimitiveComponent::DispatchHit(UPrimitiveComponent* OtherComp)
 	{
 		Owner->NotifyHit(OtherActor);
 	}
+}
+
+bool UPrimitiveComponent::ShouldCreatePhysicsState() const
+{
+	UWorld* World = GetWorld();
+	FPhysScene* Scene = World ? World->GetPhysicsScene() : nullptr;
+	// NoCollision은 바디를 만들지 않는다 (렌더링만 한다).
+	if (BodyInstance.CollisionEnabled == ECollisionEnabled::NoCollision)
+		return false;
+	// GetBodySetup은 const가 아니다 (형상을 지연 생성하는 컴포넌트가 있다).
+	return Scene && Scene->IsValid() && const_cast<UPrimitiveComponent*>(this)->GetBodySetup() != nullptr;
+}
+
+void UPrimitiveComponent::OnCreatePhysicsState()
+{
+	Super::OnCreatePhysicsState();
+
+	const FTransform WorldTransform(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+	BodyInstance.InitBody(GetBodySetup(), WorldTransform, this, GetWorld()->GetPhysicsScene());
+}
+
+void UPrimitiveComponent::OnDestroyPhysicsState()
+{
+	BodyInstance.TermBody();
+	Super::OnDestroyPhysicsState();
+}
+
+void UPrimitiveComponent::SetSimulatePhysics(bool bSimulate)
+{
+	BodyInstance.SetSimulatePhysics(bSimulate);
 }

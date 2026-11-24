@@ -38,6 +38,10 @@ public:
 	// 캐시된 썸네일 SRV를 돌려준다. 아직 없거나 파일이 갱신됐으면 렌더 큐에 넣고 Invalid를 반환한다.
 	ImTextureID GetOrRequestThumbnail(const fs::path& FilePath, const FString& Utf8Path, fs::file_time_type LastWriteTime);
 
+	// .mat / .obj / .fbx.bin 에셋 경로 또는 내장 에셋 키("DefaultMaterial", "Cube" 등)의 3D 썸네일을 조회/요청한다.
+	ImTextureID GetOrRequestAssetThumbnail(const FString& AssetPathOrKey);
+	ImTextureID GetOrRequestMaterialThumbnail(const FString& MaterialPathOrKey) { return GetOrRequestAssetThumbnail(MaterialPathOrKey); }
+
 	// 프레임당 1개씩 대기 중인 3D 썸네일을 오프스크린 타깃에 그려 캐시한다 (백버퍼 패스 전에 호출).
 	void RenderPending(UEditorEngine& Engine, FRenderer* Renderer);
 

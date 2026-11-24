@@ -16,6 +16,10 @@ public:
 
 	float GetScaledCapsuleHalfHeight() const;
 	float GetScaledCapsuleRadius() const;
+	virtual FCollisionShape GetCollisionShape() const override { return FCollisionShape::MakeCapsule(GetScaledCapsuleRadius(), GetScaledCapsuleHalfHeight()); }
 	virtual FBox CalcLocalBounds() const override;
 	virtual void DrawDebug(FLineBatcher*, const FVector4&) const override;
+
+protected:
+	virtual void UpdateBodySetup() override;
 };

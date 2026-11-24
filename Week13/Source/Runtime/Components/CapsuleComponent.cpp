@@ -2,6 +2,7 @@
 #include "CapsuleComponent.h"
 #include "Physics/Collision.h"
 #include "Render/LineBatcher.h"
+#include "Physics/BodySetup.h"
 
 float UCapsuleComponent::GetScaledCapsuleHalfHeight() const
 {
@@ -43,4 +44,14 @@ void UCapsuleComponent::DrawDebug(FLineBatcher* LineBatcher, const FVector4& Col
 	// 옆선 4개
 	for (const FVector& Side : { X, X * -1.0f, Y, Y * -1.0f })
 		LineBatcher->AddLine(Cap.A + Side * R, Cap.B + Side * R, Color);
+}
+
+void UCapsuleComponent::UpdateBodySetup()
+{
+	FKAggregateGeom& Geom = ShapeBodySetup->AggGeom;
+	Geom = FKAggregateGeom();
+	FKSphylElem& Sphyl = Geom.SphylElems.Emplace_GetRef();
+	Sphyl.Radius = CapsuleRadius;
+	// HalfHeight는 반구 끝까지, SphylElem의 Length는 두 반구 중심 사이 원통 길이다.
+	Sphyl.Length = 2.0f * std::max(CapsuleHalfHeight - CapsuleRadius, 0.0f);
 }

@@ -38,6 +38,13 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InStaticMesh)
 	ClearOverrideMaterials();
 	MarkRenderStateDirty();
 	OnTransformDirty();
+
+	// 메시가 바뀌면 형상이 달라진다. 등록된 상태라면 바디를 새로 만든다 (메시가 없어지면 Destroy만 된다).
+	if (IsRegistered())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
+	}
 }
 
 int32 UStaticMeshComponent::GetNumMaterials() const

@@ -21,6 +21,7 @@ public:
 	void OnRender() override;
 	void RenderContents();
 	void RenderPendingThumbnails(class UEditorEngine& Engine, class FRenderer* Renderer);
+	FMeshThumbnailRenderer& GetThumbnailRenderer() { return MeshThumbnailRenderer; }
 	const char* GetPanelName() const override { return "Content Drawer"; }
 	void RenderFolderTree(const fs::path& Path, fs::path& SelectedPath);
 
@@ -73,6 +74,7 @@ private:
 	bool bFocusPathSearch = false;
 	bool bOpenCreateWidget = false;
 	bool bOpenCreateMaterial = false;
+	bool bOpenCreatePhysicalMaterial = false;
 	bool bOpenCreateFolder = false;
 	bool bOpenDeleteModal = false;
 	float FolderTreeWidth = 0.0f;
@@ -96,6 +98,7 @@ private:
 	const FString FolderIconPath = "Engine/Icons/Folder.png";
 	const FString FileIconPath = "Engine/Icons/File.png";
 	const FString ParticleSystemIconPath = "Engine/Icons/ParticleSystem.png";
+	const FString PhysicalMaterialIconPath = "Engine/Icons/PhysicalMaterial.png";
 	const FString SceneIconPath = "Engine/Icons/Scene.png";
 
 	FBlendSpaceAssetCreator BlendSpaceCreator;

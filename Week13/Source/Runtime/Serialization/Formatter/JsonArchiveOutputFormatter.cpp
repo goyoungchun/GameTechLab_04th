@@ -5,6 +5,7 @@
 #include "Asset/RenderAsset.h"
 #include "Animation/AnimSequence.h"
 #include "Particles/ParticleSystem.h"
+#include "Physics/PhysicalMaterial.h"
 #include "UObject/Casts.h"
 
 FJsonArchiveOutputFormatter::FJsonArchiveOutputFormatter(FArchive& InInner)
@@ -191,6 +192,20 @@ void FJsonArchiveOutputFormatter::Serialize(UObject*& Value)
 	if (UParticleSystem* ParticleSystem = Cast<UParticleSystem>(Value))
 	{
 		const FString Path = FAssetUtils::GetAssetKey(ParticleSystem->GetAssetPath());
+		if (!Path.empty())
+		{
+			Top() = Path;
+		}
+		else
+		{
+			Top() = nullptr;
+		}
+		return;
+	}
+
+	if (UPhysicalMaterial* Material = Cast<UPhysicalMaterial>(Value))
+	{
+		const FString Path = FAssetUtils::GetAssetKey(Material->GetAssetPath());
 		if (!Path.empty())
 		{
 			Top() = Path;

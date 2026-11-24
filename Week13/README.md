@@ -128,3 +128,15 @@ MSBuild.exe .\Kurisu.slnx -t:KurisuEditor -p:Configuration=Release -p:Platform=x
 ### 패널
 
 - `Ctrl + Space`: 콘텐츠 드로어 열기/닫기 또는 열린 콘텐츠 패널에 포커스 (레벨 에디터 활성 상태, 텍스트 입력 중에는 동작하지 않음)
+
+---
+
+## 최근 주요 변경사항 (이식 참고용)
+
+- **머티리얼 에셋 시스템 (`.mat`)**: JSON `.mat` 에셋 생성/자동 추출(OBJ·FBX), 머티리얼별 `Lit/Unlit`·`BlendMode`·`TwoSided` 렌더러 연동, Material Editor 탭, 콘텐츠 드로어 3D 구 썸네일 (`6968344`)
+- **기즈모 스냅 이동**: `G` 키 토글 및 툴바/`Grid` 메뉴 스냅 크기 설정, `editor.ini` 저장 (`b6d1b7c`)
+- **PhysX SDK 연동**: PhysX SDK 빌드 및 프로젝트 링크 추가 (`3507c72`)
+- **포스트 프로세싱 / 톤매핑**: 포스트 프로세싱 설정 분리, Exposure 슬라이더 추가, ToneMap 셰이더 ACES 적용 (`f6a15c3`, `e26f0da`, `4d88988`)
+- **렌더 설정 & ShowFlags 분리**: 렌더 설정값과 ShowFlags 구조 분리 (`620ee3d`)
+- **에디터 UX 개선**: 액터 선택 일원화 (`6b642fa`), 에디터 테마 추가 (`f514883`), 프리뷰 월드 바운딩 박스 격리 수정 (`12d1e67`)
+- **빌드/솔루션 수정**: Premake 오류 및 프로젝트 필터 깨짐 수정 (`4befa7e`, `6429160`)

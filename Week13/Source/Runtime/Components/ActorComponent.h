@@ -36,7 +36,7 @@ public:
 	void SetHiddenInDetails(bool bInHidden) { bHiddenInDetails = bInHidden; }
 	bool IsHiddenInDetails() const { return bHiddenInDetails; }
 
-	// UE와 같이 기본값은 bCanEverTick = false. Tick이 필요한 컴포넌트만 생성자에서 켠다.
+	// 기본값은 bCanEverTick = false. Tick이 필요한 컴포넌트만 생성자에서 켠다.
 	FActorComponentTickFunction PrimaryComponentTick;
 
 	virtual void Activate(bool bReset = false);
@@ -67,6 +67,11 @@ public:
 	bool IsRegistered() const { return bRegistered; }
 	bool IsRenderStateCreated() const { return bRenderStateCreated; }
 
+	bool IsPhysicsStateCreated() const { return bPhysicsStateCreated; }
+	// 등록 중에 물리 바디를 만들거나 지운다. 형상·설정이 바뀌면 Destroy → Create로 다시 만든다.
+	void CreatePhysicsState();
+	void DestroyPhysicsState();
+
 	UWorld* GetWorld() const { return WorldPrivate; }
 protected:
 
@@ -90,6 +95,10 @@ protected:
 	void ExecuteRegisterEvents();
 	void ExecuteUnregisterEvents();
 
+	virtual bool ShouldCreatePhysicsState() const { return false; }
+	virtual void OnCreatePhysicsState() { bPhysicsStateCreated = true; }
+	virtual void OnDestroyPhysicsState() { bPhysicsStateCreated = false; }
+
 private:
 	AActor* Owner = nullptr;
 	bool bHiddenInDetails = false;
@@ -100,4 +109,5 @@ private:
 
 	UWorld* WorldPrivate = nullptr;
 	bool bRenderStateCreated = false;
+	bool bPhysicsStateCreated = false;
 };
