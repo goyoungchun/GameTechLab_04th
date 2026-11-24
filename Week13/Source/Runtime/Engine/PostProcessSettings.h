@@ -48,12 +48,12 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareIntensity = false;
 	// 고스트를 장면에 더할 때 곱하는 세기. 0이면 꺼진 것과 같다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=16, Delta=0.01))
-	float LensFlareIntensity = 1.0f;
+	float LensFlareIntensity = 0.15f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareThreshold = false;
 	// 노출 전 HDR 밝기가 이 값을 넘는 부분만 플레어를 만든다. 씬 라이트가 물리 단위가 아니라 UE 기본값(8)이면 거의 아무것도 안 넘는다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=64, Delta=0.1))
-	float LensFlareThreshold = 1.0f;
+	float LensFlareThreshold = 2.25f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareGhostCount = false;
 	// 광원 반대편 직선 위에 줄지어 생기는 고스트 개수
@@ -63,7 +63,7 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareGhostDispersal = false;
 	// 고스트 사이 간격(화면 중앙까지 거리 대비 비율)
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
-	float LensFlareGhostDispersal = 0.3f;
+	float LensFlareGhostDispersal = 0.25f;
 
 	// ---------- Camera (물리 노출) ----------
 	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)
