@@ -312,13 +312,22 @@ void USkeletalMeshComponent::OnSkeletalMeshChanged()
 }
 bool USkeletalMeshComponent::ShouldCreatePhysicsState() const
 {
-	return false;
+	UWorld* World = GetWorld();
+	FPhysScene* Scene = World ? World->GetPhysicsScene() : nullptr;
+	if (BodyInstance.CollisionEnabled == ECollisionEnabled::NoCollision)
+		return false;
+	return Scene && Scene->IsValid() && GetPhysicsAsset() != nullptr;
 }
 void USkeletalMeshComponent::OnCreatePhysicsState()
 {
+	UActorComponent::OnCreatePhysicsState();
+	InstantiatePhysicsAssetBodies_Internal();
 }
 void USkeletalMeshComponent::OnDestroyPhysicsState()
 {
+	TermArticulated();
+	ClearComponentOverlaps();
+	UActorComponent::OnDestroyPhysicsState();
 }
 UAnimSingleNodeInstance* USkeletalMeshComponent::GetSingleNodeInstance() const
 {
@@ -485,11 +494,7 @@ void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher)
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
-	if (IsPhysicsStateCreated())
-	{
-		DestroyPhysicsState();
-		CreatePhysicsState();
-	}
+
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()

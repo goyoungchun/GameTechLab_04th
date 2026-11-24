@@ -49,6 +49,12 @@ void USkinnedMeshComponent::SetSkeletalMesh(USkeletalMesh* InMesh)
 	
 	ClearOverrideMaterials();
 	RecreateMeshObject();
+
+	if (IsPhysicsStateCreated())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
+	}
 }
 
 FPrimitiveSceneProxy* USkinnedMeshComponent::CreateSceneProxy()
