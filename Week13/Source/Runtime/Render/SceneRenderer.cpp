@@ -709,8 +709,12 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 
 	
 
+	// 카메라가 자동 노출을 원해도 이 뷰포트가 Eye Adaptation을 껐으면 노출을 고정한다. 레벨 데이터는 건드리지 않는다
+	FPostProcessSettings PP = View.FinalPostProcessSettings;
+	PP.bAutoExposure = PP.bAutoExposure && Options.ShowFlags.EyeAdaptation;
+
 	// 노출계는 노출을 곱하기 전의 장면 밝기를 재야 하므로 ToneMap 앞에 둔다. 그래서 노출을 바꿔도 측정값이 흔들리지 않는다
-	if (View.FinalPostProcessSettings.NeedsExposureMeter())
+	if (PP.NeedsExposureMeter())
 	{
 		if (FExposureMeterRenderer* Meter = Renderer->GetExposureMeter(); Meter && Meter->GetTarget())
 		{
@@ -727,7 +731,6 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 	}
 
 	// 측정값은 몇 프레임 전 것이라 그래프를 짜는 지금 CPU에서 적응시켜도 된다
-	const FPostProcessSettings& PP = View.FinalPostProcessSettings;
 	const float AdaptedEV100 = PP.bAutoExposure ? FExposureMeterRenderer::UpdateAdaptedEV100(PP) : 0.0f;
 
 	FRenderGraphRasterPassDesc ToneMap{};
