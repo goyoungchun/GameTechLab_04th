@@ -6,10 +6,10 @@ void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
     FArchive& Ar = Record.GetUnderlyingArchive();
     Super::Serialize(Record);
 
-    int32 Version = Ar.IsSaving() ? 2 : 0;
+    int32 Version = Ar.IsSaving() ? 3 : 0;
     Record << SA_VALUE("Version", Version);
 
-    if (Version < 1 || Version > 2)
+    if (Version < 1 || Version > 3)
     {
         Ar.SetError();
         return;
@@ -58,6 +58,35 @@ void UPhysicsAsset::Serialize(FStructuredArchive::FRecord Record)
             {
                 ConstraintSetup[i]->Serialize(ConRecord);
             }
+        }
+    }
+
+    if (Ar.IsLoading())
+    {
+        CollisionDisableTable.Empty();
+    }
+
+    if (Version >= 3)
+    {
+        int32 NumPairs = Ar.IsSaving() ? CollisionDisableTable.Num() : 0;
+        FStructuredArchive::FArray Pairs = Record.EnterArray("CollisionDisable", NumPairs);
+        if (Ar.IsLoading())
+        {
+            CollisionDisableTable.SetNum(NumPairs);
+        }
+
+        for (int32 i = 0; i < NumPairs; ++i)
+        {
+            FStructuredArchive::FRecord PairRecord = Pairs.EnterElement().EnterRecord();
+            PairRecord << SA_VALUE("A", CollisionDisableTable[i].BoneA);
+            PairRecord << SA_VALUE("B", CollisionDisableTable[i].BoneB);
+        }
+    }
+    else if (Ar.IsLoading())
+    {
+        for (UPhysicsConstraintTemplate* Template : ConstraintSetup)
+        {
+            DisableCollision(Template->DefaultInstance.ConstraintBone1, Template->DefaultInstance.ConstraintBone2);
         }
     }
 }
@@ -134,9 +163,46 @@ void UPhysicsAsset::RemoveBodySetup(FName BoneName)
         if (CI.ConstraintBone1 == BoneName || CI.ConstraintBone2 == BoneName)
             ConstraintSetup.RemoveAt(i);
     }
+
+    for (int32 i = CollisionDisableTable.Num() - 1; i >= 0; --i)
+    {
+        const FPhysicsAssetCollisionPair& P = CollisionDisableTable[i];
+        if (P.BoneA == BoneName || P.BoneB == BoneName)
+            CollisionDisableTable.RemoveAt(i);
+    }
 }
 
 void UPhysicsAsset::ClearAllBodies()
 {
     BodySetup.Empty();
+    CollisionDisableTable.Empty();
+}
+
+void UPhysicsAsset::DisableCollision(FName BoneA, FName BoneB)
+{
+    if (BoneA == BoneB || !IsCollisionEnabled(BoneA, BoneB))
+    {
+        return;
+    }
+
+    CollisionDisableTable.Add({ BoneA, BoneB });
+}
+
+void UPhysicsAsset::EnableCollision(FName BoneA, FName BoneB)
+{
+    for (int32 i = CollisionDisableTable.Num() - 1; i >= 0; --i)
+    {
+        if (CollisionDisableTable[i].Matches(BoneA, BoneB))
+            CollisionDisableTable.RemoveAt(i);
+    }
+}
+
+bool UPhysicsAsset::IsCollisionEnabled(FName BoneA, FName BoneB) const
+{
+    for (const FPhysicsAssetCollisionPair& Pair : CollisionDisableTable)
+    {
+        if (Pair.Matches(BoneA, BoneB))
+            return false;
+    }
+    return true;
 }
