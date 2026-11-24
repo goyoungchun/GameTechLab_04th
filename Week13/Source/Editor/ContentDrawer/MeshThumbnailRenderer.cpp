@@ -297,6 +297,7 @@ public:
 		EngineShowFlags.AntiAliasing = true;
 		EngineShowFlags.Vignette = false;
 		EngineShowFlags.CameraOverlay = false;
+		EngineShowFlags.DepthOfField = false;
 		EngineShowFlags.SkeletalMeshes = true;
 	}
 

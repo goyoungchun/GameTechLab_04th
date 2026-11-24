@@ -94,8 +94,10 @@ public:
 	// View별 Billboard 행렬 공급자는 이 동기 호출 동안만 사용하며 저장하지 않는다.
 	using FBillboardTraceTransform = FMatrix(*)(const UBillboardComponent&, const void*);
 	// 현재 World의 Component에 Ray를 전달하고 가장 가까운 유효 교차를 반환한다.
+	// bIncludeBillboards: 에디터 피킹은 아이콘도 맞아야 하지만, 게임 쿼리(자동 초점 등)는 아이콘 쿼드를 건너뛴다.
 	bool LineTraceSingle(const FRay& WorldRay, FHitResult& OutHit,
-		FBillboardTraceTransform ResolveBillboard = nullptr, const void* ViewContext = nullptr);
+		FBillboardTraceTransform ResolveBillboard = nullptr, const void* ViewContext = nullptr,
+		bool bIncludeBillboards = true);
 	// bBlockingOnly: bBlockComponent인 도형/메시만 검사한다. 기본값은 기존 투사체 동작을 유지한다.
 	bool SweepSingle(const FRay& WorldRay, float MaxDistance, float Radius, FHitResult& OutHit, AActor* IgnoreActor = nullptr,
 		bool bBlockingOnly = false);

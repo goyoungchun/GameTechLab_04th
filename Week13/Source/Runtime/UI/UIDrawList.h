@@ -41,6 +41,8 @@ public:
 
 	void AddRect(const FUIRect& Rect, const FLinearColor& Color);
 	void AddImage(const FUIRect& Rect, UTexture2D* Texture, const FLinearColor& Tint);
+	// A에서 B까지 두께 Thickness(픽셀)인 단색 선. 기울어진 바늘·눈금을 그릴 때 쓴다
+	void AddLine(const FVector2& A, const FVector2& B, float Thickness, const FLinearColor& Color);
 	// Justify: 0 왼쪽, 1 가운데, 2 오른쪽. 세로는 항상 가운데.
 	void AddText(const FUIRect& Rect, const FString& Text, const UFont& Font, float FontSize,
 		const FLinearColor& Color, int32 Justify);
@@ -54,6 +56,9 @@ public:
 
 private:
 	void AddQuad(float L, float T, float R, float B, float U0, float V0, float U1, float V1,
+		const FLinearColor& Color, EUIDrawMode Mode, UTexture2D* Texture, float PxRange);
+	// 꼭짓점 순서: 좌상, 우상, 우하, 좌하 (축에 맞지 않은 사각형도 받는다)
+	void AddQuadCorners(const FVector2 (&P)[4], const FVector2 (&UV)[4],
 		const FLinearColor& Color, EUIDrawMode Mode, UTexture2D* Texture, float PxRange);
 
 	TArray<FUIVertex> Vertices;

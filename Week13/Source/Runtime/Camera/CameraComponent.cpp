@@ -124,10 +124,21 @@ FMatrix UCameraComponent::GetViewMatrix() const
     return InverseTranslation * InverseRotation;
 }
 
+float UCameraComponent::GetFieldOfView() const
+{
+	if (!bUseFocalLength)
+		return FieldOfView;
+
+	// 센서 폭은 가로 기준이라 가로 화각이 나오고, 투영 행렬이 세로 화각을 쓰므로 종횡비로 나눠 세로로 바꾼다
+	const float SensorWidth = PostProcessSettings.DepthOfFieldSensorWidth;
+	const float TanHalfVertical = SensorWidth / (2.0f * FocalLength * AspectRatio);
+	return FMath::RadiansToDegrees(2.0f * atanf(TanHalfVertical));
+}
+
 // 시야각·종횡비·클리핑 거리로 원근 행렬을 만든다.
 FMatrix UCameraComponent::GetPerspectiveMatrix() const
 {
-	const float HalfFOV = FMath::DegreesToRadians(FieldOfView) * 0.5f;
+	const float HalfFOV = FMath::DegreesToRadians(GetFieldOfView()) * 0.5f;
 
 	const float YScale = 1.0f / tan(HalfFOV);
 	const float XScale = YScale / AspectRatio;
@@ -192,7 +203,7 @@ void UCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& OutPOV) 
         }
     }
     // 2. 렌즈 값
-    OutPOV.FOV = FieldOfView;
+    OutPOV.FOV = GetFieldOfView();
     OutPOV.AspectRatio = AspectRatio;
     OutPOV.OrthoWidth = OrthoWidth;
     OutPOV.NearClip = NearClipPlane;

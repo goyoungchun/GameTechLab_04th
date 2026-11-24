@@ -224,6 +224,9 @@ FSceneView FEditorViewportClient::CalcSceneView(const FRect &InViewRect) const {
     OutView.OrthoWidth = OrthoWidth;
     OutView.bIsPerspective = bIsPerspective;
     OutView.bIsWireframe = ViewportMode == EViewportMode::Wireframe;
+    // 직교 뷰는 초점 거리 개념이 없어 DOF 값을 얹지 않는다
+    if (bIsPerspective)
+        OutView.FinalPostProcessSettings.OverrideBlend(ViewPostProcessSettings, 1.0f);
 
     return OutView;
 }
