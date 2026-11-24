@@ -99,6 +99,9 @@ public:
 	float GetAspectRatio() const { return AspectRatio; }
 	void SetAspectRatio(float InAspectRatio) { AspectRatio = InAspectRatio; }
 
+	// 툴바의 카메라 메뉴가 고치는 이 뷰포트의 후처리 값 (DOF 등)
+	FPostProcessSettings& GetViewPostProcessSettings() { return ViewPostProcessSettings; }
+
 	// 카메라 입력 처리
 	// MouseX/Y는 캡처 중 이동량(픽셀)이다. bLeftDrag는 UE의 좌클릭 드래그 조작(앞뒤 이동 + 좌우 회전)이다.
 	void TickInput(float DeltaTime, bool bCaptured, bool bHovered,
@@ -205,4 +208,6 @@ protected:
 	float FarClip = 10000.0f;
 	float OrthoWidth = 10.0f;
 	float MaxRange = 50.0f;
+	// 뷰포트마다 따로 둔다. bOverride_가 켜진 값만 기본값 위에 얹힌다
+	FPostProcessSettings ViewPostProcessSettings;
 };
