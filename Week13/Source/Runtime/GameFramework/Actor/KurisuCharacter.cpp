@@ -27,9 +27,10 @@ namespace
 AKurisuCharacter::AKurisuCharacter()
 {
 	// Kurisu 메시는 cm 단위라 0.01배. 원점이 발이라 캡슐 바닥까지 내린다. 클립 진행 방향이 +X라 Yaw 0
-	CapsuleComponent->CapsuleHalfHeight = 0.9f;
+	// 캡슐 높이 1.68m: 메시 키에 맞춰 1.7m 높이의 통로(KurisuPlayground의 Bridge_AB 아래)를 지나갈 수 있다
+	CapsuleComponent->CapsuleHalfHeight = 0.84f;
 	CapsuleComponent->CapsuleRadius = 0.35f;
-	SkeletalMeshComponent->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -0.9f), FRotator(0.0f, 0.0f, 0.0f));
+	SkeletalMeshComponent->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -0.84f), FRotator(0.0f, 0.0f, 0.0f));
 	SkeletalMeshComponent->SetRelativeScale3D(FVector(0.01f, 0.01f, 0.01f));
 
 	// 3인칭 카메라: 어깨 높이에서 3.5m 뒤. 약간의 위치 지연으로 급정지·급회전이 화면에서 덜 튄다

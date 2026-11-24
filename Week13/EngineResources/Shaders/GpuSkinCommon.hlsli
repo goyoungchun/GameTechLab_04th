@@ -7,7 +7,23 @@ struct FGpuSkinBoneMatrix
     row_major float4x4 Value;
 };
 
+struct FClothVertMapping
+{
+    uint SimIndex;
+    float BlendWeight;
+};
+
+struct FClothSimulVertex
+{
+    float3 Position;
+    float Pad0;
+    float3 Normal;
+    float Pad1;
+};
+
 StructuredBuffer<FGpuSkinBoneMatrix> GpuSkinRefToLocal : register(t14);
+StructuredBuffer<FClothVertMapping> ClothMappingBuffer : register(t15);
+StructuredBuffer<FClothSimulVertex> ClothSimulBuffer   : register(t16);
 
 float4x4 GpuSkinCalcBoneMatrix(uint4 BlendIndices, float4 BlendWeights)
 {
@@ -42,6 +58,23 @@ void GpuSkinVertex(uint4 BlendIndices, float4 BlendWeights, inout float3 Positio
     Position = mul(float4(Position, 1.0f), M).xyz;
     Normal = GpuSkinTransformNormal(M, Normal);
     Tangent.xyz = GpuSkinSafeNormalize(mul(float4(Tangent.xyz, 0.0f), M).xyz);
+}
+
+// Cloth가 바인딩된 정점만 시뮬레이션 결과(Position/Normal)와 보간한다.
+// Sim.Pad0 == 1.0f일 때만 유효 시뮬 데이터로 취급하므로, 비-Cloth 메시나 페인트 모드(t13 언바인드)에서는 자동 스킵된다.
+void GpuSkinApplyCloth(uint VertexID, inout float3 Position, inout float3 Normal, inout float4 Tangent)
+{
+    const FClothVertMapping Map = ClothMappingBuffer[VertexID];
+    if (Map.BlendWeight > 0.0f)
+    {
+        const FClothSimulVertex Sim = ClothSimulBuffer[Map.SimIndex];
+        if (Sim.Pad0 > 0.5f)
+        {
+            Position = lerp(Position, Sim.Position, Map.BlendWeight);
+            Normal = GpuSkinSafeNormalize(lerp(Normal, Sim.Normal, Map.BlendWeight));
+            Tangent.xyz = GpuSkinSafeNormalize(Tangent.xyz - Normal * dot(Tangent.xyz, Normal));
+        }
+    }
 }
 
 // 4개 영향 중 Bone에 해당하는 가중치의 합. 같은 본이 두 칸에 들어 있어도 맞게 더한다

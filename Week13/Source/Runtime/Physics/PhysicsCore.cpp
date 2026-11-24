@@ -1,6 +1,8 @@
 #include "EnginePCH.h"
 #include "PhysicsCore.h"
 #include "PhysXIncludes.h"
+#include "PhysicalMaterial.h"
+#include "UObject/UObjectGlobals.h"
 
 // PhysX가 Foundation 생성에 요구하는 어댑터만 둔다. 상태(대기열 등)는 FPhysicsCore가 갖는다.
 // 둘 다 Foundation보다 오래 살아야 하므로 파일 범위 객체로 둔다.
@@ -91,20 +93,25 @@ bool FPhysicsCore::Init()
 		return false;
 	}
 
-	DefaultMaterial = Physics->createMaterial(0.5f, 0.5f, 0.1f);
-	if (!DefaultMaterial)
-	{
-		KRS_LOG(Error, "Failed to create default PhysX material!");
-		Shutdown();
-		return false;
-	}
-
 	// 월드(에디터/PIE/프리뷰)마다 만들지 않고 모든 씬이 공유한다.
 	Dispatcher = physx::PxDefaultCpuDispatcherCreate(4);
 	if (!Dispatcher)
 	{
 		KRS_LOG(Error, "PxDefaultCpuDispatcherCreate failed!");
 		Shutdown();
+		return false;
+	}
+
+	// 실패 경로의 Shutdown이 Physics를 먼저 해제하지 않도록 마지막에 만든다.
+	// (UPhysicalMaterial 소멸자가 PxMaterial을 release하므로 Physics보다 먼저 지워져야 한다)
+	DefaultPhysMaterial = NewObject<UPhysicalMaterial>();
+	DefaultPhysMaterial->StaticFriction = 0.5f;
+	DefaultPhysMaterial->Friction = 0.5f;
+	DefaultPhysMaterial->Restitution = 0.1f;
+	if (!DefaultPhysMaterial->GetPxMaterial())
+	{
+		KRS_LOG(Error, "Failed to create default PhysX material!");
+		Shutdown();   // PxMaterial이 없으니 남은 UObject가 나중에 지워져도 release할 것이 없다
 		return false;
 	}
 
@@ -151,11 +158,8 @@ void FPhysicsCore::Shutdown()
 		Dispatcher->release();
 		Dispatcher = nullptr;
 	}
-	if (DefaultMaterial)
-	{
-		DefaultMaterial->release();
-		DefaultMaterial = nullptr;
-	}
+	// 기본 머티리얼(UObject)은 DestroyAllObjectsExceptEngine이 이미 지웠다.
+	DefaultPhysMaterial = nullptr;
 	if (bVehicleSDKInitialized)
 	{
 		physx::PxCloseVehicleSDK();

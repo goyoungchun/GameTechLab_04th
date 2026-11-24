@@ -6,8 +6,6 @@
 #include "Containers/Array.h"
 #include "ParticleModuleCollision.generated.h"
 
-class FPrimitiveSceneProxy;
-
 // 최대 충돌 횟수에 도달했을 때 할 일
 UENUM()
 enum class EParticleCollisionComplete : uint8
@@ -84,7 +82,4 @@ private:
 	// 이펙트를 낸 액터와는 충돌하지 않는다 (총구 화염과 총)
 	UPROPERTY(EditAnywhere)
 	bool bIgnoreSourceActor = true;
-
-	// Update 안에서만 쓰는 임시 버퍼. 매 프레임 할당하지 않으려고 재사용한다 (파티클 상태 아님)
-	TArray<FPrimitiveSceneProxy*> CandidateCache;
 };

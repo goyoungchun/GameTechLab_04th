@@ -10,6 +10,7 @@ struct FVertexFactoryInput
     float4 Color        : COLOR;
     uint4  BlendIndices : BLENDINDICES;
     float4 BlendWeights : BLENDWEIGHT;
+    uint   VertexID     : SV_VertexID;
 };
 
 FVFIntermediates VF_GetIntermediates(FVertexFactoryInput Input, float4x4 World, float4x4 NormalMatrix)
@@ -18,5 +19,6 @@ FVFIntermediates VF_GetIntermediates(FVertexFactoryInput Input, float4x4 World, 
     float3 Normal = Input.Normal;
     float4 Tangent = Input.Tangent;
     GpuSkinVertex(Input.BlendIndices, Input.BlendWeights, Position, Normal, Tangent);
+    GpuSkinApplyCloth(Input.VertexID, Position, Normal, Tangent);
     return VF_LocalToWorld(Position, Normal, Tangent, Input.UV, Input.Color, World, NormalMatrix);
 }

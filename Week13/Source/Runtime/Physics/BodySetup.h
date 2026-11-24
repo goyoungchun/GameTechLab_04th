@@ -6,11 +6,14 @@
 #include "BodySetupCore.h"
 #include "BodySetup.generated.h"
 
-namespace physx 
-{ 
+namespace physx
+{
 	class PxConvexMesh;
 	class PxTriangleMesh;
+	class PxRigidActor;
 }
+
+struct FBodyInstance;
 
 // 충돌 형상 하나. Center/Rotation은 바디(컴포넌트 또는 본) 로컬 공간 기준이다.
 struct FKShapeElem
@@ -51,6 +54,15 @@ struct FKAggregateGeom
 	int32 GetElementCount() const { return SphereElems.Num() + BoxElems.Num() + SphylElems.Num() + ConvexElems.Num(); }
 };
 
+// 바디를 단순 형상(AggGeom)과 삼각형 메시(Complex) 중 무엇으로 만들지.
+// 씬 쿼리에 Simple/Complex 구분이 없으므로, 앞의 두 값은 지금은 같게 동작한다 (단순 형상만 만든다).
+enum class ECollisionTraceFlag : uint8
+{
+	UseSimpleAndComplex,   // 단순 형상으로 충돌·쿼리한다. 삼각형은 Complex 쿼리용으로 남겨 둔다
+	UseSimpleAsComplex,    // 단순 형상만 쓴다
+	UseComplexAsSimple,    // 삼각형 메시로 충돌·쿼리한다. Static 바디만 가능하고, Movable·트리거 바디는 단순 형상으로 만든다
+};
+
 // 바디의 형상 정의. StaticMesh는 하나, PhysicsAsset은 본마다 하나 갖는다.
 UCLASS()
 class UBodySetup : public UBodySetupCore
@@ -62,6 +74,9 @@ public:
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 
 	FKAggregateGeom AggGeom;
+
+	// 형상을 만드는 쪽(StaticMesh 등)이 정한다. 저장하지 않는다.
+	ECollisionTraceFlag CollisionTraceFlag = ECollisionTraceFlag::UseSimpleAndComplex;
 
 	// ConvexElems를 Cooking해 PxConvexMesh로 만든다. 이미 있으면 그대로 둔다. 하나라도 실패하면 false.
 	bool CreatePhysicsMeshes();
@@ -77,6 +92,10 @@ public:
 
 	// 처음 불릴 때 Cooking한다. 데이터가 없거나 실패하면 nullptr.
 	physx::PxTriangleMesh* GetOrCreateTriMesh();
+
+	// 형상마다 PxShape를 만들어 Actor에 붙인다. Scale3D는 형상 크기에 곱하고,
+	// 충돌 플래그·필터·머티리얼은 OwningInstance의 설정을 따른다. Actor가 씬에 들어가기 전에 부른다.
+	void AddShapesToRigidActor(FBodyInstance* OwningInstance, physx::PxRigidActor& Actor, const FVector& Scale3D);
 
 private:
 	// ConvexElems와 인덱스가 같다. 같은 BodySetup을 쓰는 모든 바디가 이 메시를 공유한다 (PhysX 참조 수).

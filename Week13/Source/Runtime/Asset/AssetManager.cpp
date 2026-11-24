@@ -846,6 +846,7 @@ URenderAsset* UAssetManager::LoadFbxMesh(const FString& Path, FString& OutError)
 	{
 		auto* Mesh = NewObject<USkeletalMesh>();
 		if (!Mesh->Build(std::move(Data.SkeletalMesh), OutError, Key)) return nullptr;
+		Mesh->LoadClothingAssets(FAssetUtils::ResolveAssetFilePath(Path));
 		Asset = Mesh;
 	}
 	if (!Asset) { OutError = "FBX binary: mesh resource creation failed: " + Path; return nullptr; }

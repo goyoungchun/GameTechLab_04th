@@ -53,6 +53,9 @@ UBodySetup* UStaticMesh::GetBodySetup()
 
 	BodySetup = NewObject<UBodySetup>(this);
 
+	// Static으로 배치한 메시는 삼각형 그대로 막는다 (Movable 바디는 아래 볼록 껍질을 쓴다).
+	BodySetup->CollisionTraceFlag = ECollisionTraceFlag::UseComplexAsSimple;
+
 	// Complex 충돌용 삼각형. Cooking은 Static 바디가 처음 요청할 때 한다.
 	BodySetup->TriMeshIndices = MeshData.Indices;
 	BodySetup->TriMeshVertices.Reserve(MeshData.Vertices.Num());

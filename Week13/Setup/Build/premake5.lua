@@ -114,6 +114,50 @@ function ConfigurePhysXLink()
 	filter {}
 end
 
+-- NvCloth 1.1.6은 저장소에 포함한 CPU 전용 동적 링크 SDK를 사용한다 (PhysX 4.1의 foundation 헤더 공유).
+-- Debug는 NvCloth debug 빌드(/MDd), Release·Shipping은 release 빌드(/MD)를 쓴다.
+local NvClothRoot = path.join(ProjectRoot, "Source/ThirdParty/NvCloth/1.1.6")
+local function NvClothConfigDir(Config)
+	return (Config == "Debug") and "debug" or "release"
+end
+local function NvClothLibName(Config)
+	return (Config == "Debug") and "NvClothDEBUG_x64.lib" or "NvCloth_x64.lib"
+end
+local function NvClothDllName(Config)
+	return (Config == "Debug") and "NvClothDEBUG_x64.dll" or "NvCloth_x64.dll"
+end
+if _ACTION then
+	if not os.isfile(path.join(NvClothRoot, "include/NvCloth/Factory.h")) then
+		error("Bundled NvCloth SDK file is missing: include/NvCloth/Factory.h")
+	end
+	for _, Config in ipairs({ "Debug", "Release" }) do
+		local SdkConfig = NvClothConfigDir(Config)
+		for _, File in ipairs({ NvClothDllName(Config), NvClothLibName(Config) }) do
+			if not os.isfile(path.join(NvClothRoot, "lib/x64", SdkConfig, File)) then
+				error("Bundled NvCloth SDK file is missing: lib/x64/" .. SdkConfig .. "/" .. File)
+			end
+		end
+	end
+end
+
+function ConfigureNvClothHeaders()
+	includedirs { path.join(NvClothRoot, "include") }
+	defines { "NV_CLOTH_ENABLE_CUDA=0", "NV_CLOTH_ENABLE_DX11=0" }
+end
+
+function ConfigureNvClothLink()
+	for _, Config in ipairs({ "Debug", "Release", "Shipping" }) do
+		local SdkLibDir = path.join(NvClothRoot, "lib/x64", NvClothConfigDir(Config))
+		local Lib = NvClothLibName(Config)
+		local Dll = NvClothDllName(Config)
+		filter ("configurations:" .. Config)
+			libdirs { SdkLibDir }
+			links { Lib }
+			postbuildcommands { '{COPYFILE} "' .. ProjectRelative(path.join(SdkLibDir, Dll)) .. '" "%{cfg.targetdir}"' }
+	end
+	filter {}
+end
+
 IncludeDir = {}
 IncludeDir["ImGui"] = ProjectRoot .. "/Source/ThirdParty/ImGui"
 IncludeDir["ImGuiNodeEditor"] = ProjectRoot .. "/Source/ThirdParty/ImGuiNodeEditor"
@@ -235,6 +279,7 @@ project "KurisuEngine"
 		"%{IncludeDir.sol2}",
 	}
 	ConfigurePhysXHeaders()
+	ConfigureNvClothHeaders()
 
 	-- Lua는 엔진에 포함한다. 인터프리터/컴파일러 실행 파일의 main은 제외한다.
 	files { "%{IncludeDir.lua}/*.h", "%{IncludeDir.lua}/*.c" }
@@ -290,7 +335,9 @@ project "KurisuEditor"
 
 	links { "KurisuEngine" }
 	ConfigurePhysXHeaders()
+	ConfigureNvClothHeaders()
 	ConfigurePhysXLink()
+	ConfigureNvClothLink()
 
 	-- ImGui와 NodeEditor는 에디터에서만 컴파일하고 엔진 PCH를 사용하지 않는다.
 	files
@@ -379,7 +426,9 @@ function ConfigureGameRuntime()
 
 	links { "KurisuEngine" }
 	ConfigurePhysXHeaders()
+	ConfigureNvClothHeaders()
 	ConfigurePhysXLink()
+	ConfigureNvClothLink()
 
 	-- 에디터와 같은 이유로 엔진 .obj를 직접 링크한다. 게임 코드는 라이트 액터 등을 직접 참조하지 않아 특히 빠지기 쉽다.
 	ConfigureSourceLink()

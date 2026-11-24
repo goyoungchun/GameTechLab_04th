@@ -36,9 +36,7 @@ struct FBodyInstance
 	UPROPERTY(EditAnywhere)
 	bool bSimulatePhysics = false;     // false면 Movable은 Kinematic이 된다.
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.1))
-	float MassInKgOverride = 0.0f;     // 0 이하면 형상 부피 × 밀도로 계산한다.
-	UPROPERTY(EditAnywhere, meta=(ClampMin=1, Delta=10))
-	float Density = 1000.0f;           // kg/m³. MassInKgOverride가 없을 때 쓴다.
+	float MassInKgOverride = 0.0f;     // 0 이하면 형상 부피 × 물리 머티리얼의 Density로 계산한다.
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
 	float LinearDamping = 0.01f;
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, Delta=0.01))
@@ -60,12 +58,15 @@ struct FBodyInstance
 	uint32 CollidesWith = AllCategoriesMask;   // word1. 기본은 모든 종류와 충돌
 	uint32 OwnerId = 0;                        // word2. 랙돌이 InitBody 전에 채운다
 
-	// 표면 물성 에셋(.pmat). 없으면 FPhysicsCore의 기본 머티리얼과 이 바디의 Density를 쓴다.
+	// 표면 물성 에셋(.pmat). 없으면 FPhysicsCore의 기본 머티리얼을 쓴다.
 	UPROPERTY(EditAnywhere)
 	UPhysicalMaterial* PhysMaterialOverride = nullptr;
 
 	FMaskFilter MakeMaskFilter() const;
-	float GetEffectiveDensity() const;
+	// 실제로 쓰는 물리 머티리얼 (오버라이드 또는 기본). 마찰·반발과 질량 계산용 밀도가 모두 여기서 온다.
+	UPhysicalMaterial* GetPhysicalMaterial() const;
+	// QueryOnly이고 컴포넌트가 겹침 이벤트를 켰으면 shape를 PhysX 트리거로 만든다. OwnerComponent가 채워진 뒤에 의미가 있다.
+	bool IsTriggerBody() const;
 
 	// 실행 중 상태
 	UPrimitiveComponent* OwnerComponent = nullptr;
