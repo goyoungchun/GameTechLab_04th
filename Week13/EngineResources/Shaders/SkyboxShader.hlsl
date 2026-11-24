@@ -75,7 +75,9 @@ float4 mainPS(PSInput Input) : SV_TARGET
         // cos 공간에서 반지름의 일부만큼 경계를 풀어 원판 가장자리 계단을 없앤다. 반지름 0일 때 0 나누기를 막는다.
         float EdgeWidth = max((1.0f - CosSunRadius) * 0.25f, 1e-6f);
         float Disk = smoothstep(CosSunRadius - EdgeWidth, CosSunRadius + EdgeWidth, CosAngle);
-        Color.rgb += SunRadiance * Disk;
+        // 원판 밖으로 퍼지는 빛. 지수가 클수록 좁게 모인다(400이면 약 5도 안쪽).
+        float Glow = pow(saturate(CosAngle), 400.0f) * 0.05f;
+        Color.rgb += SunRadiance * (Disk + Glow);
     }
     return float4(Color.rgb, 1.0f);
 }
