@@ -9,8 +9,24 @@
 #include "Clothing/ClothingAsset.h"
 #include "Clothing/ClothingSimulationNv.h"
 #include "Collision/Ray.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetUtils.h"
+#include "Physics/PhysicsAssetFile.h"
 #include "Asset/AssetUtils.h"
+#include "Asset/AssetManager.h"
+
 #include <cmath>
+#include <filesystem>
+
+namespace
+{
+	FString MakePhysicsAssetPath(const USkeletalMesh& Mesh)
+	{
+		std::filesystem::path Path(FAssetUtils::ResolveAssetFilePath(Mesh.GetPath()));
+		Path.replace_extension(".phys");
+		return Path.generic_string();
+	}
+}
 
 bool FSkeletalMeshEditor::InitializeResources()
 {
@@ -19,6 +35,7 @@ bool FSkeletalMeshEditor::InitializeResources()
 	if (!BoneGizmoTarget) return false;
 	BoneGizmoTarget->DetachFromParent();
 	ResetBonePoseHistory();
+	LoadPhysicsAsset();   // 이전에 Generate해 둔 .phys가 있으면 읽어 온다
 
 	if (Mesh)
 	{
@@ -122,6 +139,87 @@ void FSkeletalMeshEditor::OpenAnimationAsset(const FString& InAssetPath)
 	{
 		EditorManager.OpenEditor(InAssetPath);
 	}
+}
+
+void FSkeletalMeshEditor::GeneratePhysicsAsset()
+{
+	if (!Mesh)
+		return;
+
+	// 로드된 에셋이 있으면 그 객체를 그대로 덮어쓴다.
+	// 새로 NewObject하면 AssetManager 캐시에 옛 객체가 남아, 다른 곳에서 Load하면 예전 결과가 나온다.
+	if (!PhysicsAsset)
+		PhysicsAsset = NewObject<UPhysicsAsset>();
+
+	FPhysAssetCreateParams Params;   // 기본값으로 시작. 결과 보고 조정
+	FString Error;
+	if (!FPhysicsAssetUtils::CreateFromSkeletalMesh(*PhysicsAsset, *Mesh, Params, Error))
+	{
+		KRS_LOG(Warning, "[Physics] Generate failed: {}", Error);
+		return;
+	}
+
+	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys). 로드와 같은 경로 함수를 쓴다
+	const FString Path = MakePhysicsAssetPath(*Mesh);
+	if (!PhysicsAssetFile::Write(std::filesystem::path(Path), *PhysicsAsset, Error))
+		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
+	else
+		KRS_LOG(Info, "[Physics] Saved {}", Path);
+}
+
+void FSkeletalMeshEditor::LoadPhysicsAsset()
+{
+	PhysicsAsset = nullptr;
+	if (!Mesh)
+		return;
+
+	const FString Path = MakePhysicsAssetPath(*Mesh);
+	if (!std::filesystem::exists(Path))
+		return;   // 아직 Generate한 적 없음 → 조용히 넘어간다 (경고 X)
+
+	PhysicsAsset = UAssetManager::LoadPhysicsAsset(Path);
+}
+
+void FSkeletalMeshEditor::DrawPhysicsBodies(FLineBatcher& LineBatcher) const
+{
+	if (!bShowPhysicsBodies || !PhysicsAsset || !Mesh || !MeshComponent)
+		return;
+
+	const FVector4 Color(0.2f, 1.0f, 0.3f, 1.0f);
+	for (UBodySetup* Setup : PhysicsAsset->BodySetup)
+	{
+		const int32 Bone = Mesh->FindBoneIndex(Setup->BoneName.ToString());
+		if (Bone < 0)
+			continue;
+
+		// 본 로컬 → 컴포넌트 공간 (바인드 포즈). 프리뷰 컴포넌트가 원점에 있다고 가정
+		const FMatrix BoneToWorld = MeshComponent->GetBoneWorldMatrix(Bone);
+
+		for (const FKSphylElem& S : Setup->AggGeom.SphylElems)
+		{
+			const FVector Up = S.Rotation.RotateVector(FVector(0, 0, 1));
+			const FVector Side1 = S.Rotation.RotateVector(FVector(1, 0, 0));
+			const FVector Side2 = S.Rotation.RotateVector(FVector(0, 1, 0));
+			const FVector HalfAxis = Up * (S.Length * 0.5f);
+
+			auto ToWorld = [&](const FVector& Local) { return BoneToWorld.TransformPosition(Local); };
+
+			const FVector TopLocal = S.Center + HalfAxis;
+			const FVector BottomLocal = S.Center - HalfAxis;
+
+			// 반지름 길이의 벡터를 본 행렬로 변환한 뒤 길이를 잰다 → 행렬 스케일이 반영된 월드 반지름
+			const float WorldRadius = BoneToWorld.TransformVector(Side1 * S.Radius).Size();
+
+			LineBatcher.AddSphere(ToWorld(TopLocal), WorldRadius, Color, 12);
+			LineBatcher.AddSphere(ToWorld(BottomLocal), WorldRadius, Color, 12);
+
+			const FVector Offsets[4] = { Side1 * S.Radius, -Side1 * S.Radius, Side2 * S.Radius, -Side2 * S.Radius };
+			for (const FVector& O : Offsets)
+				LineBatcher.AddLine(ToWorld(TopLocal + O), ToWorld(BottomLocal + O), Color);
+		}
+	}
+
+
 }
 
 void FSkeletalMeshEditor::SyncBoneGizmo()
@@ -437,7 +535,8 @@ void FSkeletalMeshEditor::RedoPoseEdit()
 
 void FSkeletalMeshEditor::OnRenderLine(FLineBatcher& LineBatcher)
 {
-	FSkeletalPreviewEditor::OnRenderLine(LineBatcher);
+	FSkeletalPreviewEditor::OnRenderLine(LineBatcher);   // 본 시각화는 그대로
+	DrawPhysicsBodies(LineBatcher);
 
 	if (bClothPaintActive && bBrushHitValid)
 	{

@@ -15,8 +15,10 @@ struct FPhotoCameraState
 
 	static constexpr float MinFocusDistance = 0.2f;   // 꽃·소품을 가까이 찍을 수 있게 LC-A(0.8m)보다 줄였다
 	static constexpr float MaxFocusDistance = 100.0f; // 이보다 멀면 무한대로 본다
-	// 35mm 필름 한 컷은 36x24mm(3:2). 뷰파인더 프레임이 화면 높이의 이만큼을 차지한다
+	// 35mm 필름 한 컷은 36x24mm(3:2), 하프 프레임은 그 반인 18x24mm(3:4 세로). 뷰파인더 프레임이 화면 높이의 이만큼을 차지한다
+	static constexpr float FilmHeight = 24.0f;
 	static constexpr float FilmAspect = 1.5f;
+	static constexpr float HalfFrameAspect = 0.75f;
 	static constexpr float FrameHeightOnScreen = 0.8f;
 	static constexpr float MinFocalLength = 24.0f;
 	static constexpr float MaxFocalLength = 135.0f;
@@ -27,12 +29,13 @@ struct FPhotoCameraState
 	float ISO = 100.0f;
 	float FocusDistance = 5.0f;   // m
 	float FocalLength = 35.0f;    // mm
-	float SensorWidth = 36.0f;    // mm, 35mm 필름 가로
+	bool bHalfFrame = false;      // 켜면 한 컷을 반으로 나눈 세로 프레임으로 찍는다
 	bool bAutoFocus = true;       // 켜면 화면 중앙 물체에 초점을 맞춘다
 	bool bAutoExposure = false;   // 켜면 셔터·ISO 대신 노출계가 밝기를 맞춘다. 조리개는 DOF에만 남는다
 
 	float GetFstop() const { return ApertureStops[ApertureIndex]; }
 	float GetShutterSeconds() const { return ShutterStops[ShutterIndex]; }
+	float GetFilmAspect() const { return bHalfFrame ? HalfFrameAspect : FilmAspect; }
 };
 
 UCLASS()
@@ -56,6 +59,7 @@ public:
 	void AdjustFocus(float Notches);
 	void ToggleAutoFocus() { State.bAutoFocus = !State.bAutoFocus; }
 	void ToggleAutoExposure() { State.bAutoExposure = !State.bAutoExposure; }
+	void ToggleHalfFrame() { State.bHalfFrame = !State.bHalfFrame; }
 	void AdjustZoom(float DeltaMm);
 	// 셔터를 끊는다. 실제 저장은 FPhotoCapture가 다음 화면에서 한다
 	void TriggerShutter();

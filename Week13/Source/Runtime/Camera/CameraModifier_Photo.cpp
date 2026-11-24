@@ -90,10 +90,11 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 		State.FocusDistance = 1.f / FMath::Lerp(1.f / State.FocusDistance, InvTarget, T);
 	}
 
-	// 필름(36x24)은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
+	// 필름은 화면 전체가 아니라 뷰파인더 프레임에 맞아야 한다.
 	// 그래서 화면 전체에 대응하는 "가상 필름" 크기를 구해서 화각과 DOF에 같이 쓴다
+	// 하프 프레임도 필름 높이는 24mm 그대로라서, 세로 화각은 바뀌지 않고 좌우만 잘린다
 	const float Aspect = std::max(InOutPOV.AspectRatio, 0.01f);
-	const float ScreenFilmHeight = State.SensorWidth / FPhotoCameraState::FilmAspect / FPhotoCameraState::FrameHeightOnScreen;
+	const float ScreenFilmHeight = FPhotoCameraState::FilmHeight / FPhotoCameraState::FrameHeightOnScreen;
 	const float ScreenFilmWidth = ScreenFilmHeight * Aspect;
 	const float TanHalfVertical = ScreenFilmHeight / (2.0f * State.FocalLength);
 	const float PhotoFOV = FMath::RadiansToDegrees(2.0f * atanf(TanHalfVertical));
@@ -211,7 +212,7 @@ void UCameraModifier_Photo::AddFreeCameraInput(const FVector& Move, float YawDel
 void UCameraModifier_Photo::TriggerShutter()
 {
 	if (!IsPhotoModeActive()) return;
-	FPhotoCapture::Request(FPhotoCameraState::FrameHeightOnScreen, FPhotoCameraState::FilmAspect);
+	FPhotoCapture::Request(FPhotoCameraState::FrameHeightOnScreen, State.GetFilmAspect());
 	TimeSinceShutter = 0.0f;
 	++ShotCount;
 }
