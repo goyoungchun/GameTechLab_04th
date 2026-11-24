@@ -27,6 +27,13 @@ void FPostProcessSettings::OverrideBlend(const FPostProcessSettings& Src, float 
 	// 켜고 끄는 값은 섞을 수 없으니 절반을 넘으면 넘어간다
 	if (Src.bOverride_bApplyPhysicalCameraExposure && Weight >= 0.5f)
 		bApplyPhysicalCameraExposure = Src.bApplyPhysicalCameraExposure;
+	if (Src.bOverride_bAutoExposure && Weight >= 0.5f)
+		bAutoExposure = Src.bAutoExposure;
+	BlendFloat(Src.bOverride_AutoExposureMinEV100, AutoExposureMinEV100, Src.AutoExposureMinEV100);
+	BlendFloat(Src.bOverride_AutoExposureMaxEV100, AutoExposureMaxEV100, Src.AutoExposureMaxEV100);
+	BlendFloat(Src.bOverride_AutoExposureSpeedUp, AutoExposureSpeedUp, Src.AutoExposureSpeedUp);
+	BlendFloat(Src.bOverride_AutoExposureSpeedDown, AutoExposureSpeedDown, Src.AutoExposureSpeedDown);
+	BlendFloat(Src.bOverride_AutoExposureBias, AutoExposureBias, Src.AutoExposureBias);
 }
 
 namespace
@@ -66,6 +73,18 @@ float FPostProcessSettings::GetCameraEV100() const
 float FPostProcessSettings::GetPhysicalCameraExposureScale() const
 {
 	if (!bApplyPhysicalCameraExposure) return 1.0f;
+	return EV100ToExposureScale(GetCameraEV100());
+}
+
+float FPostProcessSettings::EV100ToExposureScale(float EV100)
+{
 	// EV가 1 커지면(한 스톱 조이면) 빛이 절반이 된다
-	return std::exp2(GetReferenceEV100() - GetCameraEV100());
+	return std::exp2(GetReferenceEV100() - EV100);
+}
+
+float FPostProcessSettings::GetExposureScale(float AdaptedEV100) const
+{
+	// Bias는 EV를 낮추는 쪽이 밝아지는 쪽이라 빼 준다
+	if (bAutoExposure) return EV100ToExposureScale(AdaptedEV100 - AutoExposureBias);
+	return GetPhysicalCameraExposureScale();
 }
