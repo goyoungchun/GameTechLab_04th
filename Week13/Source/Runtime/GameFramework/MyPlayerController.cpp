@@ -100,6 +100,8 @@ bool AMyPlayerController::HandlePhotoKey(int32 Key)
 	if (Key == static_cast<int32>(EKeyCode::F))     { Photo->ToggleAutoFocus(); return true; }
 	// G: 자동 노출(AE)과 수동 노출을 바꾼다
 	if (Key == static_cast<int32>(EKeyCode::G))     { Photo->ToggleAutoExposure(); return true; }
+	// H: 35mm 한 컷(3:2)과 하프 프레임(3:4 세로)을 바꾼다
+	if (Key == static_cast<int32>(EKeyCode::H))     { Photo->ToggleHalfFrame(); return true; }
 
 	if (Key == static_cast<int32>(EKeyCode::LButton))
 	{
