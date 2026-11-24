@@ -49,6 +49,13 @@ static const float3 GhostTints[16] =
     float3(0.5, 1.0, 0.8),  float3(1.0, 0.85, 0.6), float3(0.8, 0.6, 1.0),  float3(0.9, 1.0, 0.7)
 };
 
+float3 SampleChromatic(float2 UV, float2 Dir)
+{
+    return float3(BrightTexture.Sample(LinearClamp, UV - Dir * ChromaticDistortion).r,
+            BrightTexture.Sample(LinearClamp, UV).g,
+            BrightTexture.Sample(LinearClamp, UV + Dir * ChromaticDistortion).b);
+}
+
 float4 mainPS(VSOutput Input) : SV_Target
 {
     float2 Size;
@@ -58,6 +65,11 @@ float4 mainPS(VSOutput Input) : SV_Target
     // Dispersal 기본값 0.25에서 표의 배율이 그대로 쓰이도록 맞춘다. 클수록 고스트가 바깥으로 퍼지고 커진다
     const float Spread = max(GhostDispersal * 4.0f, 0.05f);
 
+    const float Aspect = Size.x / Size.y;
+    float2 ToCenter = (0.5f - UV) * float2(Aspect, 1);
+    float2 HaloDir = ToCenter / max(length(ToCenter), 1e-4);
+    float2 ChromaDir = HaloDir / float2(Aspect, 1); // UV 공간으로 되돌린 방향
+    
     float3 Result = 0;
     const int Count = min((int)GhostCount, 16);
     for (int i = 0; i < Count; ++i)
@@ -65,7 +77,7 @@ float4 mainPS(VSOutput Input) : SV_Target
         // P에 찍힐 고스트의 광원은 중앙에서 Scale배 떨어진 곳에 있다 (gather)
         const float Scale = GhostScales[i] / Spread;
         float2 SampleUV = 0.5f + (UV - 0.5f) * Scale;
-        float3 SampleColor = BrightTexture.Sample(LinearClamp, SampleUV).rgb;
+        float3 SampleColor = SampleChromatic(SampleUV, ChromaDir);
         float EdgeWeight = pow(1 - saturate(length(0.5 - SampleUV) / 0.7071), 2);
         // 화면 밖을 읽으면 Clamp가 테두리 픽셀을 늘려 돌려줘서 고스트에 꼬리가 생기므로, 테두리 근처에서 0으로 줄인다
         float2 Inside = saturate(min(SampleUV, 1.0f - SampleUV) * 20.0f);
@@ -75,5 +87,16 @@ float4 mainPS(VSOutput Input) : SV_Target
         Result += SampleColor * GhostTints[i] * EdgeWeight * Energy;
     }
 
+    // Halo — 중앙 방향으로 HaloWidth만큼 옮긴 곳을 읽어 링 가중치를 곱해 Result에 더한다
+
+    float2 HaloUV = UV + HaloDir * HaloWidth / float2(Aspect, 1); // UV로 되돌린다
+
+    float3 HaloColor = SampleChromatic(HaloUV, ChromaDir);
+    float HaloW = pow(1 - saturate(length(0.5f - HaloUV) / 0.7071), 5);
+    float2 HaloInside = saturate(min(HaloUV, 1.0f - HaloUV) * 20.0f);
+    HaloW *= HaloInside.x * HaloInside.y; // 화면 밖 Clamp 꼬리 제거
+
+    Result += HaloColor * HaloW;
+    
     return float4(Result, 1);
 }
