@@ -112,6 +112,9 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.CameraISO = State.ISO;
 	PP.bOverride_bApplyPhysicalCameraExposure = true;
 	PP.bApplyPhysicalCameraExposure = true;
+	// 손으로 조리개·셔터를 고르는 카메라라 자동 노출은 끈다. 그래야 뷰파인더 노출계 바늘이 내 설정과의 차이를 보여 준다
+	PP.bOverride_bAutoExposure = true;
+	PP.bAutoExposure = false;
 	// 카메라가 후처리를 꺼 둔 상태(가중치 0)여도 사진 모드 값은 들어가야 한다
 	InOutPOV.PostProcessBlendWeight = std::max(InOutPOV.PostProcessBlendWeight, Alpha);
 	return false;
