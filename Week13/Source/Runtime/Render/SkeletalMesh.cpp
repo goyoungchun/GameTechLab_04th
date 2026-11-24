@@ -3,6 +3,11 @@
 #include "Render/RenderCommand.h"
 #include "Asset/AssetManager.h"
 
+#include <filesystem>
+#include "Asset/AssetUtils.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetUtils.h"
+
 namespace
 {
 	TArray<FBox> BuildBoneBounds(const FSkeletalMeshLODRenderData& LOD, int32 NumBones)
@@ -156,4 +161,43 @@ TSharedPtr<const FMeshRenderState> USkeletalMesh::GetRenderState(const TArray<UM
 	}
 	WeakState = State;
 	return State;
+}
+
+UPhysicsAsset* USkeletalMesh::GetPhysicsAsset() const
+{
+	if (bPhysicsAssetResolved)
+		return PhysicsAsset;
+	bPhysicsAssetResolved = true;
+
+	// 1) 저장된 .phys가 있으면 읽는다 (UAssetManager가 캐시한다)
+	const FString PhysPath = GetDefaultPhysicsAssetPath();
+	const FString FilePath = FAssetUtils::ResolveAssetFilePath(PhysPath);
+	if (!GetPath().empty() && std::filesystem::exists(FilePath.empty() ? PhysPath : FilePath))
+	{
+		PhysicsAsset = UAssetManager::LoadPhysicsAsset(PhysPath);
+		if (PhysicsAsset)
+			return PhysicsAsset;
+	}
+
+	// 2) 없으면 자동 생성. 랙돌을 바로 시험할 수 있게 한다.
+	UPhysicsAsset* Generated = NewObject<UPhysicsAsset>();
+	FString Error;
+	if (FPhysicsAssetUtils::CreateFromSkeletalMesh(*Generated, *this, FPhysAssetCreateParams{}, Error))
+	{
+		Generated->SetAssetPath(PhysPath);   // 에디터에서 저장하면 이 경로로 간다
+		PhysicsAsset = Generated;
+	}
+	else
+	{
+		KRS_LOG(Warning, "[Physics] No PhysicsAsset for {} ({})", GetPath(), Error);
+		delete Generated;
+	}
+	return PhysicsAsset;
+}
+
+FString USkeletalMesh::GetDefaultPhysicsAssetPath() const
+{
+	std::filesystem::path P(GetPath());
+	P.replace_extension(".phys");
+	return P.generic_string();
 }
