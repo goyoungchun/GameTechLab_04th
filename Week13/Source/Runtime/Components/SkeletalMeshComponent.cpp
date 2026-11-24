@@ -102,7 +102,13 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         ReloadAnimBlueprint();
     }
 
-	if (AnimInstance && GetSkeletalMesh())
+	const bool bRagdoll = IsRagdollSimulating();
+
+	if (bRagdoll)
+	{
+		ApplyPhysicsToBonePose();
+	}
+	else if (AnimInstance && GetSkeletalMesh())
 	{
         bUpdatingAnimation = true;
 		if (auto* Instance = Cast<UAnimSingleNodeInstance>(AnimInstance))
@@ -128,7 +134,10 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         bUpdatingAnimation = false;
 	}
 	Super::TickComponent(DeltaTime);
-	UpdateKinematicBonesToAnim();
+	if (!bRagdoll)
+	{
+		UpdateKinematicBonesToAnim();
+	}
 	UpdateClothingSimulation(DeltaTime);
 }
 
@@ -275,6 +284,11 @@ bool USkeletalMeshComponent::CanBodiesCollide(const FBodyInstance& A, const FBod
 		return false;
 
 	return PhysAsset->IsCollisionEnabled(PhysAsset->BodySetup[IA]->BoneName, PhysAsset->BodySetup[IB]->BoneName);
+}
+
+bool USkeletalMeshComponent::IsRagdollSimulating() const
+{
+	return BodyInstance.bSimulatePhysics && !Bodies.IsEmpty();
 }
 
 void USkeletalMeshComponent::SerializeSingleAnimation(FStructuredArchive::FRecord& Record)
@@ -756,6 +770,58 @@ void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
 		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(Body->InstanceBodyIndex));
 		Body->SetWorldTransform(BoneWorld, bTeleport);
 	}
+}
+
+void USkeletalMeshComponent::ApplyPhysicsToBonePose()
+{
+	const TArray<FBoneInfo>& Bones = GetBones();
+	if (Bodies.IsEmpty() || Bones.IsEmpty())
+		return;
+	if (BoneSpaceTransforms.Num() != Bones.Num())
+		OnSkeletalMeshChanged();
+
+	// 본 인덱스 → 시뮬레이트 중인 바디
+	TArray<FBodyInstance*> BoneBodies;
+	BoneBodies.Init(nullptr, Bones.Num());
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (Body && Body->InstanceBoneIndex >= 0 && Body->InstanceBoneIndex < Bones.Num() && Body->IsSimulatingPhysics())
+			BoneBodies[Body->InstanceBoneIndex] = Body;
+	}
+
+	const FMatrix InvComponentWorld = GetWorldMatrix().Inverse();
+
+	// 1. 컴포넌트 공간 행렬을 다시 쌓는다. 부모가 먼저 오므로 앞에서부터 돌면 된다
+	TArray<FMatrix> NewCS;
+	NewCS.SetNum(Bones.Num());
+	for (int32 i = 0; i < Bones.Num(); ++i)
+	{
+		const int32 Parent = Bones[i].ParentIndex;
+		if (FBodyInstance* Body = BoneBodies[i])
+		{
+			// 바디가 있는 본: 물리 결과(월드) → 컴포넌트 공간. Scale3D가 붙어 있어 스케일도 유지된다
+			NewCS[i] = Body->GetWorldTransform().GetLocalMatrix() * InvComponentWorld;
+		}
+		else
+		{
+			// 바디가 없는 본: 기존 로컬 포즈 그대로 부모를 따라간다
+			const FMatrix Local = BoneSpaceTransforms[i].GetLocalMatrix();
+			NewCS[i] = Parent < 0 ? Local : Local * NewCS[Parent];
+		}
+	}
+
+	// 2. 바디가 있는 본만 부모 기준 로컬로 되돌린다 (없는 본은 로컬이 바뀌지 않았다)
+	for (int32 i = 0; i < Bones.Num(); ++i)
+	{
+		if (!BoneBodies[i])
+			continue;
+		const int32 Parent = Bones[i].ParentIndex;
+		const FMatrix Local = Parent < 0 ? NewCS[i] : NewCS[i] * NewCS[Parent].Inverse();
+		BoneSpaceTransforms[i] = MatrixToTransform(Local);
+	}
+
+	// 3. 다음 UpdateBoneTransformsNow에서 RefreshBoneTransforms가 같은 행렬을 다시 만들고 렌더로 보낸다
+	MarkBoneTransformsDirty();
 }
 
 const FString& USkeletalMeshComponent::GetAnimBlueprintPath() const
