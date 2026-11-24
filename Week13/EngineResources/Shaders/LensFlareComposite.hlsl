@@ -40,6 +40,8 @@ float4 mainPS(VSOutput Input) : SV_Target
     // 타깃은 풀해상도라 고스트 텍스처 크기의 2배다
     float2 UV = Input.Position.xy / (Size * 2.0f);
 
-    // TODO: 고스트를 읽어 Intensity를 곱해 돌려준다 (블렌드가 더하기를 해 준다)
-    return float4(0, 0, 0, 0);
+    // 고스트를 읽어 Intensity를 곱해 돌려준다 (블렌드가 더하기를 해 준다)
+    float4 Color = GhostTexture.Sample(LinearClamp, UV);
+    Color.rgb *= Intensity;
+    return float4(Color.rgb, 0);
 }

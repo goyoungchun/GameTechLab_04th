@@ -39,6 +39,18 @@ float4 mainPS(VSOutput Input) : SV_Target
     BrightTexture.GetDimensions(Size.x, Size.y);
     float2 UV = Input.Position.xy / Size;
 
-    // TODO: 뒤집은 UV에서 중앙 방향으로 GhostDispersal 간격씩 GhostCount번 샘플링해 더한다
-    return float4(0, 0, 0, 1);
+    // 뒤집은 UV에서 중앙 방향으로 GhostDispersal 간격씩 GhostCount번 샘플링해 더한다
+    float2 FlipUV = 1 - UV;
+    float2 GhostVector = (0.5f - FlipUV) * GhostDispersal;
+    
+    float3 Result = 0;
+    for (int i = 0; i < (int)GhostCount; ++i)
+    {
+        float2 SampleUV = FlipUV + GhostVector * i;
+        float3 SampleColor = BrightTexture.Sample(LinearClamp, SampleUV).rgb;
+        float EdgeWeight = pow(1 - saturate(length(0.5 - SampleUV) / 0.7071), 2);
+        Result += SampleColor * EdgeWeight;
+    }
+    
+    return float4(Result, 1);
 }
