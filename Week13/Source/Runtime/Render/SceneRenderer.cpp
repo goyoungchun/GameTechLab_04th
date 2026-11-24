@@ -939,7 +939,6 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		BrightPass.ColorAttachments = { { Bright, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
 		if (!Graph.AddRasterPass(std::move(BrightPass), [this, Renderer, &Graph, LightingHDR]
 			{
-				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
 					Flare->RenderBrightPass(View, Graph.Resolve(LightingHDR));
 			})) return false;
@@ -950,7 +949,6 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
 		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Bright]
 			{
-				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
 					Flare->RenderGhosts(View, Graph.Resolve(Bright));
 			})) return false;
@@ -960,7 +958,6 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		Composite.ReadTextures = { Ghost };
 		if (!Graph.AddRasterPass(std::move(Composite), [this, Renderer, &Graph, Ghost]
 			{
-				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
 					Flare->RenderComposite(View, Graph.Resolve(Ghost));
 			})) return false;
