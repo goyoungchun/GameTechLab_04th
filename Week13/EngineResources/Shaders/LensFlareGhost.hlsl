@@ -8,7 +8,7 @@ cbuffer LensFlareConstants : register(b0)
     float HaloWidth;
     float ChromaticDistortion;
     float DirtIntensity;
-    float Padding0;
+    float HaloIntensity;
 };
 
 Texture2D BrightTexture : register(t0);
@@ -97,7 +97,7 @@ float4 mainPS(VSOutput Input) : SV_Target
     float2 HaloInside = saturate(min(HaloUV, 1.0f - HaloUV) * 20.0f);
     HaloW *= HaloInside.x * HaloInside.y; // 화면 밖 Clamp 꼬리 제거
 
-    Result += HaloColor * HaloW;
+    Result += HaloColor * HaloW * HaloIntensity;
     
     return float4(Result, 1);
 }

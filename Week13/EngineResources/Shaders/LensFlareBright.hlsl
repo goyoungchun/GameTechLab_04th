@@ -8,7 +8,7 @@ cbuffer LensFlareConstants : register(b0)
     float HaloWidth;
     float ChromaticDistortion;
     float DirtIntensity;
-    float Padding0;
+    float HaloIntensity;
 };
 
 Texture2D SceneColorTexture : register(t0);

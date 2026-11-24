@@ -70,6 +70,11 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float LensFlareHaloWidth = 0.45f;
 	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareHaloIntensity = false;
+	// 할로 세기. 링은 광원 빛을 넓은 둘레에 그대로 복사하므로 고스트보다 낮게 둔다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=2, Delta=0.01))
+	float LensFlareHaloIntensity = 0.07f;
+	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareChromaticDistortion = false;
 	// R/G/B를 읽는 위치를 벌리는 정도(UV). 0이면 색수차가 없다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=0.1, Delta=0.001))

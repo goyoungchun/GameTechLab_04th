@@ -15,7 +15,7 @@ struct alignas(16) FLensFlareData
 	float HaloWidth;
 	float ChromaticDistortion;
 	float DirtIntensity;
-	float Padding0;
+	float HaloIntensity;
 };
 static_assert(sizeof(FLensFlareData) == 32);
 

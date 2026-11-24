@@ -45,6 +45,7 @@ void FLensFlareRenderer::UploadConstants(const FSceneView& View)
 	Data.GhostCount = static_cast<float>(PP.LensFlareGhostCount);
 	Data.GhostDispersal = PP.LensFlareGhostDispersal;
 	Data.HaloWidth = PP.LensFlareHaloWidth;
+	Data.HaloIntensity = PP.LensFlareHaloIntensity;
 	Data.ChromaticDistortion = PP.LensFlareChromaticDistortion;
 	Data.DirtIntensity = PP.LensFlareDirtIntensity;
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Data, sizeof(Data));
