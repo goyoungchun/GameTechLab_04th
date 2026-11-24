@@ -22,6 +22,11 @@ void FPostProcessSettings::OverrideBlend(const FPostProcessSettings& Src, float 
 	// 날 수는 정수라 섞지 않고 절반을 넘으면 넘어간다
 	if (Src.bOverride_DepthOfFieldBladeCount && Weight >= 0.5f)
 		DepthOfFieldBladeCount = Src.DepthOfFieldBladeCount;
+	BlendFloat(Src.bOverride_LensFlareIntensity, LensFlareIntensity, Src.LensFlareIntensity);
+	BlendFloat(Src.bOverride_LensFlareThreshold, LensFlareThreshold, Src.LensFlareThreshold);
+	if (Src.bOverride_LensFlareGhostCount && Weight >= 0.5f)
+		LensFlareGhostCount = Src.LensFlareGhostCount;
+	BlendFloat(Src.bOverride_LensFlareGhostDispersal, LensFlareGhostDispersal, Src.LensFlareGhostDispersal);
 	BlendFloat(Src.bOverride_CameraShutterSpeed, CameraShutterSpeed, Src.CameraShutterSpeed);
 	BlendFloat(Src.bOverride_CameraISO, CameraISO, Src.CameraISO);
 	// 켜고 끄는 값은 섞을 수 없으니 절반을 넘으면 넘어간다

@@ -358,6 +358,20 @@ void FViewportsPanel::DrawProjectionMenu(FEditorViewportClient& Client)
         ImGui::SliderInt("Blade Count", &PP.DepthOfFieldBladeCount, 4, 16, "%d", ImGuiSliderFlags_AlwaysClamp);
         ImGui::EndDisabled();
         ImGui::PopID();
+
+        SectionHeader("Lens Flares");
+        OverrideSlider("Intensity", PP.bOverride_LensFlareIntensity, PP.LensFlareIntensity, 0.0f, 16.0f, "%.2f", 0);
+        OverrideSlider("Threshold", PP.bOverride_LensFlareThreshold, PP.LensFlareThreshold, 0.0f, 64.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        OverrideSlider("Ghost Dispersal", PP.bOverride_LensFlareGhostDispersal, PP.LensFlareGhostDispersal, 0.0f, 1.0f, "%.2f", 0);
+
+        ImGui::PushID("GhostCount");
+        ImGui::Checkbox("##Override", &PP.bOverride_LensFlareGhostCount);
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!PP.bOverride_LensFlareGhostCount);
+        ImGui::SetNextItemWidth(EditorStyle::Scale(190.0f));
+        ImGui::SliderInt("Ghost Count", &PP.LensFlareGhostCount, 1, 16, "%d", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        ImGui::PopID();
     }
 
     SectionHeader("Transform");

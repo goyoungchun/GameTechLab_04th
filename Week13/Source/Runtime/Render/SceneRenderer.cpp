@@ -15,6 +15,7 @@
 #include "Render/PostProcess/CameraOverlayRenderer.h"
 #include "Render/PostProcess/DepthOfFieldRenderer.h"
 #include "Render/PostProcess/ExposureMeterRenderer.h"
+#include "Render/PostProcess/LensFlareRenderer.h"
 #include "Render/PostProcess/FXAARenderer.h"
 #include "Render/PostProcess/ToneMapData.h"
 #include "Render/DecalData.h"
@@ -905,6 +906,49 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 				SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 					DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFarFiltered), Graph.Resolve(HalfNearFiltered));
+			})) return false;
+	}
+
+	// 노출을 곱하기 전 HDR 값이어야 Threshold가 "정말 밝은 것"만 고르므로 톤맵 앞에 둔다
+	if (LightingHDR && Options.ShowFlags.LensFlares && View.FinalPostProcessSettings.LensFlareIntensity > 0.0f &&
+		!Options.ShowFlags.VisualizeDepthOfField && !Options.ShowFlags.VisualizeSceneDepth)
+	{
+		const uint32 HalfWidth = std::max(ViewWidth / 2, 1u);
+		const uint32 HalfHeight = std::max(ViewHeight / 2, 1u);
+		const FRenderGraphTextureRef Bright = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBright");
+		const FRenderGraphTextureRef Ghost = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareGhost");
+		if (!Bright || !Ghost) return false;
+
+		FRenderGraphRasterPassDesc BrightPass{};
+		BrightPass.Name = "LensFlareBright";
+		BrightPass.ReadTextures = { LightingHDR };
+		BrightPass.ColorAttachments = { { Bright, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BrightPass), [this, Renderer, &Graph, LightingHDR]
+			{
+				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBrightPass(View, Graph.Resolve(LightingHDR));
+			})) return false;
+
+		FRenderGraphRasterPassDesc GhostPass{};
+		GhostPass.Name = "LensFlareGhost";
+		GhostPass.ReadTextures = { Bright };
+		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Bright]
+			{
+				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderGhosts(View, Graph.Resolve(Bright));
+			})) return false;
+
+		// Bright 패스가 LightingHDR을 다 읽은 뒤라 복사본 없이 그대로 위에 더해도 된다
+		FRenderGraphRasterPassDesc Composite = MakeViewportPass("LensFlareComposite", LightingHDR);
+		Composite.ReadTextures = { Ghost };
+		if (!Graph.AddRasterPass(std::move(Composite), [this, Renderer, &Graph, Ghost]
+			{
+				SCOPED_GPU_STAT(GPUStats::STAT_GPU_LensFlare);
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderComposite(View, Graph.Resolve(Ghost));
 			})) return false;
 	}
 

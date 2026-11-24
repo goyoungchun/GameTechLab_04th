@@ -25,6 +25,7 @@ SHOWFLAG(Collision,       false, true,  Physics,   "Bounds",       "Collision")
 SHOWFLAG(Vignette,        true,  true,  PostProcess, "Lighting",   "Vignette")
 SHOWFLAG(CameraOverlay,   true,  true,  PostProcess, "Camera",     "Camera Fade / Letterbox")
 SHOWFLAG(DepthOfField,    true,  true,  PostProcess, "Camera",     "Depth of Field")
+SHOWFLAG(LensFlares,      true,  true,  PostProcess, "Lighting",   "Lens Flares")
 
 // ---------- Developer ----------
 SHOWFLAG(CascadeBounds,   false, false, Developer, "Cascade",      "Cascade Bounds")

@@ -8,4 +8,5 @@ namespace GPUStats
     DECLARE_GPU_STAT("GPU: Forward Opaque", STAT_GPU_ForwardOpaque);
     DECLARE_GPU_STAT("GPU: Decal", STAT_GPU_Decal);
     DECLARE_GPU_STAT("GPU: Depth Of Field", STAT_GPU_DepthOfField);
+    DECLARE_GPU_STAT("GPU: Lens Flare", STAT_GPU_LensFlare);
 }
