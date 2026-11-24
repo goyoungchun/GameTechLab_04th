@@ -20,7 +20,7 @@
     },
     "Textures": [
         "C:/Dev/week13/Week13_Team5/DefaultProject/Content/FBX/city/Textures/fasades_fasades2_BaseColor.jpeg",
-        ""
+        "FBX/city/textures/fasades_fasades2_Normal.png"
     ],
     "TwoSided": false,
     "UVScrollSpeed": [

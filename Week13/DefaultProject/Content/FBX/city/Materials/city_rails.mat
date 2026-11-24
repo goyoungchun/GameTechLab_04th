@@ -20,7 +20,7 @@
     },
     "Textures": [
         "C:/Dev/week13/Week13_Team5/DefaultProject/Content/FBX/city/Textures/Rails0014_1_350.jpeg",
-        ""
+        "FBX/city/textures/Rails0014_1_350_normal.png"
     ],
     "TwoSided": false,
     "UVScrollSpeed": [
