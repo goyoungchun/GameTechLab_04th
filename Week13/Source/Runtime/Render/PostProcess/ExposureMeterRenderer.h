@@ -28,6 +28,12 @@ public:
 	// 눈 적응: 측정값이 가리키는 EV100 쪽으로 현재 EV100을 시간에 따라 조금씩 옮기고 돌려준다.
 	// 한 프레임에 여러 뷰가 불러도 한 번만 움직인다
 	static float UpdateAdaptedEV100(const struct FPostProcessSettings& Settings);
+	// 가장 최근 적응 EV100. 게임 쪽(사진 모드 AE 다이얼)이 읽는다. 아직 적응한 적이 없으면 false
+	static bool GetAdaptedEV100(float& OutEV100)
+	{
+		OutEV100 = AdaptedEV100;
+		return bHasAdapted;
+	}
 
 private:
 	void ReadBack();

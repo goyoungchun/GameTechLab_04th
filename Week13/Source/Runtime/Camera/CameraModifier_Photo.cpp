@@ -5,8 +5,10 @@
 #include "Engine/World.h"
 #include "Collision/Ray.h"
 #include "Collision/HitResult.h"
+#include "Render/PostProcess/ExposureMeterRenderer.h"
 
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 
 namespace
@@ -97,8 +99,17 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	const float PhotoFOV = FMath::RadiansToDegrees(2.0f * atanf(TanHalfVertical));
 	InOutPOV.FOV = FMath::Lerp(InOutPOV.FOV, PhotoFOV, Alpha);
 
-	// DOF 렌더러는 이 값만 읽으므로, Phase 4·5에서 DOF가 좋아지면 사진 모드도 같이 좋아진다
 	FPostProcessSettings& PP = InOutPOV.PostProcessSettings;
+
+	// 조리개 우선 AE: 밝기는 렌더러의 적응 EV가 부드럽게 정하고, 셔터 다이얼은 그 EV에 가장 가까운 눈금을 보여 준다
+	float AdaptedEV100 = 0.0f;
+	if (IsPhotoModeActive() && State.bAutoExposure && FExposureMeterRenderer::GetAdaptedEV100(AdaptedEV100))
+	{
+		// Bias는 수동 노출에도 똑같이 얹히므로 빼지 않는다. 카메라 EV = 적응 EV면 AE를 꺼도 밝기가 같다
+		State.ShutterIndex = FindShutterIndexForEV100(AdaptedEV100);
+	}
+
+	// DOF 렌더러는 이 값만 읽으므로, Phase 4·5에서 DOF가 좋아지면 사진 모드도 같이 좋아진다
 	PP.bOverride_DepthOfFieldFstop = true;
 	PP.DepthOfFieldFstop = State.GetFstop();
 	PP.bOverride_DepthOfFieldFocalDistance = true;
@@ -154,7 +165,30 @@ void UCameraModifier_Photo::StepAperture(int32 Delta)
 
 void UCameraModifier_Photo::StepShutter(int32 Delta)
 {
+	// AE 중에는 카메라가 셔터를 고르므로 손으로 돌려도 다음 프레임에 덮어쓰인다
+	if (State.bAutoExposure) return;
 	State.ShutterIndex = std::clamp(State.ShutterIndex + Delta, 0, FPhotoCameraState::NumShutterStops - 1);
+}
+
+int32 UCameraModifier_Photo::FindShutterIndexForEV100(float EV100) const
+{
+	// EV100 = log2(N^2 * 셔터분모 * 100 / ISO)를 셔터분모에 대해 푼다
+	const float N = State.GetFstop();
+	const float Log2Denom = EV100 - std::log2(N * N * 100.0f / State.ISO);
+
+	// 눈금은 2배씩 떨어져 있으니 로그 공간에서 가장 가까운 것을 고른다. 범위를 넘으면 끝 눈금에 멈춘다
+	int32 Best = 0;
+	float BestDistance = FLT_MAX;
+	for (int32 i = 0; i < FPhotoCameraState::NumShutterStops; ++i)
+	{
+		const float Distance = std::abs(std::log2(1.0f / FPhotoCameraState::ShutterStops[i]) - Log2Denom);
+		if (Distance < BestDistance)
+		{
+			BestDistance = Distance;
+			Best = i;
+		}
+	}
+	return Best;
 }
 
 void UCameraModifier_Photo::AdjustFocus(float Notches)
