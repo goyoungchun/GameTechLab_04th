@@ -4,6 +4,7 @@
 #include "Editor/Gizmo/Gizmo.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 
+class UPhysicsAsset;
 
 class FSkeletalMeshEditor : public FSkeletalPreviewEditor
 {
@@ -40,6 +41,12 @@ public:
 	// 에셋 브라우저에서 선택한 애니메이션 시퀀스 에디터를 연다.
 	void OpenAnimationAsset(const FString& InAssetPath);
 
+	// Physics Asset 생성
+	void GeneratePhysicsAsset();
+	UPhysicsAsset* GetPhysicsAsset() const { return PhysicsAsset; }
+
+	bool bShowPhysicsBodies = true;
+
 protected:
 	// 이 에디터에 연결된 탭을 생성합니다.
 	TUniquePtr<IEditorTab> CreateTab() override;
@@ -50,6 +57,8 @@ protected:
 	bool IsViewportInteractionBusy() const override { return BoneGizmo.IsUsing(); }
 	void OnBoneSelected() override { BoneGizmo.EndDrag(); SyncBoneGizmo(); }
 	void CancelViewportInteraction() override { BoneGizmo.EndDrag(); }
+
+	void OnRenderLine(FLineBatcher& LineBatcher) override;
 
 private:
 	void SyncBoneGizmo();
@@ -71,4 +80,6 @@ private:
 	TArray<FTransform> CommittedBonePose;
 	bool bPoseUndoPending = false;
 	static constexpr int32 MaxUndoSteps = 100;
+
+	UPhysicsAsset* PhysicsAsset = nullptr;
 };

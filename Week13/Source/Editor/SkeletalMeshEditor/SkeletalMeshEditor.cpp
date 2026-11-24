@@ -4,6 +4,12 @@
 #include "SkeletalMeshEditorTab.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Render/SkeletalMesh.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetUtils.h"
+#include "Physics/PhysicsAssetFile.h"
+#include "Asset/AssetUtils.h"
+
+#include <filesystem>
 
 bool FSkeletalMeshEditor::InitializeResources()
 {
@@ -60,6 +66,75 @@ void FSkeletalMeshEditor::OpenAnimationAsset(const FString& InAssetPath)
 	{
 		EditorManager.OpenEditor(InAssetPath);
 	}
+}
+
+void FSkeletalMeshEditor::GeneratePhysicsAsset()
+{
+	if (!Mesh)
+		return;
+
+	if (!PhysicsAsset)
+		PhysicsAsset = NewObject<UPhysicsAsset>();
+
+	FPhysAssetCreateParams Params;   // 기본값으로 시작. 결과 보고 조정
+	FString Error;
+	if (!FPhysicsAssetUtils::CreateFromSkeletalMesh(*PhysicsAsset, *Mesh, Params, Error))
+	{
+		KRS_LOG(Warning, "[Physics] Generate failed: {}", Error);
+		return;
+	}
+
+	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys)
+	std::filesystem::path Path(FAssetUtils::ResolveAssetFilePath(Mesh->GetPath()));
+	Path.replace_extension(".phys");
+	if (!PhysicsAssetFile::Write(Path, *PhysicsAsset, Error))
+		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
+	else
+		KRS_LOG(Info, "[Physics] Saved {}", Path.generic_string());
+}
+
+void FSkeletalMeshEditor::OnRenderLine(FLineBatcher& LineBatcher)
+{
+	FSkeletalPreviewEditor::OnRenderLine(LineBatcher);   // 본 시각화는 그대로
+
+	if (!bShowPhysicsBodies || !PhysicsAsset || !Mesh || !MeshComponent)
+		return;
+
+	const FVector4 Color(0.2f, 1.0f, 0.3f, 1.0f);
+	for (UBodySetup* Setup : PhysicsAsset->BodySetup)
+	{
+		const int32 Bone = Mesh->FindBoneIndex(Setup->BoneName.ToString());
+		if (Bone < 0)
+			continue;
+
+		// 본 로컬 → 컴포넌트 공간 (바인드 포즈). 프리뷰 컴포넌트가 원점에 있다고 가정
+		const FMatrix BoneToWorld = MeshComponent->GetBoneWorldMatrix(Bone);
+
+		for (const FKSphylElem& S : Setup->AggGeom.SphylElems)
+		{
+			const FVector Up = S.Rotation.RotateVector(FVector(0, 0, 1));
+			const FVector Side1 = S.Rotation.RotateVector(FVector(1, 0, 0));
+			const FVector Side2 = S.Rotation.RotateVector(FVector(0, 1, 0));
+			const FVector HalfAxis = Up * (S.Length * 0.5f);
+
+			auto ToWorld = [&](const FVector& Local) { return BoneToWorld.TransformPosition(Local); };
+
+			const FVector TopLocal = S.Center + HalfAxis;
+			const FVector BottomLocal = S.Center - HalfAxis;
+
+			// 반지름 길이의 벡터를 본 행렬로 변환한 뒤 길이를 잰다 → 행렬 스케일이 반영된 월드 반지름
+			const float WorldRadius = BoneToWorld.TransformVector(Side1 * S.Radius).Size();
+
+			LineBatcher.AddSphere(ToWorld(TopLocal), WorldRadius, Color, 12);
+			LineBatcher.AddSphere(ToWorld(BottomLocal), WorldRadius, Color, 12);
+
+			const FVector Offsets[4] = { Side1 * S.Radius, -Side1 * S.Radius, Side2 * S.Radius, -Side2 * S.Radius };
+			for (const FVector& O : Offsets)
+				LineBatcher.AddLine(ToWorld(TopLocal + O), ToWorld(BottomLocal + O), Color);
+		}
+	}
+
+
 }
 
 void FSkeletalMeshEditor::SyncBoneGizmo()
