@@ -18,7 +18,7 @@ physx::PxFilterFlags KurisuSimulationFilterShader(
 	physx::PxFilterObjectAttributes Attributes1, physx::PxFilterData Filter1,
 	physx::PxPairFlags& PairFlags, const void* /*ConstantBlock*/, physx::PxU32 /*ConstantBlockSize*/)
 {
-	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다. (순서를 앞으로 올렸다)
+	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다.
 	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
 		return physx::PxFilterFlag::eSUPPRESS;
 
@@ -29,10 +29,6 @@ physx::PxFilterFlags KurisuSimulationFilterShader(
 		PairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;   // 같은 랙돌끼리는 접촉 알림(onContact)이 필요 없다
 		return physx::PxFilterFlag::eCALLBACK;
 	}
-
-	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다. 트리거도 같은 규칙으로 거른다.
-	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
-		return physx::PxFilterFlag::eSUPPRESS;
 
 	// 트리거는 접촉 해석 없이 들어옴/나감만 알린다.
 	// 트리거 쌍은 Kinematic·Static 상대도 이 셰이더까지 온다. 트리거끼리는 PhysX가 먼저 버린다.
