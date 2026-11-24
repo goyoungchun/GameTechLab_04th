@@ -13,6 +13,8 @@
 class FHeightFogRenderer;
 class FFXAARenderer;
 class FCameraOverlayRenderer;
+class FDepthOfFieldRenderer;
+class FExposureMeterRenderer;
 
 class FTextRenderer;
 class FSkyboxRenderer;
@@ -41,6 +43,8 @@ public:
 	FHeightFogRenderer* GetHeightFog() const { return HeightFog.get(); }
 	FFXAARenderer* GetFXAA() const { return FXAA.get(); }
 	FCameraOverlayRenderer* GetCameraOverlay() const { return CameraOverlay.get(); }
+	FDepthOfFieldRenderer* GetDepthOfField() const { return DepthOfField.get(); }
+	FExposureMeterRenderer* GetExposureMeter() const { return ExposureMeter.get(); }
 	FTextRenderer* GetSceneText() const { return SceneText.get(); }
 	FSkyboxRenderer* GetSkybox() const { return Skybox.get(); }
 	FSkyboxRenderer* GetPreviewSkybox() const { return PreviewSkybox.get(); }
@@ -64,6 +68,8 @@ private:
 	TUniquePtr<FHeightFogRenderer> HeightFog;
 	TUniquePtr<FFXAARenderer> FXAA;
 	TUniquePtr<FCameraOverlayRenderer> CameraOverlay;
+	TUniquePtr<FDepthOfFieldRenderer> DepthOfField;
+	TUniquePtr<FExposureMeterRenderer> ExposureMeter;
 	TUniquePtr<FTextRenderer> SceneText;
 	TUniquePtr<FSkyboxRenderer> Skybox;
 	TUniquePtr<FSkyboxRenderer> PreviewSkybox;

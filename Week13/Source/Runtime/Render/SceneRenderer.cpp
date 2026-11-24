@@ -13,6 +13,8 @@
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Render/PostProcess/HeightFogRenderer.h"
 #include "Render/PostProcess/CameraOverlayRenderer.h"
+#include "Render/PostProcess/DepthOfFieldRenderer.h"
+#include "Render/PostProcess/ExposureMeterRenderer.h"
 #include "Render/PostProcess/FXAARenderer.h"
 #include "Render/PostProcess/ToneMapData.h"
 #include "Render/DecalData.h"
@@ -707,11 +709,36 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 
 	
 
+	// 카메라가 자동 노출을 원해도 이 뷰포트가 Eye Adaptation을 껐으면 노출을 고정한다. 레벨 데이터는 건드리지 않는다
+	FPostProcessSettings PP = View.FinalPostProcessSettings;
+	PP.bAutoExposure = PP.bAutoExposure && Options.ShowFlags.EyeAdaptation;
+
+	// 노출계는 노출을 곱하기 전의 장면 밝기를 재야 하므로 ToneMap 앞에 둔다. 그래서 노출을 바꿔도 측정값이 흔들리지 않는다
+	if (PP.NeedsExposureMeter())
+	{
+		if (FExposureMeterRenderer* Meter = Renderer->GetExposureMeter(); Meter && Meter->GetTarget())
+		{
+			FRenderGraphRasterPassDesc Metering{};
+			Metering.Name = "ExposureMeter";
+			Metering.ReadTextures = { LightingHDR };
+			Metering.ColorAttachments = { { Graph.ImportTexture(Meter->GetTarget(), "ExposureMeterTarget"), ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Metering), [this, Meter, &Graph, LightingHDR]
+				{
+					if (bCorePassSucceeded)
+						Meter->Render(Graph.Resolve(LightingHDR));
+				})) return false;
+		}
+	}
+
+	// 측정값은 몇 프레임 전 것이라 그래프를 짜는 지금 CPU에서 적응시켜도 된다
+	const float AdaptedEV100 = PP.bAutoExposure ? FExposureMeterRenderer::UpdateAdaptedEV100(PP) : 0.0f;
+
 	FRenderGraphRasterPassDesc ToneMap{};
 	ToneMap.Name = "ToneMap";
 	ToneMap.ReadTextures = { LightingHDR };
 	ToneMap.ColorAttachments = { { SceneColor, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } } };
-	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.Settings.bGammaCorrection, DisplayGamma = Options.Settings.DisplayGamma, ExposureEV = Options.Settings.ExposureCompensation]
+	if (!Graph.AddRasterPass(std::move(ToneMap), [this, Renderer, &Graph, LightingHDR, bGamma = Options.Settings.bGammaCorrection, DisplayGamma = Options.Settings.DisplayGamma, ExposureEV = Options.Settings.ExposureCompensation,
+		CameraExposure = PP.GetExposureScale(AdaptedEV100)]
 		{
 			if (bCorePassSucceeded)
 			{
@@ -722,7 +749,8 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 					Data.InvGamma = 1.0f / std::max(DisplayGamma, 0.01f);
 					Data.bGammaCorretion = bGamma ? 1.0f : 0.0f;
 					// 슬라이더는 스톱 단위라 배율로 바꿔 넘긴다. 같은 거리를 움직이면 같은 만큼 밝아진 것처럼 보인다
-					Data.Exposure = std::exp2(ExposureEV);
+					// 에디터 보정(EV)은 카메라 노출 위에 한 번 더 얹는 값이다 (UE Exposure Compensation과 같은 자리)
+					Data.Exposure = std::exp2(ExposureEV) * CameraExposure;
 					FConstantBuffer* Constants = Renderer->GetToneMapConstants();
 					RenderCommand::UpdateBufferData(Constants, &Data, sizeof(Data));
 
@@ -776,6 +804,109 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 	if (!Options.ShowFlags.VisualizeWorldNormal && Callbacks.SceneText &&
 		!Graph.AddRasterPass(MakeViewportPass("SceneText", SceneColor, Depth), Callbacks.SceneText))
 		return false;
+
+	// 렌즈 앞 세상(SceneText까지)은 흐려지고, CameraOverlay·FXAA·에디터 오버레이는 선명해야 하므로 이 자리에 둔다
+	if (Options.ShowFlags.DepthOfField && View.bIsPerspective &&
+		!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeSceneDepth)
+	{
+		const uint32 Width = Targets.SceneColor->GetWidth();
+		const uint32 Height = Targets.SceneColor->GetHeight();
+		// 음수(near)를 담아야 하므로 실수 포맷을 쓴다
+		const FRenderGraphTextureRef CoC = Graph.CreateTexture({ Width, Height, ETextureFormat::R16_Float }, "DOFCoC");
+		// CopyTexture는 크기와 포맷이 같아야 하므로 SceneColor와 맞춘다
+		const FRenderGraphTextureRef SceneCopy = Graph.CreateTexture({ Width, Height, ETextureFormat::R8G8B8A8_UNorm }, "DOFSceneColorCopy");
+		if (!CoC || !SceneCopy) return false;
+
+		FRenderGraphRasterPassDesc Setup{};
+		Setup.Name = "DOFSetup";
+		Setup.ReadTextures = { Depth };
+		Setup.ColorAttachments = { { CoC, ERenderGraphLoadAction::Clear,{ 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(Setup), [this, Renderer, &Graph, Depth]
+			{
+				// 패스가 람다로 나뉘어 있어도 같은 이름은 합산되므로 DOF 전체 시간이 된다
+				SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+					DOF->RenderSetup(View, Graph.Resolve(Depth));
+			})) return false;
+
+		if (Options.ShowFlags.VisualizeDepthOfField)
+		{
+			FRenderGraphRasterPassDesc Visualize = MakeViewportPass("DOFVisualize", SceneColor);
+			// SceneColor는 이 패스의 출력이라 같은 텍스처를 읽을 수 없어서 복사본을 읽는다
+			Visualize.ReadTextures = { CoC, SceneCopy };
+			if (!Graph.AddRasterPass(std::move(Visualize), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
+				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+					FTexture2D* Copy = Graph.Resolve(SceneCopy);
+					RenderCommand::CopyTexture(Copy, SceneColorTarget);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderVisualize(Graph.Resolve(CoC), Copy);
+				})) return false;
+		}
+		else
+		{
+			const uint32 HalfWidth = std::max(Width / 2, 1u);
+			const uint32 HalfHeight = std::max(Height / 2, 1u);
+			// A에 부호 있는 CoC를, RGB에 색을 담아야 하므로 반해상도도 실수 포맷이다
+			const FRenderGraphTextureRef HalfRes = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfRes");
+			const FRenderGraphTextureRef HalfFar = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfFar");
+			// near는 초점 물체 위에 덮여야 하므로 far와 따로 모으고, A에 덮는 비율을 담는다
+			const FRenderGraphTextureRef HalfNear = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfNear");
+			// Gather가 읽고 있는 텍스처에 바로 쓸 수 없으니 거른 결과는 따로 둔다
+			const FRenderGraphTextureRef HalfFarFiltered = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfFarFiltered");
+			const FRenderGraphTextureRef HalfNearFiltered = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "DOFHalfNearFiltered");
+			if (!HalfRes || !HalfFar || !HalfNear || !HalfFarFiltered || !HalfNearFiltered) return false;
+
+			FRenderGraphRasterPassDesc Downsample{};
+			Downsample.Name = "DOFDownsample";
+			Downsample.ReadTextures = { SceneCopy, CoC };
+			Downsample.ColorAttachments = { { HalfRes, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Downsample), [Renderer, &Graph, CoC, SceneCopy, SceneColorTarget = Targets.SceneColor.get()]
+				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+					// 합성 패스가 SceneColor에 쓰는 동안 원본을 읽어야 하므로 여기서 미리 복사해 둔다
+					FTexture2D* Copy = Graph.Resolve(SceneCopy);
+					RenderCommand::CopyTexture(Copy, SceneColorTarget);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderDownsample(Copy, Graph.Resolve(CoC));
+				})) return false;
+
+			FRenderGraphRasterPassDesc Gather{};
+			Gather.Name = "DOFGather";
+			Gather.ReadTextures = { HalfRes };
+			Gather.ColorAttachments = {
+				{ HalfFar, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } },
+				{ HalfNear, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(Gather), [this, Renderer, &Graph, HalfRes]
+				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderGather(View, Graph.Resolve(HalfRes));
+				})) return false;
+
+			FRenderGraphRasterPassDesc PostFilter{};
+			PostFilter.Name = "DOFPostFilter";
+			PostFilter.ReadTextures = { HalfFar, HalfNear };
+			PostFilter.ColorAttachments = {
+				{ HalfFarFiltered, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } },
+				{ HalfNearFiltered, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+			if (!Graph.AddRasterPass(std::move(PostFilter), [Renderer, &Graph, HalfFar, HalfNear]
+				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderPostFilter(Graph.Resolve(HalfFar), Graph.Resolve(HalfNear));
+				})) return false;
+
+			FRenderGraphRasterPassDesc Composite = MakeViewportPass("DOFComposite", SceneColor);
+			Composite.ReadTextures = { SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered };
+			if (!Graph.AddRasterPass(std::move(Composite), [Renderer, &Graph, SceneCopy, CoC, HalfFarFiltered, HalfNearFiltered]
+				{
+					SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
+					if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
+						DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFarFiltered), Graph.Resolve(HalfNearFiltered));
+				})) return false;
+		}
+	}
 
 	if (!Options.ShowFlags.VisualizeWorldNormal && Options.ShowFlags.VisualizeSceneDepth && Callbacks.DepthVisualization)
 	{
@@ -887,7 +1018,8 @@ bool FSceneRenderer::Render(FRenderer* Renderer, FSceneViewTargets& Targets, con
 
 	FFXAARenderer* FXAA = Renderer->GetFXAA();
 	const bool bUseFXAA = Options.ShowFlags.AntiAliasing && !Options.ShowFlags.VisualizeSceneDepth &&
-		!Options.ShowFlags.VisualizeWorldNormal && FXAA && FXAA->PrepareOutput(ColorTarget);
+		!Options.ShowFlags.VisualizeWorldNormal && !Options.ShowFlags.VisualizeDepthOfField &&
+		FXAA && FXAA->PrepareOutput(ColorTarget);
 	if (bUseFXAA)
 	{
 		Callbacks.FXAAOutput = FXAA->GetOutputTarget().get();

@@ -17,6 +17,97 @@ struct FPostProcessSettings
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float VignetteIntensity = 0.0f;
 
+	// ---------- Depth of Field ----------
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldFocalDistance = false;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0))
+	float DepthOfFieldFocalDistance = 10.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldFocusRange = false;
+	// 셰이더에서 분모로 쓰이므로 0이 되지 않게 막는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.01))
+	float DepthOfFieldFocusRange = 5.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldFstop = false;
+	// 렌즈의 F-Stop(N). 조리개 지름 = 초점 거리 / N
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=32, Delta=0.1))
+	float DepthOfFieldFstop = 2.8f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldSensorWidth = false;
+	// 센서 가로 폭(mm). 36 = 풀프레임
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1))
+	float DepthOfFieldSensorWidth = 36.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_DepthOfFieldBladeCount = false;
+	// 조리개 날 수. 보케가 이 수만큼의 다각형이 된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=4, ClampMax=16))
+	int32 DepthOfFieldBladeCount = 5;
+
+	// ---------- Camera (물리 노출) ----------
+	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)
+	UPROPERTY(EditAnywhere)
+	bool bOverride_CameraShutterSpeed = false;
+	// 셔터 속도의 분모(1/s). 125면 1/125초
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=8000))
+	float CameraShutterSpeed = 60.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_CameraISO = false;
+	UPROPERTY(EditAnywhere, meta=(ClampMin=25, ClampMax=6400))
+	float CameraISO = 100.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_bApplyPhysicalCameraExposure = false;
+	// 켜면 F-Stop·셔터·ISO로 노출 배율을 정한다. 끄면 배율 1 (UE의 Apply Physical Camera Exposure)
+	UPROPERTY(EditAnywhere)
+	bool bApplyPhysicalCameraExposure = false;
+
+	// ---------- Auto Exposure (눈 적응) ----------
+	// 켜면 카메라 조리개·셔터·ISO 대신 노출계가 잰 장면 밝기를 천천히 따라간다 (UE의 AutoExposureMethod != Manual)
+	UPROPERTY(EditAnywhere)
+	bool bOverride_bAutoExposure = false;
+	// UE처럼 기본으로 켜 두고, 뷰포트는 Eye Adaptation Show Flag로, 카메라는 bOverride_로 끈다
+	UPROPERTY(EditAnywhere)
+	bool bAutoExposure = true;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureMinEV100 = false;
+	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
+	float AutoExposureMinEV100 = 11.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureMaxEV100 = false;
+	// 이보다 더 어둡게 하지 않는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
+	float AutoExposureMaxEV100 = 18.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureSpeedUp = false;
+	// 어두운 곳으로 갈 때(화면을 밝혀야 할 때) 따라가는 속도. 클수록 빠르다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.02, ClampMax=20, Delta=0.05))
+	float AutoExposureSpeedUp = 3.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureSpeedDown = false;
+	// 밝은 곳으로 갈 때(화면을 어둡게 해야 할 때) 따라가는 속도
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.02, ClampMax=20, Delta=0.05))
+	float AutoExposureSpeedDown = 1.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_AutoExposureBias = false;
+	// 스톱 단위. +1이면 2배 밝게. 자동 노출과 물리 카메라 노출 둘 다에 얹는다 (UE의 Exposure Compensation)
+	UPROPERTY(EditAnywhere, meta=(ClampMin=-8, ClampMax=8, Delta=0.1))
+	float AutoExposureBias = 0.5f;
+
+	// 노출계가 돌아야 하는지. 노출 배율이 장면 밝기에 따라 달라지는 모드일 때만 잰다
+	bool NeedsExposureMeter() const { return bAutoExposure || bApplyPhysicalCameraExposure; }
+
+	// 조리개·셔터·ISO를 ISO 100 기준 노출값(EV100)으로 바꾼다. 클수록 빛을 적게 받는다
+	float GetCameraEV100() const;
+	static float ComputeEV100(float Fstop, float ShutterSpeed, float ISO);
+	// 노출계: 측정한 평균 휘도(노출 전 HDR)가 중간 회색으로 찍히려면 필요한 EV100
+	static float GetMeteredEV100(float AverageLuminance);
+	// 톤매핑 전에 곱할 배율. Sunny 16(f/16, 1/200초, ISO 200)에서 1이 되도록 맞췄다
+	float GetPhysicalCameraExposureScale() const;
+	// 어떤 EV100이든 톤매핑 배율로 바꾼다. 물리 노출과 자동 노출이 같은 기준점을 쓰게 한다
+	static float EV100ToExposureScale(float EV100);
+	// 이번 프레임에 쓸 노출 배율. 자동 노출이면 적응된 EV, 아니면 카메라 EV(또는 1)
+	float GetExposureScale(float AdaptedEV100) const;
+
 	// Src에서 bOverride_가 켜진 값만 Weight(0~1)만큼 이 값 쪽에서 Src 쪽으로 섞는다.
 	void OverrideBlend(const FPostProcessSettings& Src, float Weight);
 };

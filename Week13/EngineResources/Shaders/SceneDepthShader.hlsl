@@ -1,3 +1,5 @@
+#include "DepthCommon.hlsli"
+
 cbuffer SceneDepthConstants : register(b0)
 {
     float A;
@@ -31,16 +33,6 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
     return Output;
 }
 
-float ConvertFromDeviceZ(float DeviceZ)
-{
-    if (bIsPerspective != 0)
-    {
-        return B / (DeviceZ - A);
-    }
-
-    return (DeviceZ - B) / A;
-}
-
 float4 mainPS(VSOutput Input) : SV_Target
 {
     int2 PixelPosition = int2(Input.Position.xy);
@@ -51,7 +43,7 @@ float4 mainPS(VSOutput Input) : SV_Target
         return float4(0, 0, 0, 0);
     }
 
-    float ViewDepth = ConvertFromDeviceZ(DeviceZ);
+    float ViewDepth = ConvertFromDeviceZ(DeviceZ, A, B, bIsPerspective != 0);
     float Grey = saturate(ViewDepth / MaxRange);
 
     return float4(Grey, Grey, Grey, 1);

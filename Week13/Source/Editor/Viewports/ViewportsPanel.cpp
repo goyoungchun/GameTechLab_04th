@@ -392,6 +392,16 @@ void FViewportsPanel::DrawStatOverlay(ImDrawList* DrawList, const ImVec2& ViewMi
 			Line.Values[2] = std::format("{:.2f}", Data.GetMaxMs());
 			ProfileLines.Add(Line);
 		}
+
+		// GPU stat은 따로 모이므로 같이 보여 줘야 DOF 같은 패스 시간을 볼 수 있다
+		ProfileLines.Add({"GPU Profile (ms, ~4 frames behind)", TitleColor, {"Last", "Avg", "Max"}});
+		for (const auto &[Name, Data] : FStatRegistry::GetAllGPU()) {
+			FProfileStatLine Line{"  " + FString(Name), ValueColor};
+			Line.Values[0] = std::format("{:.2f}", Data.GetLastMs());
+			Line.Values[1] = std::format("{:.2f}", Data.GetRecentAverageMs());
+			Line.Values[2] = std::format("{:.2f}", Data.GetMaxMs());
+			ProfileLines.Add(Line);
+		}
 	}
 
 	if (const FCycleStatData *PickingData =

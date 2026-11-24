@@ -163,6 +163,7 @@ FAssetEditorViewportClient::FAssetEditorViewportClient(FAssetEditor& InAssetEdit
 	EngineShowFlags.AntiAliasing = true;
 	EngineShowFlags.Vignette = false;
 	EngineShowFlags.CameraOverlay = false;
+	EngineShowFlags.DepthOfField = false;
 
 	GridRenderer.Init(GEditor ? GEditor->GetEngineLoop().GetRenderer() : nullptr);
 }

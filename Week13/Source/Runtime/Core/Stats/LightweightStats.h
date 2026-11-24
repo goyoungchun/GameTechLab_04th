@@ -59,6 +59,19 @@ struct FCycleStatData
 		if (Cycles > MaxFrameCycles)
 			MaxFrameCycles = Cycles;
 	}
+
+	// 호출이 없던 프레임: 최근 창만 0으로 밀고, 호출 횟수·누적값(피킹 Attempts 등)은 건드리지 않는다
+	void PushEmptyFrame()
+	{
+		LastCycles = 0;
+
+		WindowSumCycles -= FrameCycles[NextIndex];
+		FrameCycles[NextIndex] = 0;
+
+		NextIndex = (NextIndex + 1) % Duration;
+		if (SampleCount < Duration)
+			++SampleCount;
+	}
 };
 
 // UE는 이 집계를 외부 프로파일러(Insights)에 맡기지만 우리는 직접 모은다.
@@ -67,11 +80,7 @@ class FStatRegistry
 public:
 	static void EndFrame()
 	{
-		for (const auto& [Name, Cycles] : PendingStatCycles)
-		{
-			Stats[Name].PushFrame(Cycles);
-		}
-		PendingStatCycles.Reset();
+		PushPendingFrame(Stats, PendingStatCycles);
 	}
 
 	static void AddCycles(TStatId StatId, uint64 Cycles)
@@ -88,8 +97,7 @@ public:
 	// GPU 한 프레임의 결과를 다 넣은 뒤 부름 (CPU의 EndFrame과 호출 시점이 다름)
 	static void EndGPUFrame()
 	{
-		for (const auto& [Name, Cycles] : PendingGPUCycles) GPUStats[Name].PushFrame(Cycles);
-		PendingGPUCycles.Reset();
+		PushPendingFrame(GPUStats, PendingGPUCycles);
 	}
 
 	static void Reset()
@@ -111,6 +119,25 @@ public:
 	static void SetEnabled(bool bInEnabled) { bEnabled = bInEnabled; }
 
 private:
+	static void PushPendingFrame(TMap<const char*, FCycleStatData>& Target, TMap<const char*, uint64>& Pending)
+	{
+		// 이번 프레임에 안 돈 스코프(꺼진 패스 등)는 0을 넣어야 마지막 값이 화면에 멈춰 있지 않는다
+		for (auto& [Name, Data] : Target)
+		{
+			if (const uint64* Cycles = Pending.Find(Name))
+				Data.PushFrame(*Cycles);
+			else
+				Data.PushEmptyFrame();
+		}
+		// 처음 기록된 스코프는 아직 Target에 없으므로 따로 넣는다
+		for (const auto& [Name, Cycles] : Pending)
+		{
+			if (!Target.Find(Name))
+				Target[Name].PushFrame(Cycles);
+		}
+		Pending.Reset();
+	}
+
 	inline static bool bEnabled = true;
 	inline static TMap<const char*, FCycleStatData> Stats;
 	inline static TMap<const char*, uint64> PendingStatCycles;

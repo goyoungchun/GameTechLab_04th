@@ -329,6 +329,37 @@ void FViewportsPanel::DrawProjectionMenu(FEditorViewportClient& Client)
     if (bChanged && std::isfinite(Near) && std::isfinite(Far) && Near > 0.0f && Far > Near)
         Client.SetClipPlanes(Near, Far);
 
+    // UE PostProcess처럼 체크한 값만 기본값을 덮어쓴다
+    if (Client.IsPerspective())
+    {
+        SectionHeader("Depth of Field");
+        FPostProcessSettings& PP = Client.GetViewPostProcessSettings();
+        auto OverrideSlider = [](const char* Label, bool& bOverride, float& Value, float Min, float Max, const char* Format, ImGuiSliderFlags Flags)
+        {
+            ImGui::PushID(Label);
+            ImGui::Checkbox("##Override", &bOverride);
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!bOverride);
+            ImGui::SetNextItemWidth(EditorStyle::Scale(190.0f));
+            ImGui::SliderFloat(Label, &Value, Min, Max, Format, Flags | ImGuiSliderFlags_AlwaysClamp);
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        };
+        // 초점 거리는 가까운 쪽을 세밀하게 잡아야 해서 로그 스케일로 둔다
+        OverrideSlider("Focal Distance", PP.bOverride_DepthOfFieldFocalDistance, PP.DepthOfFieldFocalDistance, 0.1f, 1000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        OverrideSlider("F-Stop", PP.bOverride_DepthOfFieldFstop, PP.DepthOfFieldFstop, 1.0f, 32.0f, "f/%.1f", ImGuiSliderFlags_Logarithmic);
+        OverrideSlider("Sensor Width (mm)", PP.bOverride_DepthOfFieldSensorWidth, PP.DepthOfFieldSensorWidth, 1.0f, 70.0f, "%.1f", 0);
+
+        ImGui::PushID("BladeCount");
+        ImGui::Checkbox("##Override", &PP.bOverride_DepthOfFieldBladeCount);
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!PP.bOverride_DepthOfFieldBladeCount);
+        ImGui::SetNextItemWidth(EditorStyle::Scale(190.0f));
+        ImGui::SliderInt("Blade Count", &PP.DepthOfFieldBladeCount, 4, 16, "%d", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        ImGui::PopID();
+    }
+
     SectionHeader("Transform");
     FVector Location = Client.GetViewLocation();
     if (ImGui::DragFloat3("Location", &Location.X, 0.1f) &&
