@@ -240,6 +240,11 @@ void FPhysScene::SyncActiveActors()
 			if (!Body || !Body->OwnerComponent || !Body->IsSimulatingPhysics())
 				continue;   // Kinematic은 컴포넌트가 주인이다. 물리 결과로 덮어쓰지 않는다
 
+			if (Body->InstanceBoneIndex >= 0)
+			{
+				continue;
+			}
+
 			Poses.Add(FPendingPose{ Body->OwnerComponent, RigidActor->getGlobalPose() });
 		}
 	}
