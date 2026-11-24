@@ -141,4 +141,7 @@ private:
 	// Physics Asset
 	void InstantiatePhysicsAssetBodies_Internal();
 	void TermArticulated();
+
+	void UpdateKinematicBonesToAnim();
+	bool bTeleportBodiesNextUpdate = true;
 };

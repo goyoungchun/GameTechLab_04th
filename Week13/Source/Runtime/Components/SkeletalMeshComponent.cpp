@@ -128,6 +128,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         bUpdatingAnimation = false;
 	}
 	Super::TickComponent(DeltaTime);
+	UpdateKinematicBonesToAnim();
 	UpdateClothingSimulation(DeltaTime);
 }
 
@@ -718,6 +719,8 @@ void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
 		}
 		Constraints[i] = CI;
 	}
+
+	bTeleportBodiesNextUpdate = true;
 }
 
 void USkeletalMeshComponent::TermArticulated()
@@ -730,6 +733,29 @@ void USkeletalMeshComponent::TermArticulated()
 	for (FBodyInstance* Body : Bodies)
 		delete Body; // 소멸자가 TermBody
 	Bodies.Empty();
+}
+
+void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
+{
+	if (Bodies.IsEmpty())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	const bool bTeleport = bTeleportBodiesNextUpdate || !(World && World->IsGameWorld());
+	bTeleportBodiesNextUpdate = false;
+
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (!Body || !Body->IsValidBodyInstance() || Body->IsSimulatingPhysics())
+		{
+			continue;
+		}
+
+		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(Body->InstanceBodyIndex));
+		Body->SetWorldTransform(BoneWorld, bTeleport);
+	}
 }
 
 const FString& USkeletalMeshComponent::GetAnimBlueprintPath() const
