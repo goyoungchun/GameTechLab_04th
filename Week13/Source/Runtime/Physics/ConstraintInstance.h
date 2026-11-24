@@ -16,10 +16,23 @@ enum class EAngularConstraintMotion : uint8
 	Locked,
 };
 
+struct FBodyInstance;
+
 USTRUCT()
 struct FConstraintInstance
 {
 	GENERATED_BODY()
+
+
+	FConstraintInstance() = default;
+	~FConstraintInstance();
+	FConstraintInstance(const FConstraintInstance&) = delete;
+	FConstraintInstance& operator=(const FConstraintInstance&) = delete;
+
+	bool InitConstraint(FBodyInstance* Body1, FBodyInstance* Body2);
+
+	void TermConstraint();
+	bool IsValidConstraintInstance() const { return ConstraintData != nullptr; }
 
 	FName ConstraintBone1;   // 자식 본
 	FName ConstraintBone2;   // 부모 본 (바디가 있는 가장 가까운 조상)
