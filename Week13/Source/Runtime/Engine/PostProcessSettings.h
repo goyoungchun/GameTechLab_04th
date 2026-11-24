@@ -53,7 +53,7 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareThreshold = false;
 	// 노출 전 HDR 밝기가 이 값을 넘는 부분만 플레어를 만든다. 씬 라이트가 물리 단위가 아니라 UE 기본값(8)이면 거의 아무것도 안 넘는다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=64, Delta=0.1))
-	float LensFlareThreshold = 2.25f;
+	float LensFlareThreshold = 2.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareGhostCount = false;
 	// 광원 반대편 직선 위에 줄지어 생기는 고스트 개수
