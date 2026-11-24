@@ -71,7 +71,7 @@ struct FPostProcessSettings
 	bool bOverride_AutoExposureMinEV100 = false;
 	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
-	float AutoExposureMinEV100 = 10.0f;
+	float AutoExposureMinEV100 = 11.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_AutoExposureMaxEV100 = false;
 	// 이보다 더 어둡게 하지 않는다
@@ -91,7 +91,7 @@ struct FPostProcessSettings
 	bool bOverride_AutoExposureBias = false;
 	// 스톱 단위. +1이면 자동으로 맞춘 밝기보다 2배 밝게 (UE의 Exposure Compensation)
 	UPROPERTY(EditAnywhere, meta=(ClampMin=-8, ClampMax=8, Delta=0.1))
-	float AutoExposureBias = 0.0f;
+	float AutoExposureBias = 0.5f;
 
 	// 노출계가 돌아야 하는지. 노출 배율이 장면 밝기에 따라 달라지는 모드일 때만 잰다
 	bool NeedsExposureMeter() const { return bAutoExposure || bApplyPhysicalCameraExposure; }
