@@ -41,6 +41,9 @@ void FLensFlareRenderer::UploadConstants(const FSceneView& View)
 	Data.Threshold = PP.LensFlareThreshold;
 	Data.GhostCount = static_cast<float>(PP.LensFlareGhostCount);
 	Data.GhostDispersal = PP.LensFlareGhostDispersal;
+	Data.HaloWidth = PP.LensFlareHaloWidth;
+	Data.ChromaticDistortion = PP.LensFlareChromaticDistortion;
+	Data.DirtIntensity = PP.LensFlareDirtIntensity;
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Data, sizeof(Data));
 	RenderCommand::BindConstantBuffer(0, ConstantBuffer.get(), EShaderBindFlagBits::Pixel);
 }

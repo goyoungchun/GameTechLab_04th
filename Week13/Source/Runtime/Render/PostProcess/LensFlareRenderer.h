@@ -12,8 +12,12 @@ struct alignas(16) FLensFlareData
 	float Threshold;
 	float GhostCount;
 	float GhostDispersal;
+	float HaloWidth;
+	float ChromaticDistortion;
+	float DirtIntensity;
+	float Padding0;
 };
-static_assert(sizeof(FLensFlareData) == 16);
+static_assert(sizeof(FLensFlareData) == 32);
 
 // 렌즈 플레어 셰이더를 돌릴 준비(상수, 바인딩, Draw)만 한다. 언제 어떤 텍스처로 부를지는 FSceneRenderer가 정한다.
 class FLensFlareRenderer

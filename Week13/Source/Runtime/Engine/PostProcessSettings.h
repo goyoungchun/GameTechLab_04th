@@ -64,6 +64,21 @@ struct FPostProcessSettings
 	// 고스트가 퍼지는 정도. 0.25에서 셰이더 배율표 그대로이고, 클수록 고스트가 바깥으로 퍼지며 커진다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float LensFlareGhostDispersal = 0.25f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareHaloWidth = false;
+	// 할로 링의 반지름(UV). 광원 위치와 상관없이 링 크기는 이 값으로 고정된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
+	float LensFlareHaloWidth = 0.45f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareChromaticDistortion = false;
+	// R/G/B를 읽는 위치를 벌리는 정도(UV). 0이면 색수차가 없다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=0.1, Delta=0.001))
+	float LensFlareChromaticDistortion = 0.01f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareDirtIntensity = false;
+	// 렌즈 먼지 텍스처가 플레어에 곱해지는 세기. 0이면 먼지 없이 플레어 그대로
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=8, Delta=0.01))
+	float LensFlareDirtIntensity = 1.0f;
 
 	// ---------- Camera (물리 노출) ----------
 	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)

@@ -5,6 +5,10 @@ cbuffer LensFlareConstants : register(b0)
     float Threshold;
     float GhostCount;
     float GhostDispersal;
+    float HaloWidth;
+    float ChromaticDistortion;
+    float DirtIntensity;
+    float Padding0;
 };
 
 Texture2D SceneColorTexture : register(t0);
