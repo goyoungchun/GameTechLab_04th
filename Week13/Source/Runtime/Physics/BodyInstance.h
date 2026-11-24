@@ -102,6 +102,7 @@ struct FBodyInstance
 	// PxRigidActor::userData에서 되찾는다. userData가 없거나 다른 것이면 nullptr. 
 	static FBodyInstance* FromActor(const physx::PxRigidActor* InActor);
 	int32 InstanceBoneIndex = -1;
+	int32 InstanceBodyIndex = -1;
 
 	void CopyBodyInstancePropertiesFrom(const FBodyInstance& From);
 };

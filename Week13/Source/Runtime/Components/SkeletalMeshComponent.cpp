@@ -261,6 +261,21 @@ void USkeletalMeshComponent::Serialize(FStructuredArchive::FRecord Record)
     }
 }
 
+bool USkeletalMeshComponent::CanBodiesCollide(const FBodyInstance& A, const FBodyInstance& B) const
+{
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();   // 바디가 있으면 이미 로드돼 있다 (지연 로드 안 일어남)
+	if (!PhysAsset)
+		return false;
+
+	const int32 IA = A.InstanceBodyIndex;
+	const int32 IB = B.InstanceBodyIndex;
+	const int32 Num = PhysAsset->BodySetup.Num();
+	if (IA < 0 || IB < 0 || IA >= Num || IB >= Num)
+		return false;
+
+	return PhysAsset->IsCollisionEnabled(PhysAsset->BodySetup[IA]->BoneName, PhysAsset->BodySetup[IB]->BoneName);
+}
+
 void USkeletalMeshComponent::SerializeSingleAnimation(FStructuredArchive::FRecord& Record)
 {
 	// 디테일 패널에서 고른 단일 애니메이션(SingleNodeInstance의 에셋)은 AnimInstance 객체가 아니라
@@ -664,6 +679,8 @@ void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
 		FBodyInstance* Body = new FBodyInstance();
 		Body->CopyBodyInstancePropertiesFrom(BodyInstance);   // 컴포넌트의 BodyInstance = 템플릿
 		Body->InstanceBoneIndex = BoneIndex;
+		Body->InstanceBodyIndex = i;
+		Body->OwnerId = GetUUID();
 
 		// 형상(캡슐)이 본 로컬 기준이므로 바디는 본의 월드 트랜스폼에 놓는다
 		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(BoneIndex));

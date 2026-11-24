@@ -101,6 +101,8 @@ public:
 	TArray<FBodyInstance*> Bodies;
 	TArray<FConstraintInstance*> Constraints;
 
+	bool CanBodiesCollide(const FBodyInstance& A, const FBodyInstance& B) const override;
+
 protected:
 	// 단일 애니메이션 에셋 경로/루프/재생 속도를 씬에 저장·복원한다 (Serialize에서 부른다)
 	void SerializeSingleAnimation(FStructuredArchive::FRecord& Record);

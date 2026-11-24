@@ -9,6 +9,7 @@
 #include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
+#include "FPhysXSimulationFilterCallback.h"
 
 namespace
 {
@@ -127,6 +128,8 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 				| physx::PxSceneFlag::eREQUIRE_RW_LOCK;
 	EventCallback = MakeUnique<FPhysXSimulationEventCallback>(*this);
 	Desc.simulationEventCallback = EventCallback.get();
+	FilterCallback = MakeUnique<FPhysXSimulationFilterCallback>();
+	Desc.filterCallback = FilterCallback.get();
 
 	if (!Desc.isValid())
 	{

@@ -18,9 +18,17 @@ physx::PxFilterFlags KurisuSimulationFilterShader(
 	physx::PxFilterObjectAttributes Attributes1, physx::PxFilterData Filter1,
 	physx::PxPairFlags& PairFlags, const void* /*ConstantBlock*/, physx::PxU32 /*ConstantBlockSize*/)
 {
-	// 같은 랙돌(소유자)의 본끼리는 충돌하지 않는다. eSUPPRESS라 필터 데이터가 바뀌면 다시 판정된다.
-	if (Filter0.word2 != 0 && Filter0.word2 == Filter1.word2)
+	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다. (순서를 앞으로 올렸다)
+	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
 		return physx::PxFilterFlag::eSUPPRESS;
+
+	// 같은 랙돌(소유자)의 본끼리. 셰이더는 userData·에셋을 볼 수 없으므로 판정을 필터 콜백에 넘긴다.
+	// 콜백이 eDEFAULT를 돌려주면 이 PairFlags로 충돌한다.
+	if (Filter0.word2 != 0 && Filter0.word2 == Filter1.word2)
+	{
+		PairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;   // 같은 랙돌끼리는 접촉 알림(onContact)이 필요 없다
+		return physx::PxFilterFlag::eCALLBACK;
+	}
 
 	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다. 트리거도 같은 규칙으로 거른다.
 	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
