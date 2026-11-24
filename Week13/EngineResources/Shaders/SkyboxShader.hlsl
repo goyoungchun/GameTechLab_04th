@@ -67,5 +67,15 @@ float4 mainPS(PSInput Input) : SV_TARGET
     {
         Color.rgb = SRGBToLinear(Color.rgb);
     }
+
+    // 시선 방향만 비교하므로 카메라가 이동해도 태양은 같은 방향에 머문다.
+    if (bHasSun > 0.5f)
+    {
+        float CosAngle = dot(Direction, SunDirection);
+        // cos 공간에서 반지름의 일부만큼 경계를 풀어 원판 가장자리 계단을 없앤다. 반지름 0일 때 0 나누기를 막는다.
+        float EdgeWidth = max((1.0f - CosSunRadius) * 0.25f, 1e-6f);
+        float Disk = smoothstep(CosSunRadius - EdgeWidth, CosSunRadius + EdgeWidth, CosAngle);
+        Color.rgb += SunRadiance * Disk;
+    }
     return float4(Color.rgb, 1.0f);
 }
