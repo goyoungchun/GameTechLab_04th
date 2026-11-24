@@ -16,12 +16,16 @@ namespace
 	class FKurisuQueryFilterCallback : public physx::PxQueryFilterCallback
 	{
 	public:
-		explicit FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams, const physx::PxVec3& InSweepDir = physx::PxVec3(0.0f))
-			: Params(InParams), SweepDir(InSweepDir) {}
+		// bInIgnoreTriggers: 막힘을 찾는 쿼리(Raycast·Sweep)는 트리거를 지나친다. 트리거는 겹침만 알리고 막지 않는다.
+		FKurisuQueryFilterCallback(const FCollisionQueryParams& InParams, bool bInIgnoreTriggers, const physx::PxVec3& InSweepDir = physx::PxVec3(0.0f))
+			: Params(InParams), SweepDir(InSweepDir), bIgnoreTriggers(bInIgnoreTriggers) {}
 
 		physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& /*QueryData*/, const physx::PxShape* Shape,
 			const physx::PxRigidActor* Actor, physx::PxHitFlags& /*Flags*/) override
 		{
+			if (bIgnoreTriggers && (Shape->getFlags() & physx::PxShapeFlag::eTRIGGER_SHAPE))
+				return physx::PxQueryHitType::eNONE;
+
 			const physx::PxFilterData ShapeData = Shape->getQueryFilterData();
 			if ((ShapeData.word0 & Params.ObjectTypesMask) == 0)
 				return physx::PxQueryHitType::eNONE;
@@ -57,6 +61,7 @@ namespace
 	private:
 		const FCollisionQueryParams& Params;
 		physx::PxVec3 SweepDir;
+		bool bIgnoreTriggers;
 	};
 
 	physx::PxQueryFilterData MakeQueryFilterData()
@@ -64,9 +69,6 @@ namespace
 		// 정적·동적 둘 다 보고, 거르기는 preFilter 콜백이 한다.
 		return physx::PxQueryFilterData(physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER);
 	}
-
-	// PhysX 캡슐은 X축으로 눕는다. 엔진 캡슐(Z축)과 맞추려고 Y축 기준 90도 돌린다 (BodyInstance와 같은 규약).
-	physx::PxQuat CapsuleAxisFix() { return physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0)); }
 
 	// 모양 하나와 그 회전을 함께 만든다. 캡슐만 축 보정이 붙는다.
 	physx::PxGeometryHolder MakeGeometry(const FCollisionShape& Shape, physx::PxQuat& InOutRotation)
@@ -255,7 +257,7 @@ bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitRes
 
 	SCOPED_SCENE_READ_LOCK(Scene);
 
-	FKurisuQueryFilterCallback Filter(Params);
+	FKurisuQueryFilterCallback Filter(Params, true);
 	physx::PxRaycastBuffer Buffer;
 	const bool bHit = Scene->raycast(K2PVector(Start), K2PVector(Dir), Distance, Buffer,
 		physx::PxHitFlag::eDEFAULT, MakeQueryFilterData(), &Filter);
@@ -269,6 +271,10 @@ bool FPhysScene::RaycastSingle(const FVector& Start, const FVector& End, FHitRes
 bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation, const FVector& Start, const FVector& End,
 	FSweepResult& OutHit, const FCollisionQueryParams& Params) const
 {
+	// 크기가 없는 모양은 PhysX가 유효하지 않은 지오메트리로 거부한다. 점을 쓸어 보는 것과 같으므로 레이로 바꾼다.
+	if (Shape.IsNearlyZero())
+		return RaycastSingle(Start, End, OutHit, Params);
+
 	const FVector Delta = End - Start;
 	const float Distance = Delta.Size();
 	if (!Scene || Distance <= 0.0f)
@@ -280,7 +286,7 @@ bool FPhysScene::SweepSingle(const FCollisionShape& Shape, const FQuat& Rotation
 	physx::PxQuat Rot = K2PQuat(Rotation);
 	const physx::PxGeometryHolder Geometry = MakeGeometry(Shape, Rot);
 
-	FKurisuQueryFilterCallback Filter(Params, K2PVector(Dir));
+	FKurisuQueryFilterCallback Filter(Params, true, K2PVector(Dir));
 	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
 	physx::PxHitFlags HitFlags = physx::PxHitFlag::eDEFAULT;
 	if (Params.bIgnoreTouchesMovingAway)
@@ -319,7 +325,7 @@ bool FPhysScene::OverlapMulti(const FCollisionShape& Shape, const FVector& Posit
 	physx::PxQueryFilterData FilterData = MakeQueryFilterData();
 	FilterData.flags |= physx::PxQueryFlag::eNO_BLOCK;   // 모든 후보를 touch로 취급
 
-	FKurisuQueryFilterCallback Filter(Params);
+	FKurisuQueryFilterCallback Filter(Params, false);   // 겹침 쿼리는 트리거도 찾는다
 	Scene->overlap(Geometry.any(), physx::PxTransform(K2PVector(Position), Rot), Buffer, FilterData, &Filter);
 
 	for (physx::PxU32 Index = 0; Index < Buffer.getNbTouches(); ++Index)
@@ -355,6 +361,14 @@ void FPhysScene::DispatchPendingNotifies()
 			continue;
 		if (Info.bBegin)
 		{
+			// 상대가 겹침 이벤트를 껐거나, 같은 액터의 컴포넌트끼리거나, 액터 충돌이 꺼져 있으면 시작하지 않는다.
+			// 나감은 조건 없이 보낸다 (EndComponentOverlap은 겹쳐 있던 쌍에만 반응한다).
+			const AActor* TriggerOwner = Info.TriggerComponent->GetOwner();
+			const AActor* OtherOwner = Info.OtherComponent->GetOwner();
+			if (!Info.OtherComponent->bGenerateOverlapEvents ||
+				!TriggerOwner || !OtherOwner || TriggerOwner == OtherOwner ||
+				!TriggerOwner->GetActorEnableCollision() || !OtherOwner->GetActorEnableCollision())
+				continue;
 			Info.TriggerComponent->BeginComponentOverlap(Info.OtherComponent);
 			Info.OtherComponent->BeginComponentOverlap(Info.TriggerComponent);
 		}

@@ -245,7 +245,10 @@ namespace
     }
 }
 
-void DrawPreviewViewToolbar(FSkeletalPreviewEditor& Editor, FPreviewViewportToolbarState& State)
+void DrawPreviewViewToolbar(
+    FSkeletalPreviewEditor& Editor,
+    FPreviewViewportToolbarState& State,
+    const std::function<void()>& LeftToolbarContent)
 {
     using namespace ViewportToolbarWidgets;
 
@@ -263,6 +266,12 @@ void DrawPreviewViewToolbar(FSkeletalPreviewEditor& Editor, FPreviewViewportTool
     if (bToolbarOpen)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(Gap, PadY));
+
+        if (LeftToolbarContent)
+        {
+            LeftToolbarContent();
+            ImGui::SameLine();
+        }
 
         const int ProjIdx = Client
             ? std::clamp(static_cast<int>(Client->GetViewportType()), 0, static_cast<int>(ELevelViewportType::Count) - 1)

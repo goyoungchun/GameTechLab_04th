@@ -18,20 +18,21 @@ physx::PxFilterFlags KurisuSimulationFilterShader(
 	physx::PxFilterObjectAttributes Attributes1, physx::PxFilterData Filter1,
 	physx::PxPairFlags& PairFlags, const void* /*ConstantBlock*/, physx::PxU32 /*ConstantBlockSize*/)
 {
+	// 같은 랙돌(소유자)의 본끼리는 충돌하지 않는다. eSUPPRESS라 필터 데이터가 바뀌면 다시 판정된다.
+	if (Filter0.word2 != 0 && Filter0.word2 == Filter1.word2)
+		return physx::PxFilterFlag::eSUPPRESS;
+
+	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다. 트리거도 같은 규칙으로 거른다.
+	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
+		return physx::PxFilterFlag::eSUPPRESS;
+
 	// 트리거는 접촉 해석 없이 들어옴/나감만 알린다.
+	// 트리거 쌍은 Kinematic·Static 상대도 이 셰이더까지 온다. 트리거끼리는 PhysX가 먼저 버린다.
 	if (physx::PxFilterObjectIsTrigger(Attributes0) || physx::PxFilterObjectIsTrigger(Attributes1))
 	{
 		PairFlags = physx::PxPairFlag::eTRIGGER_DEFAULT;
 		return physx::PxFilterFlag::eDEFAULT;
 	}
-
-	// 같은 랙돌(소유자)의 본끼리는 충돌하지 않는다. eSUPPRESS라 필터 데이터가 바뀌면 다시 판정된다.
-	if (Filter0.word2 != 0 && Filter0.word2 == Filter1.word2)
-		return physx::PxFilterFlag::eSUPPRESS;
-
-	// 양쪽 모두 상대 종류를 받아 줄 때만 충돌한다.
-	if ((Filter0.word0 & Filter1.word1) == 0 || (Filter1.word0 & Filter0.word1) == 0)
-		return physx::PxFilterFlag::eSUPPRESS;
 
 	PairFlags = physx::PxPairFlag::eCONTACT_DEFAULT
 		| physx::PxPairFlag::eDETECT_CCD_CONTACT      // CCD는 바디 플래그(A9)가 켜진 경우에만 실제로 동작한다

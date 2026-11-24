@@ -61,8 +61,8 @@ try {
         $runtimeDlls = @(Get-VCRuntimeDlls -Binaries @($gameExe))
     }
     if ($runtimeDlls.Count -eq 0) { throw 'No C++ runtime DLLs found for the game.' }
-    # The PhysX DLLs sit next to KurisuGame.exe in both the engine Build/Bin and the editor distribution.
-    $physXDlls = @('PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll', 'PhysXCooking_64.dll') | ForEach-Object {
+    # The PhysX and NvCloth DLLs sit next to KurisuGame.exe in both the engine Build/Bin and the editor distribution.
+    $physXDlls = @('PhysX_64.dll', 'PhysXCommon_64.dll', 'PhysXFoundation_64.dll', 'PhysXCooking_64.dll', 'NvCloth_x64.dll') | ForEach-Object {
         $dll = Join-Path (Split-Path -Parent $gameExe) $_
         if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw "Missing $_ next to $gameExe. Rebuild KurisuGame." }
         Get-Item -LiteralPath $dll

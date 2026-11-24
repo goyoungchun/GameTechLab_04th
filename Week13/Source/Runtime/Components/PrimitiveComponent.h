@@ -100,13 +100,11 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	bool bGenerateOverlapEvents = true;
-	UPROPERTY(EditAnywhere)
-	bool bBlockComponent = false;
 
 	bool IsOverlappingComponent(const UPrimitiveComponent* Other) const;
 	const TArray<FOverlapInfo>& GetOverlapInfos() const { return OverlapInfos; }
 
-	// UWorld::UpdateOverlaps가 겹침 상태가 바뀐 프레임에 호출한다
+	// FPhysScene이 트리거 이벤트를 디스패치할 때 호출한다
 	void BeginComponentOverlap(UPrimitiveComponent* OtherComp);
 	void EndComponentOverlap(UPrimitiveComponent* OtherComp);
 	void DispatchHit(UPrimitiveComponent* OtherComp);
@@ -128,6 +126,9 @@ protected:
 	virtual void OnCreatePhysicsState() override;
 	virtual void OnDestroyPhysicsState() override;
 	TArray<FOverlapInfo> OverlapInfos;
+
+	// 남은 겹침 쌍에 모두 End를 보낸다. 바디가 사라지면 PhysX가 나감을 알려 주지 않으므로 직접 정리한다.
+	void ClearComponentOverlaps();
 
 	virtual bool ShouldCreateRenderState() const override
 	{

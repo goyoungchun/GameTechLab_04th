@@ -730,6 +730,9 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 		}
 	}
 
+	// 감마에 따라 같은 노출도 화면 밝기가 달라지므로, 노출계가 목표를 감마에 맞춰 바꾸게 알려 준다
+	FExposureMeterRenderer::SetDisplayGamma(Options.Settings.bGammaCorrection ? std::max(Options.Settings.DisplayGamma, 0.01f) : 1.0f);
+
 	// 측정값은 몇 프레임 전 것이라 그래프를 짜는 지금 CPU에서 적응시켜도 된다
 	const float AdaptedEV100 = PP.bAutoExposure ? FExposureMeterRenderer::UpdateAdaptedEV100(PP) : 0.0f;
 

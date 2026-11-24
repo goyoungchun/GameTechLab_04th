@@ -55,6 +55,11 @@ void UPrimitiveComponent::OnUnregister()
 {
 	Super::OnUnregister();
 	// 삭제/등록 해제된 도형을 상대의 OverlapInfos에 남기지 않는다.
+	ClearComponentOverlaps();
+}
+
+void UPrimitiveComponent::ClearComponentOverlaps()
+{
 	while (!OverlapInfos.IsEmpty())
 	{
 		UPrimitiveComponent* Other = OverlapInfos[OverlapInfos.Num() - 1].OtherComp;
@@ -130,7 +135,8 @@ void UPrimitiveComponent::PostEditChangeProperty(const FProperty& Property)
 	}
 
 	// Mobility(Static↔Movable)는 액터 종류가 달라지므로 바디를 새로 만든다.
-	if (Property.Name == "BodyInstance" && IsPhysicsStateCreated())
+	// bGenerateOverlapEvents는 shape의 트리거 여부를 바꾸므로 같이 다시 만든다.
+	if ((Property.Name == "BodyInstance" || Property.Name == "bGenerateOverlapEvents") && IsPhysicsStateCreated())
 	{
 		DestroyPhysicsState();
 		CreatePhysicsState();
@@ -294,6 +300,8 @@ void UPrimitiveComponent::OnCreatePhysicsState()
 void UPrimitiveComponent::OnDestroyPhysicsState()
 {
 	BodyInstance.TermBody();
+	// 트리거가 씬에서 빠질 때의 나감 이벤트는 PhysX가 삭제된 shape로 표시해 버리므로 여기서 End를 보낸다.
+	ClearComponentOverlaps();
 	Super::OnDestroyPhysicsState();
 }
 
