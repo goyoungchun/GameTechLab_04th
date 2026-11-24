@@ -77,7 +77,8 @@ float4 mainPS(VSOutput Input) : SV_Target
         // P에 찍힐 고스트의 광원은 중앙에서 Scale배 떨어진 곳에 있다 (gather)
         const float Scale = GhostScales[i] / Spread;
         float2 SampleUV = 0.5f + (UV - 0.5f) * Scale;
-        float3 SampleColor = SampleChromatic(SampleUV, ChromaDir);
+        // 고스트는 화면에 1/|Scale|배로 커져 찍히므로, 읽는 쪽 오프셋에 |Scale|을 곱해 화면상 벌어짐을 할로와 같게 맞춘다
+        float3 SampleColor = SampleChromatic(SampleUV, ChromaDir * abs(Scale));
         float EdgeWeight = pow(1 - saturate(length(0.5 - SampleUV) / 0.7071), 2);
         // 화면 밖을 읽으면 Clamp가 테두리 픽셀을 늘려 돌려줘서 고스트에 꼬리가 생기므로, 테두리 근처에서 0으로 줄인다
         float2 Inside = saturate(min(SampleUV, 1.0f - SampleUV) * 20.0f);

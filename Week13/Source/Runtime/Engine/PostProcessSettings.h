@@ -73,7 +73,7 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareChromaticDistortion = false;
 	// R/G/B를 읽는 위치를 벌리는 정도(UV). 0이면 색수차가 없다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=0.1, Delta=0.001))
-	float LensFlareChromaticDistortion = 0.01f;
+	float LensFlareChromaticDistortion = 0.004f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareDirtIntensity = false;
 	// 렌즈 먼지 텍스처가 플레어에 곱해지는 세기. 0이면 먼지 없이 플레어 그대로
