@@ -63,6 +63,9 @@ float4 mainPS(VSOutput Input) : SV_Target
         float2 SampleUV = 0.5f + (UV - 0.5f) * Scale;
         float3 SampleColor = BrightTexture.Sample(LinearClamp, SampleUV).rgb;
         float EdgeWeight = pow(1 - saturate(length(0.5 - SampleUV) / 0.7071), 2);
+        // 화면 밖을 읽으면 Clamp가 테두리 픽셀을 늘려 돌려줘서 고스트에 꼬리가 생기므로, 테두리 근처에서 0으로 줄인다
+        float2 Inside = saturate(min(SampleUV, 1.0f - SampleUV) * 20.0f);
+        EdgeWeight *= Inside.x * Inside.y;
         // 1/Scale배 커진 고스트는 같은 빛이 넓이 1/Scale²에 퍼지므로 그만큼 어두워진다
         float Energy = saturate(Scale * Scale);
         Result += SampleColor * GhostTints[i] * EdgeWeight * Energy;
