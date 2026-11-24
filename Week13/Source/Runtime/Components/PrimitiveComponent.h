@@ -117,7 +117,7 @@ public:
 	virtual UBodySetup* GetBodySetup() { return nullptr; }
 
 	// 시뮬레이트 여부를 바꾼다. 바디가 있으면 바로 Kinematic ↔ Dynamic 전환한다.
-	void SetSimulatePhysics(bool bSimulate);
+	virtual void SetSimulatePhysics(bool bSimulate);
 
 	// 두 바디가 충돌할 지
 	virtual bool CanBodiesCollide(const FBodyInstance& A, const FBodyInstance& B) const { return false; }

@@ -28,6 +28,7 @@
 #include "Physics/PhysXConversions.h"
 #include "Physics/PhysXIncludes.h"
 #include "Engine/World.h"
+#include "Physics/PhysicsLock.h"
 
 namespace
 {
@@ -289,6 +290,24 @@ bool USkeletalMeshComponent::CanBodiesCollide(const FBodyInstance& A, const FBod
 bool USkeletalMeshComponent::IsRagdollSimulating() const
 {
 	return BodyInstance.bSimulatePhysics && !Bodies.IsEmpty();
+}
+
+void USkeletalMeshComponent::SetSimulatePhysics(bool bSimulate)
+{
+	BodyInstance.bSimulatePhysics = bSimulate;
+
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (Body)
+		{
+			Body->SetSimulatePhysics(bSimulate);
+		}
+	}
+
+	if (!bSimulate)
+	{
+		bTeleportBodiesNextUpdate = true;
+	}
 }
 
 void USkeletalMeshComponent::SerializeSingleAnimation(FStructuredArchive::FRecord& Record)
@@ -697,6 +716,9 @@ void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
 		Body->InstanceBodyIndex = i;
 		Body->OwnerId = GetUUID();
 
+		Body->ObjectType = ECollisionCategory::PhysicsBody;
+		Body->CollidesWith = AllCategoriesMask & ~CategoryBit(ECollisionCategory::Pawn);
+
 		// 형상(캡슐)이 본 로컬 기준이므로 바디는 본의 월드 트랜스폼에 놓는다
 		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(BoneIndex));
 		if (!Body->InitBody(Setup, BoneWorld, this, Scene))
@@ -704,6 +726,16 @@ void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
 			delete Body;
 			continue;
 		}
+
+		if (physx::PxRigidDynamic* Dynamic = Body->Actor->is<physx::PxRigidDynamic>())
+		{
+			SCOPED_SCENE_WRITE_LOCK(Scene->GetPxScene());
+			// 조인트 사슬은 반복이 적으면 늘어났다가 튕긴다 (기본 4, 1)
+			Dynamic->setSolverIterationCounts(8, 2);
+			// 겹친 바디를 밀어낼 때의 최대 속도(m/s). 기본값은 사실상 무한대라 겹치면 폭발한다
+			Dynamic->setMaxDepenetrationVelocity(1.0f);
+		}
+
 		Bodies[i] = Body;
 	}
 
@@ -767,7 +799,7 @@ void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
 			continue;
 		}
 
-		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(Body->InstanceBodyIndex));
+		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(Body->InstanceBoneIndex));
 		Body->SetWorldTransform(BoneWorld, bTeleport);
 	}
 }

@@ -190,5 +190,3 @@ void USkinnedMeshComponent::Serialize(FStructuredArchive::FRecord Record)
 	if (Record.GetUnderlyingArchive().IsLoading())
 		RecreateMeshObject();
 }
-
-
