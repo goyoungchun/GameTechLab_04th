@@ -14,7 +14,7 @@ namespace
 	// 라이트 각반경이 0에 가까워도 화면에서 점이 아니라 원판으로 보이게 하는 하한
 	constexpr float MinSunRadiusRadians = 0.5f * 3.14159265f / 180.0f;
 	// Intensity 1 라이트는 하늘과 밝기가 비슷해 묻히므로, 원판만 따로 밝혀 플레어 Threshold를 넘기게 한다
-	constexpr float SunDiskBrightness = 20.0f;
+	constexpr float SunDiskBrightness = 50.0f;
 
 	// 샘플링 결과가 이미 선형인 포맷인지 판단한다.
 	// - _SRGB 포맷: 하드웨어가 샘플링할 때 sRGB -> 선형으로 디코딩한다 (예: Sky.dds = BC7_UNORM_SRGB)
