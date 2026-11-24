@@ -181,7 +181,7 @@ void UViewfinderWidget::NativeTick(float DeltaTime)
 	bMeterValid = Photo->IsPhotoModeActive() && FExposureMeterRenderer::GetAverageLuminance(AverageLuminance);
 	if (bMeterValid)
 	{
-		const float MeteredEV = FPostProcessSettings::GetMeteredEV100(AverageLuminance);
+		const float MeteredEV = FPostProcessSettings::GetMeteredEV100(AverageLuminance, FExposureMeterRenderer::GetDisplayGamma());
 		const float ShutterSpeed = 1.0f / State.GetShutterSeconds();
 		ExposureOffsetEV = MeteredEV - FPostProcessSettings::ComputeEV100(State.GetFstop(), ShutterSpeed, State.ISO);
 

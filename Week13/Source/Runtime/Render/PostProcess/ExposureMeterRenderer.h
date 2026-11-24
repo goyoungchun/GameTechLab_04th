@@ -28,6 +28,9 @@ public:
 	// 눈 적응: 측정값이 가리키는 EV100 쪽으로 현재 EV100을 시간에 따라 조금씩 옮기고 돌려준다.
 	// 한 프레임에 여러 뷰가 불러도 한 번만 움직인다
 	static float UpdateAdaptedEV100(const struct FPostProcessSettings& Settings);
+	// 톤맵이 거는 감마. 렌더러가 매 프레임 넣고, 노출계 목표와 뷰파인더 바늘이 같은 값을 쓴다
+	static void SetDisplayGamma(float InGamma) { DisplayGamma = InGamma; }
+	static float GetDisplayGamma() { return DisplayGamma; }
 	// 가장 최근 적응 EV100. 게임 쪽(사진 모드 AE 다이얼)이 읽는다. 아직 적응한 적이 없으면 false
 	static bool GetAdaptedEV100(float& OutEV100)
 	{
@@ -58,4 +61,5 @@ private:
 	static inline float AdaptedEV100 = 0.0f;
 	static inline bool bHasAdapted = false;
 	static inline float LastAdaptTime = -1.0f;
+	static inline float DisplayGamma = 1.0f;
 };
