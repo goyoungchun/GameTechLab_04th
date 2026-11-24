@@ -64,8 +64,9 @@ struct FPostProcessSettings
 	// 켜면 카메라 조리개·셔터·ISO 대신 노출계가 잰 장면 밝기를 천천히 따라간다 (UE의 AutoExposureMethod != Manual)
 	UPROPERTY(EditAnywhere)
 	bool bOverride_bAutoExposure = false;
+	// UE처럼 기본으로 켜 두고, 뷰포트는 Eye Adaptation Show Flag로, 카메라는 bOverride_로 끈다
 	UPROPERTY(EditAnywhere)
-	bool bAutoExposure = false;
+	bool bAutoExposure = true;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_AutoExposureMinEV100 = false;
 	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
