@@ -78,7 +78,7 @@ bool FSkyboxRenderer::Init(const FString& PanoramaPath)
 	return true;
 }
 
-void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& CameraPosition)
+void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& CameraPosition, const FLightRenderParameters* SunLight)
 {
 	if (!IsValid()) return;
 

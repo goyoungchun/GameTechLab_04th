@@ -11,6 +11,10 @@ cbuffer SkyboxConstants : register(b0)
     // 1이면 셰이더에서 sRGB -> 선형 변환. (8bit/BC UNORM 텍스처)
     // _SRGB 포맷은 하드웨어가 샘플링할 때 이미 디코딩하고, float(.hdr) 포맷은 원래 선형이라 0이다.
     float  DecodeSRGB;
+    float3 SunDirection;   // 카메라에서 태양을 보는 방향 (= -라이트 Forward)
+    float  CosSunRadius;   // dot(시선, SunDirection)이 이 값보다 크면 원판 안
+    float3 SunRadiance;    // 원판 HDR 밝기
+    float  bHasSun;        // 디렉셔널 라이트가 없으면 0
 };
 
 Texture2D    PanoramaTexture : register(t0);
