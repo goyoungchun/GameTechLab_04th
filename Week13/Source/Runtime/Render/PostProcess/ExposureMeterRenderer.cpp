@@ -4,8 +4,11 @@
 #include "Render/RenderDevice.h"
 #include "Render/RenderResourceManager.h"
 #include "Render/Texture2D.h"
+#include "Engine/PostProcessSettings.h"
+#include "Core/EngineTimer.h"
 
 #include <DirectXPackedVector.h>
+#include <algorithm>
 #include <cmath>
 
 void FExposureMeterRenderer::Init(FRenderer* InRenderer)
@@ -110,4 +113,32 @@ bool FExposureMeterRenderer::GetAverageLuminance(float& OutLuminance)
 {
 	OutLuminance = AverageLuminance;
 	return bHasReading;
+}
+
+float FExposureMeterRenderer::UpdateAdaptedEV100(const FPostProcessSettings& Settings)
+{
+	const float MinEV = std::min(Settings.AutoExposureMinEV100, Settings.AutoExposureMaxEV100);
+	const float MaxEV = std::max(Settings.AutoExposureMinEV100, Settings.AutoExposureMaxEV100);
+	// 첫 측정이 오기 전에는 카메라에 설정된 값을 목표로 둔다
+	const float TargetEV = std::clamp(bHasReading ? FPostProcessSettings::GetMeteredEV100(AverageLuminance)
+		: Settings.GetCameraEV100(), MinEV, MaxEV);
+
+	const float Now = EngineTimer::GetTotalTime();
+	if (!bHasAdapted)
+	{
+		// 처음 켰을 때 검은 화면에서 서서히 밝아지지 않게 바로 목표에 맞춘다
+		AdaptedEV100 = TargetEV;
+		bHasAdapted = true;
+	}
+	else if (Now != LastAdaptTime)
+	{
+		// 탭 전환 등으로 시간이 크게 튀면 한 번에 끝까지 넘어가 버리므로 막는다
+		const float Dt = std::clamp(Now - LastAdaptTime, 0.0f, 0.1f);
+		// 목표 EV가 작다 = 장면이 어두워서 화면을 밝혀야 한다
+		const float Speed = TargetEV < AdaptedEV100 ? Settings.AutoExposureSpeedUp : Settings.AutoExposureSpeedDown;
+		// 남은 거리의 일정 비율씩 다가가서, 프레임레이트가 달라도 같은 시간에 같은 만큼 적응한다
+		AdaptedEV100 += (TargetEV - AdaptedEV100) * (1.0f - std::exp(-Dt * Speed));
+	}
+	LastAdaptTime = Now;
+	return AdaptedEV100;
 }

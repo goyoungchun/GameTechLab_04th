@@ -25,6 +25,10 @@ public:
 	// 가장 최근에 읽어 온 평균 휘도(선형). 아직 읽은 적이 없으면 false
 	static bool GetAverageLuminance(float& OutLuminance);
 
+	// 눈 적응: 측정값이 가리키는 EV100 쪽으로 현재 EV100을 시간에 따라 조금씩 옮기고 돌려준다.
+	// 한 프레임에 여러 뷰가 불러도 한 번만 움직인다
+	static float UpdateAdaptedEV100(const struct FPostProcessSettings& Settings);
+
 private:
 	void ReadBack();
 
@@ -45,4 +49,7 @@ private:
 
 	static inline float AverageLuminance = 0.18f;
 	static inline bool bHasReading = false;
+	static inline float AdaptedEV100 = 0.0f;
+	static inline bool bHasAdapted = false;
+	static inline float LastAdaptTime = -1.0f;
 };
