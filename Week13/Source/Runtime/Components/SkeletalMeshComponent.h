@@ -18,6 +18,10 @@ class UAnimationAsset;
 class UAnimSingleNodeInstance;
 class UAnimGraphInstance;
 
+struct FBodyInstance;
+struct FConstraintInstance;
+class UPhysicsAsset;
+
 UCLASS()
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
@@ -88,12 +92,26 @@ public:
 	UPROPERTY()
 	bool bEnableClothingSimulation = true;
 
+	// Physics Asset 추가
+	UPhysicsAsset* GetPhysicsAsset() const;
+
+	int32 FindBodyIndexByBone(const FString& BoneName) const;
+	FBodyInstance* GetBodyInstanceByBone(const FString& BoneName) const;
+
+	TArray<FBodyInstance*> Bodies;
+	TArray<FConstraintInstance*> Constraints;
+
 protected:
 	// 단일 애니메이션 에셋 경로/루프/재생 속도를 씬에 저장·복원한다 (Serialize에서 부른다)
 	void SerializeSingleAnimation(FStructuredArchive::FRecord& Record);
 
 	void RefreshBoneTransforms() override;
 	void OnSkeletalMeshChanged() override;
+
+	// Physics Asset
+	virtual bool ShouldCreatePhysicsState() const override;
+	virtual void OnCreatePhysicsState() override;
+	virtual void OnDestroyPhysicsState() override;
 
 private:
 	void UpdateClothingSimulation(float DeltaTime);
@@ -117,4 +135,8 @@ private:
 	FClothingSimulationData ClothSimData;
 	bool bClothTeleportPending = true;
 	bool bSuspendClothingSimulation = false;
+
+	// Physics Asset
+	void InstantiatePhysicsAssetBodies_Internal();
+	void TermArticulated();
 };
