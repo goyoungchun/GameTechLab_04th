@@ -71,7 +71,7 @@ struct FPostProcessSettings
 	bool bOverride_AutoExposureMinEV100 = false;
 	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
-	float AutoExposureMinEV100 = 11.0f;
+	float AutoExposureMinEV100 = 13.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_AutoExposureMaxEV100 = false;
 	// 이보다 더 어둡게 하지 않는다
