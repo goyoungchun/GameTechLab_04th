@@ -78,7 +78,7 @@ void UCharacterMovementComponent::PhysWalking(float DeltaTime)
 
 	const FVector Delta = Velocity * DeltaTime;
 	if (Delta.SizeSquared() > SMALL_NUMBER)
-		SafeMoveWithSlide(Delta, UpdatedComponent->GetWorldRotation());
+		SafeMoveWithSlide(Delta, UpdatedComponent->GetWorldRotation(), true);
 }
 
 void UCharacterMovementComponent::PhysFalling(float DeltaTime)
@@ -135,8 +135,17 @@ void UCharacterMovementComponent::MaintainFloor()
 	{
 		// 경사·계단을 따라 발을 바닥에 붙인다. 묻혀 있으면 위로 올린다
 		const float Gap = Floor.Distance - GetCapsuleHalfHeight();
-		if (std::abs(Gap) > KINDA_SMALL_NUMBER)
+		// 내려갈 때는 스윕한다. 구가 못 본 계단 모서리에 캡슐 반구가 걸려 있으면 거기서 멈춘다
+		// (순간이동하면 모서리에 박혀 다음 이동이 모두 막힌다)
+		if (Gap > KINDA_SMALL_NUMBER)
+		{
+			FHitResult DownHit(1.0f);
+			MoveUpdatedComponent(FVector(0.0f, 0.0f, -Gap), UpdatedComponent->GetWorldRotation(), true, &DownHit);
+		}
+		else if (Gap < -KINDA_SMALL_NUMBER)
+		{
 			MoveUpdatedComponent(FVector(0.0f, 0.0f, -Gap), UpdatedComponent->GetWorldRotation(), false, nullptr);
+		}
 		return;
 	}
 
@@ -152,9 +161,9 @@ bool UCharacterMovementComponent::FindFloor(float ExtraDistance, FHitResult& Out
 {
 	if (!CanUseFloor()) return false;
 
-	// 캡슐 중심에서 아래로 레이를 쏜다. Distance가 중심~바닥 거리다.
 	const FVector Start = UpdatedComponent->GetWorldLocation();
-	const float TraceLength = GetCapsuleHalfHeight() + std::max(ExtraDistance, 0.0f);
+	const float HalfHeight = GetCapsuleHalfHeight();
+	const float Extra = std::max(ExtraDistance, 0.0f);
 	UWorld* World = GetOwner()->GetWorld();
 
 	// 물리 씬이 없으면 바닥도 없다 (떨어지는 상태가 된다).
@@ -165,7 +174,30 @@ bool UCharacterMovementComponent::FindFloor(float ExtraDistance, FHitResult& Out
 	// 이동 스윕과 같은 물리 씬 형상을 본다 (Static 메시는 삼각형, Movable은 볼록 껍질).
 	FCollisionQueryParams Params;
 	Params.IgnoreActor = GetOwner();
-	return PhysicsScene->RaycastSingle(Start, Start + FVector(0.0f, 0.0f, -TraceLength), OutHit, Params);
+
+	// 캡슐 중심에서 캡슐보다 조금 가는 구를 아래로 쓸어 본다. 중심 레이 하나로는 캡슐 아래 반구가 걸친
+	// 계단 모서리를 못 보고 그 아래 바닥을 찾는다 (StepUp으로 올라선 직후 다시 끌어내려진다).
+	// 벽 옆에 붙어 서 있을 때 벽에 걸리지 않게 반지름을 줄인다
+	const float Radius = GetCapsuleRadius() * 0.9f;
+	if (Radius <= KINDA_SMALL_NUMBER || Radius >= HalfHeight)
+		return PhysicsScene->RaycastSingle(Start, Start + FVector(0.0f, 0.0f, -(HalfHeight + Extra)), OutHit, Params);
+
+	const float TraceLength = HalfHeight - Radius + Extra;   // 구 바닥이 발 아래 Extra까지 내려간다
+	if (!PhysicsScene->SweepSingle(FCollisionShape::MakeSphere(Radius), FQuat::Identity(),
+		Start, Start + FVector(0.0f, 0.0f, -TraceLength), OutHit, Params))
+	{
+		return false;
+	}
+	// Distance를 레이와 같은 뜻(중심~바닥)으로 맞춘다. 구 중심이 이동한 거리 + 반지름
+	OutHit.Distance += Radius;
+	return true;
+}
+
+float UCharacterMovementComponent::GetCapsuleRadius() const
+{
+	if (const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(UpdatedComponent))
+		return Capsule->GetScaledCapsuleRadius();
+	return 0.0f;
 }
 
 float UCharacterMovementComponent::GetCapsuleHalfHeight() const
@@ -232,7 +264,7 @@ bool UCharacterMovementComponent::ApplyRootMotion(float DeltaTime)
 	const FRotator NewRotation = NewQuat.ToFRotator();
 
 	if (Move.SizeSquared() > SMALL_NUMBER)
-		SafeMoveWithSlide(Move, NewRotation);   // Sweep: 벽에 막힌다
+		SafeMoveWithSlide(Move, NewRotation, true);   // Sweep: 벽에 막히고, 낮은 턱은 오른다
 	else
 		MoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, nullptr);
 
@@ -304,7 +336,7 @@ void UCharacterMovementComponent::CalcVelocity(float DeltaTime, float Friction, 
 	Velocity = Velocity * (NewSpeed / Speed);
 }
 
-void UCharacterMovementComponent::SafeMoveWithSlide(const FVector& Delta, const FRotator& NewRotation)
+void UCharacterMovementComponent::SafeMoveWithSlide(const FVector& Delta, const FRotator& NewRotation, bool bAllowStepUp)
 {
 	const FVector Start = UpdatedComponent->GetWorldLocation();
 	FHitResult Hit(1.0f);
@@ -318,6 +350,10 @@ void UCharacterMovementComponent::SafeMoveWithSlide(const FVector& Delta, const 
 		return;
 	}
 
+	// 낮은 턱이면 남은 이동량으로 올라선다
+	if (bAllowStepUp && StepUp(Delta * (1.0f - Hit.Time), Hit, NewRotation))
+		return;
+
 	HandleImpact(Hit, 0.0f, Delta);
 
 	// 벽으로 들어가는 속도 성분을 없애고 남은 이동을 표면을 따라 한 번 더 시도한다
@@ -328,6 +364,63 @@ void UCharacterMovementComponent::SafeMoveWithSlide(const FVector& Delta, const 
 	const FVector Slide = ComputeSlideVector(Delta, 1.0f - Hit.Time, Normal, Hit);
 	if (Slide.SizeSquared() > SMALL_NUMBER)
 		MoveUpdatedComponent(Slide, NewRotation, true, &Hit);
+}
+
+bool UCharacterMovementComponent::StepUp(const FVector& Delta, const FHitResult& Hit, const FRotator& NewRotation)
+{
+	// 경사 한계 44.76도 (UE WalkableFloorAngle 기본값)의 cos
+	constexpr float WalkableFloorZ = 0.71f;
+
+	const float MaxStep = MaxStepHeight * CmToWorld;
+	const FVector Forward(Delta.X, Delta.Y, 0.0f);
+	if (MaxStep <= 0.0f || Forward.SizeSquared() <= SMALL_NUMBER || !Hit.bBlockingHit)
+		return false;
+	// 천장 쪽에 맞았거나, 시뮬레이트 중인 물리 바디(밀어야 할 대상)면 오르지 않는다
+	if (Hit.ImpactNormal.Z < -KINDA_SMALL_NUMBER)
+		return false;
+	if (Hit.HitComponent && Hit.HitComponent->BodyInstance.IsSimulatingPhysics())
+		return false;
+
+	const FVector Start = UpdatedComponent->GetWorldLocation();
+	const float StartFootZ = Start.Z - GetCapsuleHalfHeight();
+	// 맞은 지점이 발에서 MaxStepHeight보다 높으면 벽이다
+	if (Hit.ImpactPoint.Z - StartFootZ > MaxStep)
+		return false;
+
+	auto Revert = [&]()
+	{
+		MoveUpdatedComponent(Start - UpdatedComponent->GetWorldLocation(), NewRotation, false, nullptr);
+		return false;
+	};
+
+	// 1. 위: 천장에 막히면 막힌 데까지만 올라간다
+	FHitResult UpHit(1.0f);
+	MoveUpdatedComponent(FVector(0.0f, 0.0f, MaxStep), NewRotation, true, &UpHit);
+	const float UpAmount = UpdatedComponent->GetWorldLocation().Z - Start.Z;
+	if (UpAmount <= KINDA_SMALL_NUMBER)
+		return Revert();
+
+	// 2. 앞: 올라간 높이에서도 곧바로 막히면 턱이 아니라 벽이다
+	FHitResult ForwardHit(1.0f);
+	if (!MoveUpdatedComponent(Forward, NewRotation, true, &ForwardHit) && ForwardHit.Time <= KINDA_SMALL_NUMBER)
+		return Revert();
+
+	// 3. 아래: 올라간 만큼 내려와 턱 위에 선다. 바닥이 없으면 MaintainFloor가 이어서 판정한다
+	FHitResult DownHit(1.0f);
+	MoveUpdatedComponent(FVector(0.0f, 0.0f, -(UpAmount + MaxStep)), NewRotation, true, &DownHit);
+	if (DownHit.bBlockingHit)
+	{
+		if (DownHit.bStartPenetrating)
+			return Revert();
+		// 캡슐 반구가 턱 모서리에 내려앉으면 법선이 비스듬하다. 처음 막힌 턱 높이에 닿은 거면 받아들이고,
+		// 그보다 높은 곳의 가파른 면(경사 벽)에 닿았을 때만 거부한다
+		if (DownHit.ImpactNormal.Z < WalkableFloorZ && DownHit.ImpactPoint.Z > Hit.ImpactPoint.Z + KINDA_SMALL_NUMBER * 10.0f)
+			return Revert();
+		const float NewFootZ = UpdatedComponent->GetWorldLocation().Z - GetCapsuleHalfHeight();
+		if (NewFootZ - StartFootZ > MaxStep)
+			return Revert();
+	}
+	return true;
 }
 
 void UCharacterMovementComponent::HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta)

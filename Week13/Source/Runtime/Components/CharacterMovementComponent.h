@@ -97,16 +97,20 @@ protected:
 	void PhysFalling(float DeltaTime);
 	// 걷는 중 이동이 끝난 뒤 바닥에 발을 붙인다. 바닥이 없으면 Falling
 	void MaintainFloor();
-	// 캡슐 중심에서 아래로 (반높이 + ExtraDistance)만큼 바닥을 찾는다. Hit.Distance는 중심~바닥 거리
+	// 발 아래 ExtraDistance까지 바닥을 찾는다 (캡슐보다 조금 가는 구를 쓸어 본다). Hit.Distance는 중심~바닥 거리
 	bool FindFloor(float ExtraDistance, FHitResult& OutHit) const;
 	float GetCapsuleHalfHeight() const;
+	float GetCapsuleRadius() const;   // 캡슐이 아니면 0 (바닥 판정이 레이로 바뀐다)
 	// 바닥 판정을 쓸 수 있는지 (Actor 충돌이 켜져 있고 World가 있을 때)
 	bool CanUseFloor() const;
 	void ProcessLanded(const FHitResult& Hit);
 	// 공중에서는 루트 모션을 버린다 (착지할 때 한꺼번에 적용되지 않게)
 	void DiscardRootMotion();
-	// Sweep 이동. 막히면 표면을 따라 한 번 미끄러진다
-	void SafeMoveWithSlide(const FVector& Delta, const FRotator& NewRotation);
+	// Sweep 이동. 막히면 bAllowStepUp일 때 먼저 계단 오르기를 시도하고, 안 되면 표면을 따라 한 번 미끄러진다
+	void SafeMoveWithSlide(const FVector& Delta, const FRotator& NewRotation, bool bAllowStepUp = false);
+	// 걷는 중 MaxStepHeight 이하의 턱에 막혔을 때 위 → 앞 → 아래 순으로 스윕해 올라선다.
+	// 올라설 수 없으면 시작 위치로 되돌리고 false
+	bool StepUp(const FVector& Delta, const FHitResult& Hit, const FRotator& NewRotation);
 
 	// UE: 이동이 끝난 뒤 회전을 갱신한다 (bOrientRotationToMovement)
 	void PhysicsRotation(float DeltaTime);
