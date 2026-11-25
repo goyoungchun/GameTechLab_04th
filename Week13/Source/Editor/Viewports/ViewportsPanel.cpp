@@ -23,6 +23,11 @@
 #include "Editor/Gizmo/Gizmo.h"
 #include "Input/InputSystem.h"
 
+#include "Components/SkeletalMeshComponent.h"
+#include "Physics/BodyInstance.h"
+#include "Physics/ConstraintInstance.h"
+#include "Physics/PhysicsStats.h"
+
 
 namespace {
 constexpr float SplitterThickness = 6.0f;
@@ -566,6 +571,46 @@ const FRenderStats& Stats = RenderData.RenderStats;
 		Lines.Add({ std::format("  Particles {} / {} ({:.1f} %)", Active, Capacity,
 			Capacity > 0 ? 100.0 * static_cast<double>(Active) / static_cast<double>(Capacity) : 0.0), ValueColor });
 		Lines.Add({ std::format("  Memory {:.1f} KB", static_cast<double>(MemoryBytes) / 1024.0), ValueColor });
+	}
+
+	if (FStatOverlay::IsEnabled(EStatFlags::Physics)) {
+		const UWorld* World = Client->GetWorld();
+		uint32 NumComponents = 0, NumRagdolls = 0;
+		uint32 NumBodies = 0, NumSimBodies = 0, NumConstraints = 0;
+		for (TObjectIterator<USkeletalMeshComponent> It; It; ++It) {
+			if (!It->IsRegistered() || It->GetWorld() != World || It->Bodies.IsEmpty()) continue;
+			++NumComponents;
+			if (It->IsRagdollSimulating()) ++NumRagdolls;
+			for (const FBodyInstance* Body : It->Bodies) {
+				if (!Body || !Body->IsValidBodyInstance()) continue;
+				++NumBodies;
+				if (Body->IsSimulatingPhysics()) ++NumSimBodies;
+			}
+			for (const FConstraintInstance* CI : It->Constraints)
+				if (CI) ++NumConstraints;
+		}
+
+		Lines.Add({ "Physics", TitleColor });
+		Lines.Add({ std::format("  Skeletal {}   Ragdoll {}", NumComponents, NumRagdolls), ValueColor });
+		Lines.Add({ std::format("  Bodies {}   Simulating {}", NumBodies, NumSimBodies), ValueColor });
+		Lines.Add({ std::format("  Constraints {}", NumConstraints), ValueColor });
+
+		// Skinning 블록과 같은 형식(Last/Avg/Max). 그쪽 AddRows는 블록 안 지역 람다라 따로 둔다
+		ProfileLines.Add({ "Physics CPU (ms)", TitleColor, { "Last", "Avg", "Max" } });
+		for (TStatId Id : { PhysicsStats::STAT_PhysSimulate, PhysicsStats::STAT_PhysSyncActors,
+			PhysicsStats::STAT_PhysNotifies, PhysicsStats::STAT_RagdollInit,
+			PhysicsStats::STAT_RagdollKinematic, PhysicsStats::STAT_RagdollBonePose }) {
+			FProfileStatLine Line{ "  " + FString(Id.GetName()), ValueColor };
+			if (const FCycleStatData* D = FStatRegistry::Find(Id)) {
+				Line.Values[0] = std::format("{:.2f}", D->GetLastMs());
+				Line.Values[1] = std::format("{:.2f}", D->GetRecentAverageMs());
+				Line.Values[2] = std::format("{:.2f}", D->GetMaxMs());
+			}
+			else {
+				Line.Values[0] = Line.Values[1] = Line.Values[2] = "-";
+			}
+			ProfileLines.Add(Line);
+		}
 	}
 
 	if (Lines.Num() == 0 && ProfileLines.Num() == 0)
