@@ -933,7 +933,8 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 		const FRenderGraphTextureRef Ghost = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareGhost");
 		const FRenderGraphTextureRef BlurTemp = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurTemp");
 		const FRenderGraphTextureRef Blurred = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurred");
-		if (!Bright || !Ghost || !BlurTemp || !Blurred) return false;
+		const FRenderGraphTextureRef Shaped = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBokeh");
+		if (!Bright || !Shaped || !Ghost || !BlurTemp || !Blurred) return false;
 
 		FRenderGraphRasterPassDesc BrightPass{};
 		BrightPass.Name = "LensFlareBright";
@@ -945,14 +946,25 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 					Flare->RenderBrightPass(View, Graph.Resolve(LightingHDR));
 			})) return false;
 
-		FRenderGraphRasterPassDesc GhostPass{};
-		GhostPass.Name = "LensFlareGhost";
-		GhostPass.ReadTextures = { Bright };
-		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
-		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Bright]
+		// 광원 점을 먼저 조리개 모양으로 번지게 해 두면, Ghost가 배율대로 복사할 때 고스트도 같은 모양이 된다
+		FRenderGraphRasterPassDesc BokehPass{};
+		BokehPass.Name = "LensFlareBokeh";
+		BokehPass.ReadTextures = { Bright };
+		BokehPass.ColorAttachments = { { Shaped, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BokehPass), [this, Renderer, &Graph, Bright]
 			{
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
-					Flare->RenderGhosts(View, Graph.Resolve(Bright));
+					Flare->RenderBokeh(View, Graph.Resolve(Bright));
+			})) return false;
+
+		FRenderGraphRasterPassDesc GhostPass{};
+		GhostPass.Name = "LensFlareGhost";
+		GhostPass.ReadTextures = { Shaped };
+		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Shaped]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderGhosts(View, Graph.Resolve(Shaped));
 			})) return false;
 
 		// 읽는 텍스처에 그대로 쓸 수 없으니 가로 결과는 Temp에, 세로 결과는 Blurred에 받는다

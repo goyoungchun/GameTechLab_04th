@@ -365,6 +365,7 @@ void FViewportsPanel::DrawProjectionMenu(FEditorViewportClient& Client)
         OverrideSlider("Ghost Dispersal", PP.bOverride_LensFlareGhostDispersal, PP.LensFlareGhostDispersal, 0.0f, 1.0f, "%.2f", 0);
         OverrideSlider("Halo Width", PP.bOverride_LensFlareHaloWidth, PP.LensFlareHaloWidth, 0.0f, 1.0f, "%.2f", 0);
         OverrideSlider("Halo Intensity", PP.bOverride_LensFlareHaloIntensity, PP.LensFlareHaloIntensity, 0.0f, 2.0f, "%.2f", 0);
+        OverrideSlider("Bokeh Size", PP.bOverride_LensFlareBokehSize, PP.LensFlareBokehSize, 0.0f, 64.0f, "%.1f", 0);
         OverrideSlider("Chromatic Distortion", PP.bOverride_LensFlareChromaticDistortion, PP.LensFlareChromaticDistortion, 0.0f, 0.1f, "%.3f", 0);
         OverrideSlider("Dirt Intensity", PP.bOverride_LensFlareDirtIntensity, PP.LensFlareDirtIntensity, 0.0f, 8.0f, "%.2f", 0);
 

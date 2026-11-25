@@ -28,14 +28,16 @@ void FLensFlareRenderer::Init(FRenderer* InRenderer)
 	GhostShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareGhost.hlsl");
 	CompositeShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareComposite.hlsl");
 	BlurShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareBlur.hlsl");
+	BokehShader = FRenderResourceManager::GetShaderProgram("EngineResources/Shaders/LensFlareBokeh.hlsl");
 	BrightPipelineState = MakeFullscreenPipeline(BrightShader, EBlendState::Opaque);
 	GhostPipelineState = MakeFullscreenPipeline(GhostShader, EBlendState::Opaque);
 	BlurPipelineState = MakeFullscreenPipeline(BlurShader, EBlendState::Opaque);
+	BokehPipelineState = MakeFullscreenPipeline(BokehShader, EBlendState::Opaque);
 	// 장면을 복사하지 않고 플레어만 위에 얹으면 되므로 가산 블렌드로 그린다
 	CompositePipelineState = MakeFullscreenPipeline(CompositeShader, EBlendState::Additive);
 	ConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareData));
 	BlurConstantBuffer = RenderCommand::CreateConstantBuffer(sizeof(FLensFlareBlurData));
-	assert(BrightShader && GhostShader && CompositeShader && BlurShader && ConstantBuffer && BlurConstantBuffer);
+	assert(BrightShader && GhostShader && CompositeShader && BlurShader && BokehShader && ConstantBuffer && BlurConstantBuffer);
 
 	// 먼지는 렌즈에 붙어 있어 화면 UV에 고정이므로 한 번만 읽어 둔다. 없으면 먼지 없이 플레어만 나온다
 	const FImageData DirtImage = ImageLoader::Load(FPaths::EngineFileUtf8("EngineResources/Textures/LensDirt.png"));
@@ -61,6 +63,9 @@ void FLensFlareRenderer::UploadConstants(const FSceneView& View)
 	Data.HaloIntensity = PP.LensFlareHaloIntensity;
 	Data.ChromaticDistortion = PP.LensFlareChromaticDistortion;
 	Data.DirtIntensity = PP.LensFlareDirtIntensity;
+	// 같은 렌즈의 같은 조리개라 DOF 보케와 날 수를 함께 쓴다
+	Data.BladeCount = static_cast<float>(PP.DepthOfFieldBladeCount);
+	Data.BokehRadius = PP.LensFlareBokehSize;
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Data, sizeof(Data));
 	RenderCommand::BindConstantBuffer(0, ConstantBuffer.get(), EShaderBindFlagBits::Pixel);
 }
@@ -84,6 +89,13 @@ bool FLensFlareRenderer::RenderBrightPass(const FSceneView& View, FTexture2D* Sc
 	if (!ConstantBuffer) return false;
 	UploadConstants(View);
 	return DrawFullscreen(BrightPipelineState, SceneColor);
+}
+
+bool FLensFlareRenderer::RenderBokeh(const FSceneView& View, FTexture2D* BrightTexture)
+{
+	if (!ConstantBuffer) return false;
+	UploadConstants(View);
+	return DrawFullscreen(BokehPipelineState, BrightTexture);
 }
 
 bool FLensFlareRenderer::RenderGhosts(const FSceneView& View, FTexture2D* BrightTexture)

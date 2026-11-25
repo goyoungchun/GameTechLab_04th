@@ -29,6 +29,7 @@ void FPostProcessSettings::OverrideBlend(const FPostProcessSettings& Src, float 
 	BlendFloat(Src.bOverride_LensFlareGhostDispersal, LensFlareGhostDispersal, Src.LensFlareGhostDispersal);
 	BlendFloat(Src.bOverride_LensFlareHaloWidth, LensFlareHaloWidth, Src.LensFlareHaloWidth);
 	BlendFloat(Src.bOverride_LensFlareHaloIntensity, LensFlareHaloIntensity, Src.LensFlareHaloIntensity);
+	BlendFloat(Src.bOverride_LensFlareBokehSize, LensFlareBokehSize, Src.LensFlareBokehSize);
 	BlendFloat(Src.bOverride_LensFlareChromaticDistortion, LensFlareChromaticDistortion, Src.LensFlareChromaticDistortion);
 	BlendFloat(Src.bOverride_LensFlareDirtIntensity, LensFlareDirtIntensity, Src.LensFlareDirtIntensity);
 	BlendFloat(Src.bOverride_CameraShutterSpeed, CameraShutterSpeed, Src.CameraShutterSpeed);

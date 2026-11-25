@@ -9,6 +9,10 @@ cbuffer LensFlareConstants : register(b0)
     float ChromaticDistortion;
     float DirtIntensity;
     float HaloIntensity;
+    float BladeCount;
+    float BokehRadius;
+    float Padding0;
+    float Padding1;
 };
 
 Texture2D BrightTexture : register(t0);
@@ -38,7 +42,7 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
 }
 
 // 고스트 i는 광원을 화면 중앙 기준으로 1/Scale배 옮기고 1/Scale배 키운 상이다.
-// 음수면 중앙 반대편, |Scale| < 1이면 바깥쪽에 크게, > 1이면 중앙 가까이 작게 생긴다. 1 근처는 광원과 겹쳐서 피했다
+// 음수면 중앙 반대편, |Scale| < 1이면 바깥쪽에 크게, > 1이면 중앙 가까이 작게 생긴다.
 static const float GhostScales[16] = { -1.0, -0.45, -2.4, 1.8, -0.7, -3.5, 2.8, -0.32, -1.4, 1.35, -0.58, -5.0, 2.2, -0.85, -1.9, 4.0 };
 // 렌즈 면마다 코팅이 달라 반사되는 파장이 다르므로 고스트마다 색을 다르게 준다
 static const float3 GhostTints[16] =

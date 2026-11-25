@@ -16,8 +16,12 @@ struct alignas(16) FLensFlareData
 	float ChromaticDistortion;
 	float DirtIntensity;
 	float HaloIntensity;
+	float BladeCount;
+	float BokehRadius;
+	float Padding0;
+	float Padding1;
 };
-static_assert(sizeof(FLensFlareData) == 32);
+static_assert(sizeof(FLensFlareData) == 48);
 
 // LensFlareBlur.hlsl의 cbuffer b1. 가로/세로 패스가 방향만 바꿔 같은 셰이더를 쓴다
 struct alignas(16) FLensFlareBlurData
@@ -37,6 +41,8 @@ public:
 	// 풀해상도 HDR 장면 → 현재 바인딩된 반해상도 타깃(Threshold를 넘은 밝은 부분만)
 	bool RenderBrightPass(const FSceneView& View, FTexture2D* SceneColor);
 	// 반해상도 밝은 부분 → 현재 바인딩된 반해상도 타깃(중앙 반전 고스트)
+	// 반해상도 밝은 부분 → 현재 바인딩된 반해상도 타깃(광원 점마다 조리개 N각형으로 번짐)
+	bool RenderBokeh(const FSceneView& View, FTexture2D* BrightTexture);
 	bool RenderGhosts(const FSceneView& View, FTexture2D* BrightTexture);
 	// 반해상도 텍스처 → 현재 바인딩된 반해상도 타깃(한 방향 가우시안 블러)
 	bool RenderBlur(FTexture2D* SourceTexture, float DirectionX, float DirectionY);
@@ -52,10 +58,12 @@ private:
 	FShaderProgram* GhostShader = nullptr;
 	FShaderProgram* CompositeShader = nullptr;
 	FShaderProgram* BlurShader = nullptr;
+	FShaderProgram* BokehShader = nullptr;
 	FPipelineState BrightPipelineState;
 	FPipelineState GhostPipelineState;
 	FPipelineState CompositePipelineState;
 	FPipelineState BlurPipelineState;
+	FPipelineState BokehPipelineState;
 	TUniquePtr<FConstantBuffer> ConstantBuffer;
 	TUniquePtr<FConstantBuffer> BlurConstantBuffer;
 	TUniquePtr<FTexture2D> DirtTexture;
