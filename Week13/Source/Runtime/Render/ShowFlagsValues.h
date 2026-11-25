@@ -22,10 +22,10 @@ SHOWFLAG(StaticMeshes,    true,  true,  Common,    "StaticMesh",   "Static Meshe
 SHOWFLAG(Collision,       false, true,  Physics,   "Bounds",       "Collision")
 
 // ---------- Post Process ----------
-SHOWFLAG(Vignette,        true,  true,  PostProcess, "Lighting",   "Vignette")
 SHOWFLAG(CameraOverlay,   true,  true,  PostProcess, "Camera",     "Camera Fade / Letterbox")
-SHOWFLAG(DepthOfField,    true,  true,  PostProcess, "Camera",     "Depth of Field")
-// 평소엔 꺼 두고, 사진 모드(UCameraModifier_Photo)에서는 뷰포트가 켜서 그린다
+// 비네팅·DOF·플레어는 평소엔 꺼 두고, 사진 모드(UCameraModifier_Photo)에서는 뷰포트가 켜서 그린다
+SHOWFLAG(Vignette,        false, false, PostProcess, "Lighting",   "Vignette")
+SHOWFLAG(DepthOfField,    false, false, PostProcess, "Camera",     "Depth of Field")
 SHOWFLAG(LensFlares,      false, false, PostProcess, "Lighting",   "Lens Flares")
 
 // ---------- Developer ----------

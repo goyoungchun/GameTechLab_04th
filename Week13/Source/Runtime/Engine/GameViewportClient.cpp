@@ -254,12 +254,16 @@ bool FGameViewportClient::Draw(FRenderer* Renderer, FUIRenderer* UIRenderer)
 	// 보이는 물체와 라이트를 모은 뒤 패스를 순서대로 실행해 ViewTargets에 그린다.
 	FSceneRenderer SceneRenderer(World, SceneView, RenderData);
 	FSceneRenderOptions RenderOptions = GetRenderOptions();
-	// PIE는 매 프레임 에디터 설정으로 Show Flag를 덮어쓰므로, 사진 모드의 플레어는 그릴 때 켠다
+	// PIE는 매 프레임 에디터 설정으로 Show Flag를 덮어쓰므로, 사진 모드의 비네팅·DOF·플레어는 그릴 때 켠다
 	if (APlayerController* PC = World->GetPlayerController())
 		if (APlayerCameraManager* PCM = PC->GetCameraManager())
 			if (auto* Photo = static_cast<UCameraModifier_Photo*>(PCM->FindCameraModifierByClass(UCameraModifier_Photo::StaticClass()));
 				Photo && Photo->IsPhotoModeActive())
+			{
+				RenderOptions.ShowFlags.Vignette = true;
+				RenderOptions.ShowFlags.DepthOfField = true;
 				RenderOptions.ShowFlags.LensFlares = true;
+			}
 	SceneRenderer.InitViews(Renderer, RenderOptions);
 	return SceneRenderer.Render(Renderer, ViewTargets, RenderOptions,
 		[this, UIRenderer, &SceneView](FScenePassCallbacks& Callbacks)
