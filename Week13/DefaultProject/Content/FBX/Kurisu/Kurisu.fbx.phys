@@ -26,10 +26,10 @@
             "BoneName": "Bip001-Pelvis",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 8.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -66,10 +66,10 @@
             "BoneName": "Bip001-Spine",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 5.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -93,7 +93,7 @@
                             "Z": 3.444485664367676
                         },
                         "Length": 1.558197021484375,
-                        "Radius": 8.505386352539063,
+                        "Radius": 8.505386352539062,
                         "Rotation": {
                             "W": 0.70710688829422,
                             "X": 0.7071066498756409,
@@ -106,410 +106,10 @@
             "BoneName": "Bip001-Spine1",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -0.04815429449081421,
-                            "Y": -3.425743341445923,
-                            "Z": 0.04343414306640625
-                        },
-                        "Length": 8.389988899230957,
-                        "Radius": 1.1868290901184082,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone01",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.13813185691833496,
-                            "Y": -13.137035369873047,
-                            "Z": -0.8872394561767578
-                        },
-                        "Length": 12.860635757446289,
-                        "Radius": 2.7804367542266846,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone02",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.6320123672485352,
-                            "Y": -3.990729570388794,
-                            "Z": 0.3808321952819824
-                        },
-                        "Length": 4.105534553527832,
-                        "Radius": 3.9939494132995605,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone15",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.8269290924072266,
-                            "Y": -4.37392520904541,
-                            "Z": -0.7952897548675537
-                        },
-                        "Length": 6.394144058227539,
-                        "Radius": 4.968386650085449,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone16",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 3.367818832397461,
-                            "Y": -3.1352686882019043,
-                            "Z": -1.6999495029449463
-                        },
-                        "Length": 6.3147125244140625,
-                        "Radius": 6.090557098388672,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone17",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 5.313807487487793,
-                            "Y": -5.750957489013672,
-                            "Z": -2.4465842247009277
-                        },
-                        "Length": 0.7662258148193359,
-                        "Radius": 8.90813159942627,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone18",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -0.8083570003509521,
-                            "Y": -3.6139888763427734,
-                            "Z": -0.5235958099365234
-                        },
-                        "Length": 0.4286518096923828,
-                        "Radius": 5.381173133850098,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone20",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -3.3062236309051514,
-                            "Y": -3.853473424911499,
-                            "Z": 8.174753189086914
-                        },
-                        "Length": 7.9857025146484375,
-                        "Radius": 8.732481002807617,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone21",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -1.330766201019287,
-                            "Y": -2.98067569732666,
-                            "Z": 10.119118690490723
-                        },
-                        "Length": 3.901660919189453,
-                        "Radius": 13.377116203308105,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone22",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 4.164364814758301,
-                            "Y": 3.893397331237793,
-                            "Z": 13.203717231750488
-                        },
-                        "Length": 8.40955924987793,
-                        "Radius": 15.046765327453613,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone23",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 5.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -546,10 +146,10 @@
             "BoneName": "Bip001-Spine2",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 5.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -586,290 +186,10 @@
             "BoneName": "Bip001-Head",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.03873300552368164,
-                            "Y": -9.180691719055176,
-                            "Z": 6.135534286499023
-                        },
-                        "Length": 14.582195281982422,
-                        "Radius": 6.113407135009766,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone25",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -0.037136077880859375,
-                            "Y": -5.308610916137695,
-                            "Z": 6.658686637878418
-                        },
-                        "Length": 21.327634811401367,
-                        "Radius": 6.670468330383301,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone26",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -1.775416374206543,
-                            "Y": -7.7174201011657715,
-                            "Z": 9.791448593139648
-                        },
-                        "Length": 35.985172271728516,
-                        "Radius": 10.239690780639648,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone27",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -0.20944595336914063,
-                            "Y": -15.54116439819336,
-                            "Z": 10.977418899536133
-                        },
-                        "Length": 32.241485595703125,
-                        "Radius": 14.081554412841797,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone28",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 1.3150646686553955,
-                            "Y": -5.3959059715271,
-                            "Z": 0.10244131088256836
-                        },
-                        "Length": 3.488265037536621,
-                        "Radius": 2.9328389167785645,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone30",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.3819112777709961,
-                            "Y": -5.968416213989258,
-                            "Z": 0.17715787887573242
-                        },
-                        "Length": 5.343665599822998,
-                        "Radius": 3.311269521713257,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone31",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.1959531307220459,
-                            "Y": -5.152628421783447,
-                            "Z": -0.355604887008667
-                        },
-                        "Length": 1.0474977493286133,
-                        "Radius": 3.8447108268737793,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.0,
-                            "Y": 0.7071066498756409,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone34",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 4.5,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -906,10 +226,10 @@
             "BoneName": "Bip001-L-Clavicle",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -946,10 +266,10 @@
             "BoneName": "Bip001-L-UpperArm",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.8,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -986,10 +306,10 @@
             "BoneName": "Bip001-L-Forearm",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.2,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1026,170 +346,10 @@
             "BoneName": "Bip001-L-Hand",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -2.63427734375,
-                            "Y": -4.546834945678711,
-                            "Z": -0.7629075050354004
-                        },
-                        "Length": 6.717360496520996,
-                        "Radius": 4.755335330963135,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone06",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -3.873014450073242,
-                            "Y": -2.6796436309814453,
-                            "Z": -1.938279151916504
-                        },
-                        "Length": 6.470006942749023,
-                        "Radius": 6.176363945007324,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone07",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -5.7344865798950195,
-                            "Y": -3.2993431091308594,
-                            "Z": -0.2061138153076172
-                        },
-                        "Length": 6.785511016845703,
-                        "Radius": 8.39726448059082,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone08",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 1.7060396671295166,
-                            "Y": -4.765138626098633,
-                            "Z": 0.9679602384567261
-                        },
-                        "Length": 5.217278480529785,
-                        "Radius": 3.009032726287842,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone05",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 0.4,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1226,10 +386,10 @@
             "BoneName": "Bip001-R-Clavicle",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1266,10 +426,10 @@
             "BoneName": "Bip001-R-UpperArm",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.8,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1306,10 +466,10 @@
             "BoneName": "Bip001-R-Forearm",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 1.2,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1346,170 +506,10 @@
             "BoneName": "Bip001-R-Hand",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 1.119023323059082,
-                            "Y": -5.36833381652832,
-                            "Z": -1.081634759902954
-                        },
-                        "Length": 0.8548870086669922,
-                        "Radius": 6.8479719161987305,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone11",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 0.36069774627685547,
-                            "Y": -3.4765777587890625,
-                            "Z": -1.2554516792297363
-                        },
-                        "Length": 1.6020126342773438,
-                        "Radius": 8.479278564453125,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone12",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": -1.677638053894043,
-                            "Y": -0.5306587219238281,
-                            "Z": -4.401206016540527
-                        },
-                        "Length": 3.862394332885742,
-                        "Radius": 10.684871673583984,
-                        "Rotation": {
-                            "W": 1.0,
-                            "X": 0.0,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone13",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
-                    "Mobility": "Movable",
-                    "ObjectType": "WorldDynamic",
-                    "PhysMaterialOverride": null,
-                    "bDrivable": false,
-                    "bSimulatePhysics": false,
-                    "bUseCCD": false
-                },
-                "PhysicsType": "Default"
-            }
-        },
-        {
-            "AggGeom": {
-                "Box": [],
-                "Convexes": [],
-                "Sphere": [],
-                "Spyls": [
-                    {
-                        "Center": {
-                            "X": 3.139948606491089,
-                            "Y": -2.6939492225646973,
-                            "Z": 0.6042218208312988
-                        },
-                        "Length": 3.7724170684814453,
-                        "Radius": 4.912106037139893,
-                        "Rotation": {
-                            "W": 0.70710688829422,
-                            "X": 0.7071066498756409,
-                            "Y": 0.0,
-                            "Z": 0.0
-                        }
-                    }
-                ]
-            },
-            "BoneName": "Bone10",
-            "Properties": {
-                "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
-                    "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 0.4,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1546,10 +546,10 @@
             "BoneName": "Bip001-L-Thigh",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 6.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1586,10 +586,10 @@
             "BoneName": "Bip001-L-Calf",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 3.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1626,10 +626,10 @@
             "BoneName": "Bip001-L-Foot",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 0.8,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1666,10 +666,10 @@
             "BoneName": "Bip001-R-Thigh",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 6.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1706,10 +706,10 @@
             "BoneName": "Bip001-R-Calf",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 3.0,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1746,10 +746,10 @@
             "BoneName": "Bip001-R-Foot",
             "Properties": {
                 "DefaultInstance": {
-                    "AngularDamping": 0.05000000074505806,
+                    "AngularDamping": 0.4,
                     "CollisionEnabled": "QueryAndPhysics",
-                    "LinearDamping": 0.009999999776482582,
-                    "MassInKgOverride": 0.0,
+                    "LinearDamping": 0.05,
+                    "MassInKgOverride": 0.8,
                     "Mobility": "Movable",
                     "ObjectType": "WorldDynamic",
                     "PhysMaterialOverride": null,
@@ -1771,80 +771,12 @@
             "B": "Bip001-Spine"
         },
         {
-            "A": "Bone01",
-            "B": "Bip001-Spine1"
-        },
-        {
-            "A": "Bone02",
-            "B": "Bone01"
-        },
-        {
-            "A": "Bone15",
-            "B": "Bip001-Spine1"
-        },
-        {
-            "A": "Bone16",
-            "B": "Bone15"
-        },
-        {
-            "A": "Bone17",
-            "B": "Bone16"
-        },
-        {
-            "A": "Bone18",
-            "B": "Bone17"
-        },
-        {
-            "A": "Bone20",
-            "B": "Bip001-Spine1"
-        },
-        {
-            "A": "Bone21",
-            "B": "Bone20"
-        },
-        {
-            "A": "Bone22",
-            "B": "Bone21"
-        },
-        {
-            "A": "Bone23",
-            "B": "Bone22"
-        },
-        {
             "A": "Bip001-Spine2",
             "B": "Bip001-Spine1"
         },
         {
             "A": "Bip001-Head",
             "B": "Bip001-Spine2"
-        },
-        {
-            "A": "Bone25",
-            "B": "Bip001-Head"
-        },
-        {
-            "A": "Bone26",
-            "B": "Bone25"
-        },
-        {
-            "A": "Bone27",
-            "B": "Bone26"
-        },
-        {
-            "A": "Bone28",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone30",
-            "B": "Bip001-Head"
-        },
-        {
-            "A": "Bone31",
-            "B": "Bone30"
-        },
-        {
-            "A": "Bone34",
-            "B": "Bip001-Head"
         },
         {
             "A": "Bip001-L-Clavicle",
@@ -1863,22 +795,6 @@
             "B": "Bip001-L-Forearm"
         },
         {
-            "A": "Bone06",
-            "B": "Bip001-L-Forearm"
-        },
-        {
-            "A": "Bone07",
-            "B": "Bone06"
-        },
-        {
-            "A": "Bone08",
-            "B": "Bone07"
-        },
-        {
-            "A": "Bone05",
-            "B": "Bip001-L-UpperArm"
-        },
-        {
             "A": "Bip001-R-Clavicle",
             "B": "Bip001-Spine2"
         },
@@ -1893,22 +809,6 @@
         {
             "A": "Bip001-R-Hand",
             "B": "Bip001-R-Forearm"
-        },
-        {
-            "A": "Bone11",
-            "B": "Bip001-R-Forearm"
-        },
-        {
-            "A": "Bone12",
-            "B": "Bone11"
-        },
-        {
-            "A": "Bone13",
-            "B": "Bone12"
-        },
-        {
-            "A": "Bone10",
-            "B": "Bip001-R-UpperArm"
         },
         {
             "A": "Bip001-L-Thigh",
@@ -1935,22 +835,6 @@
             "B": "Bip001-R-Calf"
         },
         {
-            "A": "Bip001-Pelvis",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bip001-Spine",
-            "B": "Bone02"
-        },
-        {
-            "A": "Bip001-Spine1",
-            "B": "Bone02"
-        },
-        {
-            "A": "Bip001-Spine1",
-            "B": "Bone27"
-        },
-        {
             "A": "Bip001-Spine1",
             "B": "Bip001-L-Clavicle"
         },
@@ -1959,112 +843,8 @@
             "B": "Bip001-R-Clavicle"
         },
         {
-            "A": "Bone01",
-            "B": "Bip001-Spine2"
-        },
-        {
-            "A": "Bone15",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone16",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone16",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bone17",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone17",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bone18",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bone20",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone21",
-            "B": "Bone23"
-        },
-        {
-            "A": "Bone21",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone21",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bone22",
-            "B": "Bone27"
-        },
-        {
-            "A": "Bone22",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bone23",
-            "B": "Bone28"
-        },
-        {
-            "A": "Bip001-Spine2",
-            "B": "Bone25"
-        },
-        {
-            "A": "Bip001-Spine2",
-            "B": "Bone26"
-        },
-        {
             "A": "Bip001-Spine2",
             "B": "Bip001-R-UpperArm"
-        },
-        {
-            "A": "Bip001-Head",
-            "B": "Bone31"
-        },
-        {
-            "A": "Bone26",
-            "B": "Bip001-L-UpperArm"
-        },
-        {
-            "A": "Bone26",
-            "B": "Bip001-R-Clavicle"
-        },
-        {
-            "A": "Bone26",
-            "B": "Bip001-R-UpperArm"
-        },
-        {
-            "A": "Bone26",
-            "B": "Bone10"
-        },
-        {
-            "A": "Bone27",
-            "B": "Bone10"
-        },
-        {
-            "A": "Bip001-L-UpperArm",
-            "B": "Bone06"
-        },
-        {
-            "A": "Bip001-L-Forearm",
-            "B": "Bone07"
-        },
-        {
-            "A": "Bip001-L-Forearm",
-            "B": "Bone08"
-        },
-        {
-            "A": "Bone06",
-            "B": "Bone05"
         }
     ],
     "Constraints": [
@@ -2086,12 +866,12 @@
                     "PriAxis1": {
                         "X": 0.0,
                         "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
+                        "Z": 3.5762786865234375e-7
                     },
                     "PriAxis2": {
-                        "X": -7.874571679167275e-07,
-                        "Y": -0.9999999403953552,
-                        "Z": 1.2577660527313128e-05
+                        "X": -7.874572147903041e-7,
+                        "Y": -0.9999999999205913,
+                        "Z": 0.000012577661276001384
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -2099,15 +879,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9926236867904663,
-                        "Y": 7.432191750922357e-07,
-                        "Z": 0.1212361752986908
+                        "X": 0.9986627165638664,
+                        "Y": -1.3615263092968787e-7,
+                        "Z": 0.051698922089922036
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 5.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 8.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 12.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -2123,19 +903,19 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -4.328787781560095e-06,
-                        "Y": -1.5028443158371374e-05,
+                        "X": -0.000004328787781560095,
+                        "Y": -0.000015028443158371374,
                         "Z": 20.951751708984375
                     },
                     "PriAxis1": {
                         "X": 0.0,
                         "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
+                        "Z": 3.5762786865234375e-7
                     },
                     "PriAxis2": {
-                        "X": 2.40950814855978e-10,
-                        "Y": -0.9999999403953552,
-                        "Z": -1.8283964891452342e-05
+                        "X": 2.409508291774913e-10,
+                        "Y": -0.9999999998328484,
+                        "Z": -0.000018283965978205446
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -2143,455 +923,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9999999403953552,
-                        "Y": 7.410803970486768e-09,
-                        "Z": -0.0003921387542504817
+                        "X": 0.997536619344467,
+                        "Y": 0.0000012828176380307349,
+                        "Z": -0.07014765188633476
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 5.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 8.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone01",
-            "Bone2": "Bip001-Spine1",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 5.823038578033447,
-                        "Y": 1.5655347108840942,
-                        "Z": 10.801859855651855
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.5187458992004395,
-                        "Y": 0.1384650468826294,
-                        "Z": -0.8436406850814819
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": -0.332226037979126,
-                        "Y": 0.941889762878418,
-                        "Z": -0.049691855907440186
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone02",
-            "Bone2": "Bone01",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -4.768372491525952e-06,
-                        "Y": -8.153543472290039,
-                        "Z": 0.00015926362539175898
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.03358451649546623,
-                        "Y": -0.7972873449325562,
-                        "Z": -0.6026646494865417
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9988177418708801,
-                        "Y": 0.005570192821323872,
-                        "Z": 0.04829179495573044
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone15",
-            "Bone2": "Bip001-Spine1",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -7.00698709487915,
-                        "Y": -10.706515312194824,
-                        "Z": 6.0428032875061035
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.4854898452758789,
-                        "Y": -0.07789629697799683,
-                        "Z": -0.8707647919654846
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.6287752389907837,
-                        "Y": 0.6609036922454834,
-                        "Z": -0.4096924066543579
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone16",
-            "Bone2": "Bone15",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -1.3232232959126122e-05,
-                        "Y": -10.038312911987305,
-                        "Z": -1.621246337890625e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.10990693420171738,
-                        "Y": -0.9904769659042358,
-                        "Z": -0.08291998505592346
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": -0.993755578994751,
-                        "Y": 0.11111760884523392,
-                        "Z": -0.010115556418895721
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone17",
-            "Bone2": "Bone16",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 6.866450712550431e-05,
-                        "Y": -12.545743942260742,
-                        "Z": 1.5735626220703125e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.08388068526983261,
-                        "Y": -0.9931008219718933,
-                        "Z": 0.08194245398044586
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9953973889350891,
-                        "Y": 0.0796813815832138,
-                        "Z": -0.05324432998895645
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone18",
-            "Bone2": "Bone17",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 0.00011348719272064045,
-                        "Y": -12.37549877166748,
-                        "Z": 0.0001087188720703125
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.20940719544887543,
-                        "Y": -0.9776514172554016,
-                        "Z": 0.018605897203087807
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.977368950843811,
-                        "Y": 0.20985420048236847,
-                        "Z": 0.026666730642318726
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone20",
-            "Bone2": "Bip001-Spine1",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -10.851221084594727,
-                        "Y": 1.9270423650741577,
-                        "Z": 5.295783042907715
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.5716913342475891,
-                        "Y": -0.07314521074295044,
-                        "Z": -0.8172014951705933
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.19108647108078003,
-                        "Y": -0.9804984927177429,
-                        "Z": -0.04591745138168335
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone21",
-            "Bone2": "Bone20",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -1.907349087559851e-06,
-                        "Y": -9.209382057189941,
-                        "Z": 5.9127814893145114e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": -0.9940430521965027,
-                        "Y": 0.05588573217391968,
-                        "Z": 0.09356790781021118
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.09309208393096924,
-                        "Y": -0.01106337457895279,
-                        "Z": 0.9955958724021912
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone22",
-            "Bone2": "Bone21",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 0.00014972688222769648,
-                        "Y": -12.582164764404297,
-                        "Z": 8.583069757150952e-06
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": 0.03963866084814072,
-                        "Y": 0.021741485223174095,
-                        "Z": 0.998977541923523
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9947294592857361,
-                        "Y": 0.09375618398189545,
-                        "Z": -0.041510581970214844
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone23",
-            "Bone2": "Bone22",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -8.964539301814511e-05,
-                        "Y": -16.362722396850586,
-                        "Z": 3.623963857535273e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": -0.07997218519449234,
-                        "Y": -0.019233565777540207,
-                        "Z": 0.9966115355491638
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9854514002799988,
-                        "Y": 0.14889505505561829,
-                        "Z": 0.08195016533136368
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 12.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -2607,19 +947,19 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -3.5110870157950558e-06,
-                        "Y": 1.1972570064244792e-06,
+                        "X": -0.0000035110870157950558,
+                        "Y": 0.0000011972570064244792,
                         "Z": 9.092878341674805
                     },
                     "PriAxis1": {
                         "X": 0.0,
                         "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
+                        "Z": 3.5762786865234375e-7
                     },
                     "PriAxis2": {
-                        "X": -3.963748440583004e-06,
-                        "Y": -0.9999999403953552,
-                        "Z": 7.170941898948513e-06
+                        "X": -0.000003963748676707786,
+                        "Y": -0.9999999999664333,
+                        "Z": 0.000007170942326129278
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -2627,15 +967,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9933387041091919,
-                        "Y": -4.763659944728715e-06,
-                        "Z": -0.1152309700846672
+                        "X": 0.9859466658450312,
+                        "Y": -0.000005106025174743747,
+                        "Z": -0.1670603845410235
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 4.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 6.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 10.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -2652,7 +992,7 @@
                     },
                     "Pos2": {
                         "X": 2.3234431743621826,
-                        "Y": -1.677582440606784e-05,
+                        "Y": -0.00001677582440606784,
                         "Z": 14.849969863891602
                     },
                     "PriAxis1": {
@@ -2661,9 +1001,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 0.005655430257320404,
-                        "Y": -1.5728388591540465e-09,
-                        "Z": 0.9999840259552002
+                        "X": 0.13613115200204964,
+                        "Y": -1.5534677708504988e-9,
+                        "Z": 0.9906908243516716
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -2671,323 +1011,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9999840259552002,
-                        "Y": 4.531815200881084e-11,
-                        "Z": -0.005655430257320404
+                        "X": 0.9906908243516716,
+                        "Y": 2.5022711168598524e-10,
+                        "Z": -0.13613115200204964
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 15.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 27.5,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone25",
-            "Bone2": "Bip001-Head",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -10.911145210266113,
-                        "Y": 0.5283931493759155,
-                        "Z": 8.763700485229492
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.01321643590927124,
-                        "Y": 0.9999117255210876,
-                        "Z": -0.0011535286903381348
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": -0.8438407182693481,
-                        "Y": 0.011772304773330688,
-                        "Z": 0.5364638566970825
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone26",
-            "Bone2": "Bone25",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -4.124640327063389e-05,
-                        "Y": -13.28393840789795,
-                        "Z": -0.0015020368155092
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.9999622702598572,
-                        "Y": -0.0005960233975201845,
-                        "Z": -0.008658119477331638
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": -0.008665848523378372,
-                        "Y": -0.12265722453594208,
-                        "Z": -0.992411196231842
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone27",
-            "Bone2": "Bone26",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -4.2438507080078125e-05,
-                        "Y": -13.99871826171875,
-                        "Z": -0.0001049041748046875
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.9999653100967407,
-                        "Y": 0.00546150142326951,
-                        "Z": 0.006279393099248409
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": 0.006868857424706221,
-                        "Y": -0.115626260638237,
-                        "Z": -0.9932689666748047
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone28",
-            "Bone2": "Bone27",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -5.793570744572207e-05,
-                        "Y": -16.50727653503418,
-                        "Z": -0.00015640257333870977
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.9998606443405151,
-                        "Y": -0.00017083872808143497,
-                        "Z": 0.01669057458639145
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": 0.01657220534980297,
-                        "Y": -0.10915189236402512,
-                        "Z": -0.9938868880271912
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone30",
-            "Bone2": "Bip001-Head",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 5.618997573852539,
-                        "Y": 9.415661811828613,
-                        "Z": 7.908573627471924
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.9713220000267029,
-                        "Y": 0.09521125257015228,
-                        "Z": 0.21786944568157196
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": -0.1437305361032486,
-                        "Y": -0.9650701284408569,
-                        "Z": -0.2190449833869934
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone31",
-            "Bone2": "Bone30",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 6.353854405460879e-05,
-                        "Y": -7.380753517150879,
-                        "Z": 3.0517578125e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": 0.9302304983139038,
-                        "Y": -0.36349907517433167,
-                        "Z": -0.05039334297180176
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.018015265464782715,
-                        "Y": 0.18238858878612518,
-                        "Z": -0.9830614328384399
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone34",
-            "Bone2": "Bip001-Head",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 4.342758655548096,
-                        "Y": -9.635772705078125,
-                        "Z": 1.9593905210494995
-                    },
-                    "PriAxis1": {
-                        "X": 0.9999999403953552,
-                        "Y": 0.0,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.9914646744728088,
-                        "Y": 0.12840768694877625,
-                        "Z": 0.022562626749277115
-                    },
-                    "SecAxis1": {
-                        "X": 3.5762786865234375e-07,
-                        "Y": 0.0,
-                        "Z": -0.9999999403953552
-                    },
-                    "SecAxis2": {
-                        "X": -0.13001002371311188,
-                        "Y": 0.9867098927497864,
-                        "Z": 0.09747105836868286
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 35.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3010,7 +1042,7 @@
                     "PriAxis1": {
                         "X": 0.0,
                         "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
+                        "Z": 3.5762786865234375e-7
                     },
                     "PriAxis2": {
                         "X": -0.9794952869415283,
@@ -3027,11 +1059,11 @@
                         "Y": 0.021008014678955078,
                         "Z": -0.9997633695602417
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 12.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 12.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 8.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3047,8 +1079,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": 1.4305117019830504e-06,
-                        "Y": 1.9073486328125e-06,
+                        "X": 0.0000014305117019830504,
+                        "Y": 0.0000019073486328125,
                         "Z": 8.254101753234863
                     },
                     "PriAxis1": {
@@ -3057,9 +1089,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.02100946195423603,
-                        "Y": 0.20123033225536346,
-                        "Z": 0.9793186187744141
+                        "X": 0.24889753047615598,
+                        "Y": 0.6236589024396382,
+                        "Z": 0.7410125455959949
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3067,13 +1099,13 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9997792840003967,
-                        "Y": 0.004228230565786362,
-                        "Z": 0.020579589530825615
+                        "X": 0.9598241104319243,
+                        "Y": -0.05647859250812656,
+                        "Z": -0.2748596835148186
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 62.5,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 67.5,
                     "Swing2Motion": "Limited",
                     "TwistLimitDegrees": 45.0,
                     "TwistMotion": "Limited"
@@ -3091,8 +1123,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -7.43865966796875e-05,
-                        "Y": -3.814696901827119e-05,
+                        "X": -0.0000743865966796875,
+                        "Y": -0.00003814696901827119,
                         "Z": 18.982088088989258
                     },
                     "PriAxis1": {
@@ -3101,9 +1133,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 7.45058002848964e-07,
-                        "Y": 5.960463056453591e-08,
-                        "Z": 1.0
+                        "X": 2.8282984565028315e-7,
+                        "Y": 0.9396926411718904,
+                        "Z": 0.3420200873155209
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3111,15 +1143,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 1.0,
-                        "Y": -2.9802343703977385e-08,
-                        "Z": -7.45058002848964e-07
+                        "X": 0.999999999999722,
+                        "Y": -2.9802343703968994e-8,
+                        "Z": -7.450580010723992e-7
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 75.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 0.0,
+                    "Swing2Motion": "Locked",
+                    "TwistLimitDegrees": 30.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3135,8 +1167,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": 4.00543212890625e-05,
-                        "Y": 2.8610225854208693e-05,
+                        "X": 0.0000400543212890625,
+                        "Y": 0.000028610225854208693,
                         "Z": 25.951772689819336
                     },
                     "PriAxis1": {
@@ -3145,8 +1177,8 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 2.8908248168590944e-06,
-                        "Y": -2.682204467419069e-07,
+                        "X": 0.0000028908248168590944,
+                        "Y": -2.682204467419069e-7,
                         "Z": 1.0
                     },
                     "SecAxis1": {
@@ -3156,190 +1188,14 @@
                     },
                     "SecAxis2": {
                         "X": 1.0,
-                        "Y": 2.68221242549771e-07,
-                        "Z": -2.8908248168590944e-06
+                        "Y": 2.68221242549771e-7,
+                        "Z": -0.0000028908248168590944
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 25.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 55.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone06",
-            "Bone2": "Bip001-L-Forearm",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 5.187775135040283,
-                        "Y": 2.1478235721588135,
-                        "Z": -0.5794511437416077
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.05875028669834137,
-                        "Y": -0.3383943438529968,
-                        "Z": 0.939168393611908
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": -0.9358348846435547,
-                        "Y": 0.3461672067642212,
-                        "Z": 0.0661865770816803
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone07",
-            "Bone2": "Bone06",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 1.132488341681892e-05,
-                        "Y": -12.643905639648438,
-                        "Z": 2.145767393813003e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.1730029582977295,
-                        "Y": -0.9772810935974121,
-                        "Z": 0.12243977934122086
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9787209630012512,
-                        "Y": 0.15665331482887268,
-                        "Z": -0.13253287971019745
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone08",
-            "Bone2": "Bone07",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 3.096461659879424e-05,
-                        "Y": -11.95655345916748,
-                        "Z": 7.176402141340077e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.020678887143731117,
-                        "Y": -0.9898609519004822,
-                        "Z": 0.14052610099315643
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9910134077072144,
-                        "Y": 0.038873083889484406,
-                        "Z": 0.12798970937728882
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone05",
-            "Bone2": "Bip001-L-UpperArm",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 3.934298515319824,
-                        "Y": 1.9630286693572998,
-                        "Z": 8.246045112609863
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.09559579193592072,
-                        "Y": 0.06126302480697632,
-                        "Z": 0.993533194065094
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9167722463607788,
-                        "Y": -0.3942658603191376,
-                        "Z": -0.06389887630939484
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 10.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3362,7 +1218,7 @@
                     "PriAxis1": {
                         "X": 0.0,
                         "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
+                        "Z": 3.5762786865234375e-7
                     },
                     "PriAxis2": {
                         "X": 0.9794955253601074,
@@ -3379,11 +1235,11 @@
                         "Y": -0.02101728320121765,
                         "Z": -0.9997629523277283
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 12.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 12.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 8.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3399,8 +1255,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -4.577638173941523e-05,
-                        "Y": 2.8610236313397763e-06,
+                        "X": -0.00004577638173941523,
+                        "Y": 0.0000028610236313397763,
                         "Z": 8.254119873046875
                     },
                     "PriAxis1": {
@@ -3409,9 +1265,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.021018512547016144,
-                        "Y": -0.2012277990579605,
-                        "Z": 0.9793189167976379
+                        "X": 0.24888979300534653,
+                        "Y": -0.6236574891298303,
+                        "Z": 0.7410163339562976
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3419,13 +1275,13 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9997791051864624,
-                        "Y": -0.004230063408613205,
-                        "Z": 0.020588453859090805
+                        "X": 0.9598266507345379,
+                        "Y": 0.056476084548712495,
+                        "Z": -0.2748513278370077
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 62.5,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 67.5,
                     "Swing2Motion": "Limited",
                     "TwistLimitDegrees": 45.0,
                     "TwistMotion": "Limited"
@@ -3443,8 +1299,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -1.2397768841765355e-05,
-                        "Y": 9.5367431640625e-06,
+                        "X": -0.000012397768841765355,
+                        "Y": 0.0000095367431640625,
                         "Z": 18.982240676879883
                     },
                     "PriAxis1": {
@@ -3453,9 +1309,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -5.960463766996327e-08,
-                        "Y": -5.960463766996327e-08,
-                        "Z": 1.0
+                        "X": -7.639602156337915e-8,
+                        "Y": -0.9396926411718917,
+                        "Z": 0.34202008731562605
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3463,15 +1319,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 1.0,
-                        "Y": -5.960463766996327e-08,
-                        "Z": 5.960463766996327e-08
+                        "X": 0.9999999999999964,
+                        "Y": -5.9604637669962844e-8,
+                        "Z": 5.9604634117250224e-8
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 75.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 0.0,
+                    "Swing2Motion": "Locked",
+                    "TwistLimitDegrees": 30.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3487,8 +1343,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -4.768372491525952e-06,
-                        "Y": 9.536744073557202e-06,
+                        "X": -0.000004768372491525952,
+                        "Y": 0.000009536744073557202,
                         "Z": 25.951908111572266
                     },
                     "PriAxis1": {
@@ -3497,7 +1353,7 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 2.3841855067985307e-07,
+                        "X": 2.3841855067985307e-7,
                         "Y": 0.0,
                         "Z": 1.0
                     },
@@ -3509,189 +1365,13 @@
                     "SecAxis2": {
                         "X": 1.0,
                         "Y": 0.0,
-                        "Z": -2.3841855067985307e-07
+                        "Z": -2.3841855067985307e-7
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 25.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 55.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone11",
-            "Bone2": "Bip001-R-Forearm",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 7.619501113891602,
-                        "Y": 1.705688714981079,
-                        "Z": 6.015631675720215
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": -0.2630781829357147,
-                        "Y": 0.8138602375984192,
-                        "Z": 0.5180930495262146
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": -0.4402579069137573,
-                        "Y": 0.37656369805336,
-                        "Z": -0.8150902986526489
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone12",
-            "Bone2": "Bone11",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": -6.198884511832148e-05,
-                        "Y": -12.644393920898438,
-                        "Z": 3.910065788659267e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": 0.08308284729719162,
-                        "Y": -0.035429470241069794,
-                        "Z": 0.9959126710891724
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.9922211170196533,
-                        "Y": -0.09002840518951416,
-                        "Z": -0.08597763627767563
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone13",
-            "Bone2": "Bone12",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 7.820131577318534e-05,
-                        "Y": -15.899951934814453,
-                        "Z": 4.1484843677608296e-05
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 1.0
-                    },
-                    "PriAxis2": {
-                        "X": -0.020221024751663208,
-                        "Y": -0.07417931407690048,
-                        "Z": 0.9970399141311646
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.996648371219635,
-                        "Y": -0.08055973798036575,
-                        "Z": 0.014219476841390133
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
-                    "TwistMotion": "Limited"
-                }
-            }
-        },
-        {
-            "Bone1": "Bone10",
-            "Bone2": "Bip001-R-UpperArm",
-            "Properties": {
-                "DefaultInstance": {
-                    "Pos1": {
-                        "X": 0.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "Pos2": {
-                        "X": 3.2535150051116943,
-                        "Y": 2.9575119018554688,
-                        "Z": 8.246057510375977
-                    },
-                    "PriAxis1": {
-                        "X": 0.0,
-                        "Y": -0.9999999403953552,
-                        "Z": 3.5762786865234375e-07
-                    },
-                    "PriAxis2": {
-                        "X": 0.5343070030212402,
-                        "Y": 0.1653507947921753,
-                        "Z": 0.8289600610733032
-                    },
-                    "SecAxis1": {
-                        "X": 1.0,
-                        "Y": 0.0,
-                        "Z": 0.0
-                    },
-                    "SecAxis2": {
-                        "X": 0.8452045917510986,
-                        "Y": -0.09053166210651398,
-                        "Z": -0.5267192125320435
-                    },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
-                    "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 10.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3717,9 +1397,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.012700162827968597,
-                        "Y": -0.0059395432472229,
-                        "Z": -0.999901294708252
+                        "X": 0.6295387780062358,
+                        "Y": -0.10910244161179745,
+                        "Z": -0.7692708133165845
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3727,15 +1407,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9999193549156189,
-                        "Y": -7.945296965772286e-05,
-                        "Z": -0.01269991509616375
+                        "X": 0.7741461720207,
+                        "Y": 0.0037570018590659935,
+                        "Z": 0.6329957261172681
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 18.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 60.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 10.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3751,8 +1431,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": 3.615022069425322e-05,
-                        "Y": 4.8220157623291016e-05,
+                        "X": 0.00003615022069425322,
+                        "Y": 0.000048220157623291016,
                         "Z": 36.03394317626953
                     },
                     "PriAxis1": {
@@ -3761,9 +1441,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.036224208772182465,
-                        "Y": -0.011831427924335003,
-                        "Z": 0.9992736577987671
+                        "X": -0.9616262114731342,
+                        "Y": -0.003103428283826577,
+                        "Z": 0.27434539934308
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3771,15 +1451,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9993436932563782,
-                        "Y": -0.0005811263108626008,
-                        "Z": 0.03621986508369446
+                        "X": 0.27436290975943783,
+                        "Y": -0.011431934426806203,
+                        "Z": 0.9615582689694867
                     },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 0.0,
+                    "Swing1Motion": "Locked",
+                    "Swing2LimitDegrees": 69.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 3.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3795,8 +1475,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -3.4332275390625e-05,
-                        "Y": 8.672474905324634e-06,
+                        "X": -0.000034332275390625,
+                        "Y": 0.000008672474905324634,
                         "Z": 42.09295654296875
                     },
                     "PriAxis1": {
@@ -3805,9 +1485,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 0.9097259044647217,
-                        "Y": 0.026427380740642548,
-                        "Z": 0.4143671989440918
+                        "X": 0.8700771843771015,
+                        "Y": 0.030783438594892205,
+                        "Z": 0.49195332414233134
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3815,15 +1495,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.4151995778083801,
-                        "Y": -0.05113396793603897,
-                        "Z": -0.9082920551300049
+                        "X": 0.4929074618556146,
+                        "Y": -0.048636094919588244,
+                        "Z": -0.8687213387030556
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 6.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 20.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 6.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3849,9 +1529,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.012667398899793625,
-                        "Y": 0.006115329451858997,
-                        "Z": -0.9999005794525146
+                        "X": 0.6295648115237251,
+                        "Y": 0.10923261477525673,
+                        "Z": -0.7692310341896358
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3859,15 +1539,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9999197721481323,
-                        "Y": 7.376068970188498e-05,
-                        "Z": -0.012667184695601463
+                        "X": 0.7741254307082436,
+                        "Y": -0.003874355913882954,
+                        "Z": 0.6330203842665961
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 18.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 60.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 10.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3883,8 +1563,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -5.7518473113304935e-06,
-                        "Y": 1.5527009963989258e-05,
+                        "X": -0.0000057518473113304935,
+                        "Y": 0.000015527009963989258,
                         "Z": 36.03383255004883
                     },
                     "PriAxis1": {
@@ -3893,9 +1573,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": -0.03628968819975853,
-                        "Y": 0.011831572279334068,
-                        "Z": 0.9992712736129761
+                        "X": -0.9616441867150071,
+                        "Y": 0.003104671849432827,
+                        "Z": 0.27428237123435484
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3903,15 +1583,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.9993413090705872,
-                        "Y": 0.0005798657075501978,
-                        "Z": 0.036285366863012314
+                        "X": 0.2742999008715746,
+                        "Y": 0.011431682234515649,
+                        "Z": 0.9615762481587893
                     },
-                    "Swing1LimitDegrees": 45.0,
-                    "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 0.0,
+                    "Swing1Motion": "Locked",
+                    "Swing2LimitDegrees": 69.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 3.0,
                     "TwistMotion": "Limited"
                 }
             }
@@ -3927,8 +1607,8 @@
                         "Z": 0.0
                     },
                     "Pos2": {
-                        "X": -2.765655517578125e-05,
-                        "Y": -2.562999725341797e-06,
+                        "X": -0.00002765655517578125,
+                        "Y": -0.000002562999725341797,
                         "Z": 42.09298324584961
                     },
                     "PriAxis1": {
@@ -3937,9 +1617,9 @@
                         "Z": 1.0
                     },
                     "PriAxis2": {
-                        "X": 0.9097394347190857,
-                        "Y": -0.026427853852510452,
-                        "Z": 0.4143373966217041
+                        "X": 0.8700932779508073,
+                        "Y": -0.030783867557498682,
+                        "Z": 0.49192483283833305
                     },
                     "SecAxis1": {
                         "X": 1.0,
@@ -3947,15 +1627,15 @@
                         "Z": 0.0
                     },
                     "SecAxis2": {
-                        "X": 0.41516977548599243,
-                        "Y": 0.051133476197719574,
-                        "Z": -0.9083057045936584
+                        "X": 0.49287903810660666,
+                        "Y": 0.048635561373362564,
+                        "Z": -0.8687374954294329
                     },
-                    "Swing1LimitDegrees": 45.0,
+                    "Swing1LimitDegrees": 6.0,
                     "Swing1Motion": "Limited",
-                    "Swing2LimitDegrees": 45.0,
+                    "Swing2LimitDegrees": 20.0,
                     "Swing2Motion": "Limited",
-                    "TwistLimitDegrees": 45.0,
+                    "TwistLimitDegrees": 6.0,
                     "TwistMotion": "Limited"
                 }
             }

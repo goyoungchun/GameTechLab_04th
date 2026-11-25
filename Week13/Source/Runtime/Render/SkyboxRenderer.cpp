@@ -4,9 +4,18 @@
 #include "RenderCommand.h"
 #include "RenderResourceManager.h"
 #include "ImageLoader.h"
+#include "Engine/SceneManagement.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace
 {
+	// 라이트 각반경이 0에 가까워도 화면에서 점이 아니라 원판으로 보이게 하는 하한
+	constexpr float MinSunRadiusRadians = 0.5f * 3.14159265f / 180.0f;
+	// Intensity 1 라이트는 하늘과 밝기가 비슷해 묻히므로, 원판만 따로 밝혀 플레어 Threshold를 넘기게 한다
+	constexpr float SunDiskBrightness = 50.0f;
+
 	// 샘플링 결과가 이미 선형인 포맷인지 판단한다.
 	// - _SRGB 포맷: 하드웨어가 샘플링할 때 sRGB -> 선형으로 디코딩한다 (예: Sky.dds = BC7_UNORM_SRGB)
 	// - float 포맷: .hdr처럼 원래 선형 값이다
@@ -78,7 +87,7 @@ bool FSkyboxRenderer::Init(const FString& PanoramaPath)
 	return true;
 }
 
-void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& CameraPosition)
+void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& CameraPosition, const FLightRenderParameters* SunLight)
 {
 	if (!IsValid()) return;
 
@@ -87,6 +96,16 @@ void FSkyboxRenderer::OnRender(const FMatrix& ViewProjection, const FVector& Cam
 	Constants.InverseViewProjection = ViewProjection.Inverse();
 	Constants.CameraPosition = CameraPosition;
 	Constants.DecodeSRGB = bDecodeSRGBInShader ? 1.0f : 0.0f;
+	if (SunLight)
+	{
+		// 라이트 Direction은 빛이 나아가는 방향이라, 태양이 있는 쪽은 그 반대다.
+		Constants.SunDirection = -SunLight->Direction;
+		// SourceSize는 tan(각반경)으로 저장돼 있어 각도로 되돌린 뒤 cos로 바꾼다.
+		const float SunRadius = std::max(std::atan(SunLight->SourceSize), MinSunRadiusRadians);
+		Constants.CosSunRadius = std::cos(SunRadius);
+		Constants.SunRadiance = SunLight->Color * (SunLight->Intensity * SunDiskBrightness);
+		Constants.bHasSun = 1.0f;
+	}
 
 	RenderCommand::BindPipelineState(PipelineState);
 	RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Constants);

@@ -41,9 +41,9 @@ namespace
 	constexpr PxU32 MaxLandingSweepSegments = 4;
 	constexpr float TruckMass = 3280.0f;
 	constexpr float DefaultTireGrip = 1.20f;
-	constexpr char StuntTrackMaterial[] = "Truck/Arena/LoopStuntSurface.pmat";
-	constexpr char TreadTexturePath[] = "Truck/Effects/TireTreadColor.png";
-	constexpr char DustTemplatePath[] = "Truck/Effects/WheelDust.particle";
+	constexpr char StuntTrackMaterial[] = "FBX/Truck/Arena/LoopStuntSurface.pmat";
+	constexpr char TreadTexturePath[] = "FBX/Truck/Effects/TireTreadColor.png";
+	constexpr char DustTemplatePath[] = "FBX/Truck/Effects/WheelDust.particle";
 	constexpr int32 MaxTreadDecals = 256;
 	constexpr float TreadSpacing = 1.45f;
 	const FVector BedLocation(-1.10f, 0.0f, 0.30f);
@@ -560,17 +560,17 @@ AMonsterTruckPawn::AMonsterTruckPawn()
 		Part->SetStaticMesh(UAssetManager::GetAssetByPath<UStaticMesh>(MeshPath));
 		return Part;
 	};
-	CreateVisual("CabAndFrame", "Truck/Cab.obj", FVector::ZeroVector);
+	CreateVisual("CabAndFrame", "FBX/Truck/Cab.obj", FVector::ZeroVector);
 	const char* WheelNames[] = { "WheelFL", "WheelFR", "WheelRL", "WheelRR" };
 	for (PxU32 Index = 0; Index < WheelCount; ++Index)
 	{
-		const char* MeshPath = Index % 2 == 0 ? "Truck/WheelLeft.obj" : "Truck/WheelRight.obj";
+		const char* MeshPath = Index % 2 == 0 ? "FBX/Truck/WheelLeft.obj" : "FBX/Truck/WheelRight.obj";
 		Wheels[Index] = CreateVisual(WheelNames[Index], MeshPath, P2KVector(WheelCenters[Index]));
 	}
-	Axles[0] = CreateVisual("FrontAxle", "Truck/AxleFront.obj", FVector(WheelCenters[0].x, 0.0f, WheelCenters[0].z));
-	Axles[1] = CreateVisual("RearAxle", "Truck/AxleRear.obj", FVector(WheelCenters[2].x, 0.0f, WheelCenters[2].z));
+	Axles[0] = CreateVisual("FrontAxle", "FBX/Truck/AxleFront.obj", FVector(WheelCenters[0].x, 0.0f, WheelCenters[0].z));
+	Axles[1] = CreateVisual("RearAxle", "FBX/Truck/AxleRear.obj", FVector(WheelCenters[2].x, 0.0f, WheelCenters[2].z));
 
-	CreateVisual("DumpBed", "Truck/DumpBed.obj", BedLocation);
+	CreateVisual("DumpBed", "FBX/Truck/DumpBed.obj", BedLocation);
 
 	CameraArm = CreateDefaultSubobject<USpringArmComponent>("CameraArm");
 	CameraArm->SetupAttachment(Presentation);

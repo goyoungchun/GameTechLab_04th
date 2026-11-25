@@ -13,6 +13,7 @@
 #include "Render/PostProcess/CameraOverlayRenderer.h"
 #include "Render/PostProcess/DepthOfFieldRenderer.h"
 #include "Render/PostProcess/ExposureMeterRenderer.h"
+#include "Render/PostProcess/LensFlareRenderer.h"
 #include "Text/TextRenderer.h"
 #include "Render/SkyboxRenderer.h"
 #include "Core/Misc/Paths.h"
@@ -158,6 +159,8 @@ void FRenderer::InitScenePasses()
 	DepthOfField->Init(this);
 	ExposureMeter = MakeUnique<FExposureMeterRenderer>();
 	ExposureMeter->Init(this);
+	LensFlare = MakeUnique<FLensFlareRenderer>();
+	LensFlare->Init(this);
 	ToneMapConstants = RenderCommand::CreateConstantBuffer(sizeof(FToneMapData));
 	DecalConstants = RenderCommand::CreateConstantBuffer(sizeof(FDecalData));
 	SceneText = MakeUnique<FTextRenderer>();
