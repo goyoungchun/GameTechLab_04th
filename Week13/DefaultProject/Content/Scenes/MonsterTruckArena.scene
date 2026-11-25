@@ -143,7 +143,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Cab.obj",
+                                "StaticMesh": "Truck/Cab.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -189,7 +189,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/WheelLeft.obj",
+                                "StaticMesh": "Truck/WheelLeft.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 1.7979999780654907,
@@ -235,7 +235,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/WheelRight.obj",
+                                "StaticMesh": "Truck/WheelRight.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 1.7979999780654907,
@@ -281,7 +281,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/WheelLeft.obj",
+                                "StaticMesh": "Truck/WheelLeft.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": -1.5110000371932983,
@@ -327,7 +327,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/WheelRight.obj",
+                                "StaticMesh": "Truck/WheelRight.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": -1.5110000371932983,
@@ -373,7 +373,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/AxleFront.obj",
+                                "StaticMesh": "Truck/AxleFront.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 1.7979999780654907,
@@ -419,7 +419,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/AxleRear.obj",
+                                "StaticMesh": "Truck/AxleRear.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": -1.5110000371932983,
@@ -465,7 +465,7 @@
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/DumpBed.obj",
+                                "StaticMesh": "Truck/DumpBed.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": -1.100000023841858,
@@ -665,12 +665,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/ArenaGround.obj",
+                                "StaticMesh": "Truck/Arena/ArenaGround.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -752,12 +752,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/CenterPod.obj",
+                                "StaticMesh": "Truck/Arena/CenterPod.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -839,12 +839,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/WestRhythm.obj",
+                                "StaticMesh": "Truck/Arena/WestRhythm.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -926,12 +926,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/SouthKicker.obj",
+                                "StaticMesh": "Truck/Arena/SouthKicker.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1013,12 +1013,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/NorthTabletop.obj",
+                                "StaticMesh": "Truck/Arena/NorthTabletop.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1100,12 +1100,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/EastStepUp.obj",
+                                "StaticMesh": "Truck/Arena/EastStepUp.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1547,12 +1547,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1634,12 +1634,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1721,12 +1721,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1808,12 +1808,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1895,12 +1895,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -1982,12 +1982,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2069,12 +2069,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2156,12 +2156,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2243,12 +2243,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2330,12 +2330,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2417,12 +2417,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2504,12 +2504,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2591,12 +2591,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2678,12 +2678,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2765,12 +2765,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2852,12 +2852,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -2939,12 +2939,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3026,12 +3026,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3113,12 +3113,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3200,12 +3200,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3287,12 +3287,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3374,12 +3374,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3461,12 +3461,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3548,12 +3548,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3635,12 +3635,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": "FBX/Truck/Arena/LoopStuntSurface.pmat",
+                                    "PhysMaterialOverride": "Truck/Arena/LoopStuntSurface.pmat",
                                     "bDrivable": true,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/VerticalHalfLoop.obj",
+                                "StaticMesh": "Truck/Arena/VerticalHalfLoop.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3722,12 +3722,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LoopStructure.obj",
+                                "StaticMesh": "Truck/Arena/LoopStructure.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3809,12 +3809,12 @@
                                     "MassInKgOverride": 0.0,
                                     "Mobility": "Static",
                                     "ObjectType": "WorldStatic",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": false,
                                     "bUseCCD": false
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/ArenaFence.obj",
+                                "StaticMesh": "Truck/Arena/ArenaFence.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3896,12 +3896,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -3983,12 +3983,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4070,12 +4070,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4157,12 +4157,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4244,12 +4244,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4331,12 +4331,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4418,12 +4418,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4505,12 +4505,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4592,12 +4592,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4679,12 +4679,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4766,12 +4766,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4853,12 +4853,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -4940,12 +4940,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5027,12 +5027,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5114,12 +5114,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5201,12 +5201,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5288,12 +5288,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5375,12 +5375,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5462,12 +5462,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5549,12 +5549,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5636,12 +5636,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5723,12 +5723,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5810,12 +5810,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,
@@ -5897,12 +5897,12 @@
                                     "MassInKgOverride": 48.0,
                                     "Mobility": "Movable",
                                     "ObjectType": "PhysicsBody",
-                                    "PhysMaterialOverride": null,
+                                    "PhysMaterialOverride": "Truck/Arena/ArenaDirtSurface.pmat",
                                     "bDrivable": false,
                                     "bSimulatePhysics": true,
                                     "bUseCCD": true
                                 },
-                                "StaticMesh": "FBX/Truck/Arena/LogBarrel.obj",
+                                "StaticMesh": "Truck/Arena/LogBarrel.obj",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,

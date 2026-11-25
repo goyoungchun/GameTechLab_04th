@@ -16,6 +16,21 @@ struct FPostProcessSettings
 	bool bOverride_VignetteIntensity = false;
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float VignetteIntensity = 0.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensVignetteAmount = false;
+	// 렌즈 경통 깊이(k). 0이면 자연·광학 비네팅을 둘 다 끈다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=4, Delta=0.01))
+	float LensVignetteAmount = 0.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensMaxAperture = false;
+	// 렌즈 최대 개방 F-Stop. 이 값에서 동공이 경통과 같은 크기가 된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.5, ClampMax=32, Delta=0.1))
+	float LensMaxAperture = 1.4f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensBarrelRadius = false;
+	// 최대 개방 동공 반지름을 1로 둔 경통 반지름. 1보다 클수록 중앙부가 개방에서도 잘리지 않는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=3, Delta=0.01))
+	float LensBarrelRadius = 1.2f;
 
 	// ---------- Depth of Field ----------
 	UPROPERTY(EditAnywhere)
@@ -42,6 +57,53 @@ struct FPostProcessSettings
 	// 조리개 날 수. 보케가 이 수만큼의 다각형이 된다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=4, ClampMax=16))
 	int32 DepthOfFieldBladeCount = 5;
+
+	// ---------- Lens Flares (이미지 기반) ----------
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareIntensity = false;
+	// 고스트를 장면에 더할 때 곱하는 세기. 0이면 꺼진 것과 같다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=16, Delta=0.01))
+	float LensFlareIntensity = 0.15f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareThreshold = false;
+	// 노출 전 HDR 밝기가 이 값을 넘는 부분만 플레어를 만든다. 씬 라이트가 물리 단위가 아니라 UE 기본값(8)이면 거의 아무것도 안 넘는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=64, Delta=0.1))
+	float LensFlareThreshold = 2.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareGhostCount = false;
+	// 광원 반대편 직선 위에 줄지어 생기는 고스트 개수
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=16))
+	int32 LensFlareGhostCount = 6;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareGhostDispersal = false;
+	// 고스트가 퍼지는 정도. 0.25에서 셰이더 배율표 그대로이고, 클수록 고스트가 바깥으로 퍼지며 커진다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
+	float LensFlareGhostDispersal = 0.25f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareHaloWidth = false;
+	// 할로 링의 반지름(UV). 광원 위치와 상관없이 링 크기는 이 값으로 고정된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
+	float LensFlareHaloWidth = 0.05f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareHaloIntensity = false;
+	// 할로 세기
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=2, Delta=0.01))
+	float LensFlareHaloIntensity = 1.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareBokehSize = false;
+	// 고스트 원판 반경(반해상도 px). 광원 점을 조리개 모양(DepthOfFieldBladeCount 각형)으로 번지게 하는 크기
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=64, Delta=0.1))
+	float LensFlareBokehSize = 16.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareChromaticDistortion = false;
+	// R/G/B를 읽는 위치를 벌리는 정도(UV). 0이면 색수차가 없다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=0.1, Delta=0.001))
+	float LensFlareChromaticDistortion = 0.004f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensFlareDirtIntensity = false;
+	// 렌즈 먼지 텍스처가 플레어에 곱해지는 세기. 0이면 먼지 없이 플레어 그대로
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=8, Delta=0.01))
+	float LensFlareDirtIntensity = 1.0f;
 
 	// ---------- Camera (물리 노출) ----------
 	// 조리개는 DepthOfFieldFstop을 같이 쓴다 (UE도 노출과 DOF가 같은 F-Stop을 본다)

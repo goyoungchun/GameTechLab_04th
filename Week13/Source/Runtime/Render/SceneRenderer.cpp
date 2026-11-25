@@ -10,11 +10,13 @@
 #include "Core/Stats/LightweightStats.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SceneManagement.h"
+#include "Components/LightComponentBase.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Render/PostProcess/HeightFogRenderer.h"
 #include "Render/PostProcess/CameraOverlayRenderer.h"
 #include "Render/PostProcess/DepthOfFieldRenderer.h"
 #include "Render/PostProcess/ExposureMeterRenderer.h"
+#include "Render/PostProcess/LensFlareRenderer.h"
 #include "Render/PostProcess/FXAARenderer.h"
 #include "Render/PostProcess/ToneMapData.h"
 #include "Render/DecalData.h"
@@ -340,10 +342,23 @@ bool FSceneRenderer::AddCorePasses(FRenderGraphBuilder& Graph, FRenderer* Render
 		Sky.ColorAttachments = {
 			{ LightingHDR, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 1.0f } }
 		};
-		if (!Graph.AddRasterPass(std::move(Sky), [this, Skybox]
+		// VisibleLights는 업로드 때 재정렬되므로 포인터 대신 값으로 복사해 둔다.
+		bool bHasSun = false;
+		FLightRenderParameters SunLight{};
+		for (const FLightRenderParameters& Light : RenderData.VisibleLights)
+		{
+			if (Light.Type == static_cast<uint32>(ELightType::Directional))
+			{
+				SunLight = Light;
+				bHasSun = true;
+				break;
+			}
+		}
+
+		if (!Graph.AddRasterPass(std::move(Sky), [this, Skybox, bHasSun, SunLight]
 			{
 				if (bCorePassSucceeded)
-					Skybox->OnRender(View.ViewProjectionMatrix, View.ViewLocation);
+					Skybox->OnRender(View.ViewProjectionMatrix, View.ViewLocation, bHasSun ? &SunLight : nullptr);
 			})) return false;
 	}
 
@@ -905,6 +920,81 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 				SCOPED_GPU_STAT(GPUStats::STAT_GPU_DepthOfField);
 				if (FDepthOfFieldRenderer* DOF = Renderer->GetDepthOfField())
 					DOF->RenderComposite(Graph.Resolve(SceneCopy), Graph.Resolve(CoC), Graph.Resolve(HalfFarFiltered), Graph.Resolve(HalfNearFiltered));
+			})) return false;
+	}
+
+	// 노출을 곱하기 전 HDR 값이어야 Threshold가 "정말 밝은 것"만 고르므로 톤맵 앞에 둔다
+	if (LightingHDR && Options.ShowFlags.LensFlares && View.FinalPostProcessSettings.LensFlareIntensity > 0.0f &&
+		!Options.ShowFlags.VisualizeDepthOfField && !Options.ShowFlags.VisualizeSceneDepth)
+	{
+		const uint32 HalfWidth = std::max(ViewWidth / 2, 1u);
+		const uint32 HalfHeight = std::max(ViewHeight / 2, 1u);
+		const FRenderGraphTextureRef Bright = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBright");
+		const FRenderGraphTextureRef Ghost = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareGhost");
+		const FRenderGraphTextureRef BlurTemp = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurTemp");
+		const FRenderGraphTextureRef Blurred = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBlurred");
+		const FRenderGraphTextureRef Shaped = Graph.CreateTexture({ HalfWidth, HalfHeight, ETextureFormat::R16G16B16A16_Float }, "LensFlareBokeh");
+		if (!Bright || !Shaped || !Ghost || !BlurTemp || !Blurred) return false;
+
+		FRenderGraphRasterPassDesc BrightPass{};
+		BrightPass.Name = "LensFlareBright";
+		BrightPass.ReadTextures = { LightingHDR };
+		BrightPass.ColorAttachments = { { Bright, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BrightPass), [this, Renderer, &Graph, LightingHDR]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBrightPass(View, Graph.Resolve(LightingHDR));
+			})) return false;
+
+		// 광원 점을 먼저 조리개 모양으로 번지게 해 두면, Ghost가 배율대로 복사할 때 고스트도 같은 모양이 된다
+		FRenderGraphRasterPassDesc BokehPass{};
+		BokehPass.Name = "LensFlareBokeh";
+		BokehPass.ReadTextures = { Bright };
+		BokehPass.ColorAttachments = { { Shaped, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BokehPass), [this, Renderer, &Graph, Bright]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBokeh(View, Graph.Resolve(Bright));
+			})) return false;
+
+		FRenderGraphRasterPassDesc GhostPass{};
+		GhostPass.Name = "LensFlareGhost";
+		GhostPass.ReadTextures = { Shaped, Bright };
+		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Shaped, Bright]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderGhosts(View, Graph.Resolve(Shaped), Graph.Resolve(Bright));
+			})) return false;
+
+		// 읽는 텍스처에 그대로 쓸 수 없으니 가로 결과는 Temp에, 세로 결과는 Blurred에 받는다
+		FRenderGraphRasterPassDesc BlurHPass{};
+		BlurHPass.Name = "LensFlareBlurH";
+		BlurHPass.ReadTextures = { Ghost };
+		BlurHPass.ColorAttachments = { { BlurTemp, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BlurHPass), [Renderer, &Graph, Ghost]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBlur(Graph.Resolve(Ghost), 1.0f, 0.0f);
+			})) return false;
+
+		FRenderGraphRasterPassDesc BlurVPass{};
+		BlurVPass.Name = "LensFlareBlurV";
+		BlurVPass.ReadTextures = { BlurTemp };
+		BlurVPass.ColorAttachments = { { Blurred, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
+		if (!Graph.AddRasterPass(std::move(BlurVPass), [Renderer, &Graph, BlurTemp]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderBlur(Graph.Resolve(BlurTemp), 0.0f, 1.0f);
+			})) return false;
+
+		// Bright 패스가 LightingHDR을 다 읽은 뒤라 복사본 없이 그대로 위에 더해도 된다
+		FRenderGraphRasterPassDesc Composite = MakeViewportPass("LensFlareComposite", LightingHDR);
+		Composite.ReadTextures = { Blurred };
+		if (!Graph.AddRasterPass(std::move(Composite), [this, Renderer, &Graph, Blurred]
+			{
+				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
+					Flare->RenderComposite(View, Graph.Resolve(Blurred));
 			})) return false;
 	}
 

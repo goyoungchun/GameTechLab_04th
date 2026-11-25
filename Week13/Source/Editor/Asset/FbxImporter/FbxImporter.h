@@ -91,5 +91,7 @@ private:
 	bool bIsBlender = false;	// Armature 예외 처리용
 	TArray<FBoneInfo> Bones;
 	TMap<FbxNode*, int32> BoneIndices; // Import 중 SDK Node를 출력 Bone 번호로 연결
+	// Bone별 Bind Global 스케일의 역행렬. Bind와 애니메이션 Global 양쪽 오른쪽에 곱해 스켈레톤의 스케일을 제거한다.
+	TArray<FbxAMatrix> BindScaleRemovers;
 	TMap<FbxNode*, FFbxMeshNodeData> RigidBindMeshes; // Skeleton과 함께 비우며, 현재 Global 기준 MeshNodes는 유지한다.
 };
