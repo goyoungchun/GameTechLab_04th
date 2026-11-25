@@ -278,7 +278,7 @@ foreach ($Row in 0..2) {
     }
 }
 # 흩어진 블록
-foreach ($S in @(@(2.0, -2.1, 25), @(-2.2, 2.4, 40), @(2.7, 1.0, 10), @(-2.6, -1.6, 55))) {
+foreach ($S in @(@(2.0, -2.1, 25), @(2.7, 1.0, 10), @(-3.1, 0.3, 40), @(1.2, -1.95, 55))) {
     $null = Add-Shape -Name 'Block' -Mesh 'Cube' -Loc @($S[0], $S[1], ($Blk / 2)) -Scale @($Blk, $Blk, $Blk) -Rot @(0, $S[2], 0) -Color $BlockColors[$Bi % 6] 16
     $Bi++
 }
@@ -381,6 +381,40 @@ Add-Character 'AToyRoomHumanActor' 'Human' @(5.6, 2.1, 0.0) 180.0 'FBX/All_Might
     MeshScale = 0.003; EnterDelay = 9.0; DoorOpenSeconds = 1.4; DoorOpenAngle = 95.0; DoorActorName = 'DoorHinge'
     EntryPoint = [ordered]@{ X = 3.0; Y = 2.1; Z = 0.0 }; StopDistance = 0.9; SpeedScale = 1.0; bRegenerateAnimations = $false }
 
+# ---- 우디 친구들: 러그 서쪽 가장자리에 반원으로 둘러서서 우디를 본다 ----
+# 사람은 동쪽 문에서 들어오므로 그 길(러그 동쪽)은 비워 둔다. 카메라 궤도(우디에서 1.3m) 밖인 반지름 2.55m에 둔다
+# 키: 우디 0.62m 기준 버즈 0.52 / 제시 0.58 / 렉스 0.47 / 햄 0.2 / 포테이토 헤드 0.3
+function Add-Toy($Name, $MeshPath, [double]$AngleDeg, [double]$Scale, [string]$Preset, [double]$YawOffset, $Alive) {
+    $Rad = $AngleDeg * [Math]::PI / 180
+    $X = $RugC[0] + 2.55 * [Math]::Cos($Rad); $Y = $RugC[1] + 2.55 * [Math]::Sin($Rad)
+    $Yaw = [Math]::Atan2($RugC[1] - $Y, $RugC[0] - $X) * 180 / [Math]::PI   # 러그 가운데를 본다
+    $Root = Copy-Json $TplMesh.Components[0]
+    Set-Transform $Root.Properties @($X, $Y, 0.0) @(0, $Yaw, 0) @(1, 1, 1)
+    $Skel = New-SkeletalComponent $MeshPath
+    # 에디터에서도 실제 크기로 보이게 배율과 기본 방향을 넣는다 (프리셋 리그는 플레이할 때 앞 방향을 다시 계산한다)
+    $Skel.Properties | Add-Member -NotePropertyName Transform -NotePropertyValue ([ordered]@{
+        Location = [ordered]@{ X = 0.0; Y = 0.0; Z = 0.0 }
+        Rotation = [ordered]@{ Pitch = 0.0; Yaw = $YawOffset; Roll = 0.0 }
+        Scale = [ordered]@{ X = $Scale; Y = $Scale; Z = $Scale } })
+    $Properties = [ordered]@{ ScriptPath = ''; bActorEnableCollision = $true; MeshScale = $Scale; IdlePreset = $Preset; MeshYawOffset = $YawOffset
+        AliveBobHeight = $Alive[0]; AliveRockDeg = $Alive[1]; AlivePeriod = $Alive[2]; NoticeDistance = 8.0; bRegenerateAnimations = $false }
+    [void]$Actors.Add([ordered]@{
+        Class = 'AToyRoomToyActor'; Components = @($Root, $Skel); Name = $Name; ParentActor = ''; ParentComponent = ''
+        Properties = $Properties; RootComponentName = 'DefaultSceneRoot' })
+}
+Add-Toy 'Jesse' 'FBX/Jesse_FN/Jesse_FN.fbx.bin' 135 0.004 'Jesse' 0 @(0.006, 3, 1.4)
+Add-Toy 'Buzz' 'FBX/SK_Buzz/SK_Buzz.fbx.bin' 165 0.018 'Buzz' 0 @(0.004, 2, 1.8)
+Add-Toy 'Rex' 'FBX/Rex/Rex.fbx.bin' 198 0.022 'Rex' 0 @(0.012, 4, 0.9)
+Add-Toy 'Hamm' 'FBX/SK_hamm/SK_hamm.fbx.bin' 232 0.0125 '' 0 @(0.02, 6, 0.7)
+Add-Toy 'PotatoHead' 'FBX/MrPotatoHead/MrPotatoHead.fbx.bin' 262 0.038 'Potato' 0 @(0.015, 5, 1.1)
+
+# 초록 외계인 세 마리: 장난감 상자 뚜껑 위
+foreach ($k in 0..2) {
+    $null = Add-Shape -Name 'Alien' -Mesh 'FBX/Little_Green_Men_Alien_/Little_Green_Men_Alien__Static.fbx.bin' -Loc @((-1.15 + 0.3 * $k), -3.62, 0.62) -Scale @(0.0017, 0.0017, 0.0017) -Rot @(0, (90 + 12 * ($k - 1)), 0) -Color @(1, 1, 1)
+    # 임포트한 머티리얼(텍스처)을 그대로 쓴다
+    $Actors[$Actors.Count - 1].Components[1].OverrideMaterials = @()
+}
+
 # 카메라 연출 (씬의 첫 Pawn → PlayerController가 빙의)
 $CamRoot = Copy-Json $TplMesh.Components[0]
 Set-Transform $CamRoot.Properties @(1.2, -1.2, 0.5) @(0, 135, 0) @(1, 1, 1)
@@ -389,7 +423,7 @@ $Cam = [ordered]@{
 }
 [void]$Actors.Add([ordered]@{
     Class = 'AToyRoomDirector'; Components = @($CamRoot, $Cam); Name = 'CameraDirector'; ParentActor = ''; ParentComponent = ''
-    Properties = [ordered]@{ ScriptPath = ''; bActorEnableCollision = $false; CameraSmoothing = 2.2; OrbitRadius = 1.5; OrbitHeight = 0.45; OrbitSpeed = 12.0; FieldOfView = 55.0 }
+    Properties = [ordered]@{ ScriptPath = ''; bActorEnableCollision = $false; CameraSmoothing = 2.2; OrbitRadius = 1.3; OrbitHeight = 0.45; OrbitSpeed = 12.0; FieldOfView = 55.0 }
     RootComponentName = 'DefaultSceneRoot'
 })
 

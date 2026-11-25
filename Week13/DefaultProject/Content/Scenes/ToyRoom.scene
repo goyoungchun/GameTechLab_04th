@@ -34085,14 +34085,14 @@
                                                                                     "Properties":  {
                                                                                                        "Transform":  {
                                                                                                                          "Location":  {
-                                                                                                                                          "X":  -2.2,
-                                                                                                                                          "Y":  2.4,
+                                                                                                                                          "X":  2.7,
+                                                                                                                                          "Y":  1,
                                                                                                                                           "Z":  0.08
                                                                                                                                       },
                                                                                                                          "Rotation":  {
                                                                                                                                           "Pitch":  0,
                                                                                                                                           "Roll":  0,
-                                                                                                                                          "Yaw":  40
+                                                                                                                                          "Yaw":  10
                                                                                                                                       },
                                                                                                                          "Scale":  {
                                                                                                                                        "X":  0.16,
@@ -34208,14 +34208,14 @@
                                                                                     "Properties":  {
                                                                                                        "Transform":  {
                                                                                                                          "Location":  {
-                                                                                                                                          "X":  2.7,
-                                                                                                                                          "Y":  1,
+                                                                                                                                          "X":  -3.1,
+                                                                                                                                          "Y":  0.3,
                                                                                                                                           "Z":  0.08
                                                                                                                                       },
                                                                                                                          "Rotation":  {
                                                                                                                                           "Pitch":  0,
                                                                                                                                           "Roll":  0,
-                                                                                                                                          "Yaw":  10
+                                                                                                                                          "Yaw":  40
                                                                                                                                       },
                                                                                                                          "Scale":  {
                                                                                                                                        "X":  0.16,
@@ -34331,8 +34331,8 @@
                                                                                     "Properties":  {
                                                                                                        "Transform":  {
                                                                                                                          "Location":  {
-                                                                                                                                          "X":  -2.6,
-                                                                                                                                          "Y":  -1.6,
+                                                                                                                                          "X":  1.2,
+                                                                                                                                          "Y":  -1.95,
                                                                                                                                           "Z":  0.08
                                                                                                                                       },
                                                                                                                          "Rotation":  {
@@ -39149,6 +39149,798 @@
                                                              "RootComponentName":  "DefaultSceneRoot"
                                                          },
                                                          {
+                                                             "Class":  "AToyRoomToyActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -2.0031222920256959,
+                                                                                                                                          "Y":  2.603122292025696,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  -45
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1,
+                                                                                                                                       "Y":  1,
+                                                                                                                                       "Z":  1
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "BonePose":  [
+
+                                                                                                 ],
+                                                                                    "Class":  "USkeletalMeshComponent",
+                                                                                    "DefaultSubobjectName":  "SkeletalMeshComponent",
+                                                                                    "Name":  "SkeletalMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "AnimBlueprintPath":  "",
+                                                                                                       "AnimInstance":  null,
+                                                                                                       "BlendSpaceInput":  300.0,
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "Density":  1000.0,
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Movable",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "SkeletalMesh":  "FBX/Jesse_FN/Jesse_FN.fbx.bin",
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bBlockComponent":  false,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true,
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0,
+                                                                                                                                          "Y":  0,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Yaw":  0,
+                                                                                                                                          "Roll":  0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.004,
+                                                                                                                                       "Y":  0.004,
+                                                                                                                                       "Z":  0.004
+                                                                                                                                   }
+                                                                                                                     }
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Jesse",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true,
+                                                                                "MeshScale":  0.004,
+                                                                                "IdlePreset":  "Jesse",
+                                                                                "MeshYawOffset":  0,
+                                                                                "AliveBobHeight":  0.006,
+                                                                                "AliveRockDeg":  3,
+                                                                                "AlivePeriod":  1.4,
+                                                                                "NoticeDistance":  8,
+                                                                                "bRegenerateAnimations":  false
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AToyRoomToyActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -2.663110857037124,
+                                                                                                                                          "Y":  1.4599885650114286,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  -15.000000000000014
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1,
+                                                                                                                                       "Y":  1,
+                                                                                                                                       "Z":  1
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "BonePose":  [
+
+                                                                                                 ],
+                                                                                    "Class":  "USkeletalMeshComponent",
+                                                                                    "DefaultSubobjectName":  "SkeletalMeshComponent",
+                                                                                    "Name":  "SkeletalMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "AnimBlueprintPath":  "",
+                                                                                                       "AnimInstance":  null,
+                                                                                                       "BlendSpaceInput":  300.0,
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "Density":  1000.0,
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Movable",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "SkeletalMesh":  "FBX/SK_Buzz/SK_Buzz.fbx.bin",
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bBlockComponent":  false,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true,
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0,
+                                                                                                                                          "Y":  0,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Yaw":  0,
+                                                                                                                                          "Roll":  0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.018,
+                                                                                                                                       "Y":  0.018,
+                                                                                                                                       "Z":  0.018
+                                                                                                                                   }
+                                                                                                                     }
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Buzz",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true,
+                                                                                "MeshScale":  0.018,
+                                                                                "IdlePreset":  "Buzz",
+                                                                                "MeshYawOffset":  0,
+                                                                                "AliveBobHeight":  0.004,
+                                                                                "AliveRockDeg":  2,
+                                                                                "AlivePeriod":  1.8,
+                                                                                "NoticeDistance":  8,
+                                                                                "bRegenerateAnimations":  false
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AToyRoomToyActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -2.6251941165526413,
+                                                                                                                                          "Y":  0.012006664343883422,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  18.000000000000018
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1,
+                                                                                                                                       "Y":  1,
+                                                                                                                                       "Z":  1
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "BonePose":  [
+
+                                                                                                 ],
+                                                                                    "Class":  "USkeletalMeshComponent",
+                                                                                    "DefaultSubobjectName":  "SkeletalMeshComponent",
+                                                                                    "Name":  "SkeletalMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "AnimBlueprintPath":  "",
+                                                                                                       "AnimInstance":  null,
+                                                                                                       "BlendSpaceInput":  300.0,
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "Density":  1000.0,
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Movable",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "SkeletalMesh":  "FBX/Rex/Rex.fbx.bin",
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bBlockComponent":  false,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true,
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0,
+                                                                                                                                          "Y":  0,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Yaw":  0,
+                                                                                                                                          "Roll":  0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.022,
+                                                                                                                                       "Y":  0.022,
+                                                                                                                                       "Z":  0.022
+                                                                                                                                   }
+                                                                                                                     }
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Rex",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true,
+                                                                                "MeshScale":  0.022,
+                                                                                "IdlePreset":  "Rex",
+                                                                                "MeshYawOffset":  0,
+                                                                                "AliveBobHeight":  0.012,
+                                                                                "AliveRockDeg":  4,
+                                                                                "AlivePeriod":  0.9,
+                                                                                "NoticeDistance":  8,
+                                                                                "bRegenerateAnimations":  false
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AToyRoomToyActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -1.7699367620804278,
+                                                                                                                                          "Y":  -1.2094274216971412,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  52.000000000000014
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1,
+                                                                                                                                       "Y":  1,
+                                                                                                                                       "Z":  1
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "BonePose":  [
+
+                                                                                                 ],
+                                                                                    "Class":  "USkeletalMeshComponent",
+                                                                                    "DefaultSubobjectName":  "SkeletalMeshComponent",
+                                                                                    "Name":  "SkeletalMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "AnimBlueprintPath":  "",
+                                                                                                       "AnimInstance":  null,
+                                                                                                       "BlendSpaceInput":  300.0,
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "Density":  1000.0,
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Movable",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "SkeletalMesh":  "FBX/SK_hamm/SK_hamm.fbx.bin",
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bBlockComponent":  false,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true,
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0,
+                                                                                                                                          "Y":  0,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Yaw":  0,
+                                                                                                                                          "Roll":  0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.0125,
+                                                                                                                                       "Y":  0.0125,
+                                                                                                                                       "Z":  0.0125
+                                                                                                                                   }
+                                                                                                                     }
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Hamm",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true,
+                                                                                "MeshScale":  0.0125,
+                                                                                "IdlePreset":  "",
+                                                                                "MeshYawOffset":  0,
+                                                                                "AliveBobHeight":  0.02,
+                                                                                "AliveRockDeg":  6,
+                                                                                "AlivePeriod":  0.7,
+                                                                                "NoticeDistance":  8,
+                                                                                "bRegenerateAnimations":  false
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AToyRoomToyActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -0.55489140744816556,
+                                                                                                                                          "Y":  -1.7251835752910043,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  82.000000000000028
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1,
+                                                                                                                                       "Y":  1,
+                                                                                                                                       "Z":  1
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "BonePose":  [
+
+                                                                                                 ],
+                                                                                    "Class":  "USkeletalMeshComponent",
+                                                                                    "DefaultSubobjectName":  "SkeletalMeshComponent",
+                                                                                    "Name":  "SkeletalMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "AnimBlueprintPath":  "",
+                                                                                                       "AnimInstance":  null,
+                                                                                                       "BlendSpaceInput":  300.0,
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "Density":  1000.0,
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Movable",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "SkeletalMesh":  "FBX/MrPotatoHead/MrPotatoHead.fbx.bin",
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bBlockComponent":  false,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true,
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0,
+                                                                                                                                          "Y":  0,
+                                                                                                                                          "Z":  0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Yaw":  0,
+                                                                                                                                          "Roll":  0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.038,
+                                                                                                                                       "Y":  0.038,
+                                                                                                                                       "Z":  0.038
+                                                                                                                                   }
+                                                                                                                     }
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "PotatoHead",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true,
+                                                                                "MeshScale":  0.038,
+                                                                                "IdlePreset":  "Potato",
+                                                                                "MeshYawOffset":  0,
+                                                                                "AliveBobHeight":  0.015,
+                                                                                "AliveRockDeg":  5,
+                                                                                "AlivePeriod":  1.1,
+                                                                                "NoticeDistance":  8,
+                                                                                "bRegenerateAnimations":  false
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AStaticMeshActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -1.15,
+                                                                                                                                          "Y":  -3.62,
+                                                                                                                                          "Z":  0.62
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  78
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.0017,
+                                                                                                                                       "Y":  0.0017,
+                                                                                                                                       "Z":  0.0017
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "Class":  "UStaticMeshComponent",
+                                                                                    "DefaultSubobjectName":  "UStaticMeshComponent",
+                                                                                    "Name":  "UStaticMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Static",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "StaticMesh":  "FBX/Little_Green_Men_Alien_/Little_Green_Men_Alien__Static.fbx.bin",
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0.0,
+                                                                                                                                          "Y":  0.0,
+                                                                                                                                          "Z":  0.0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0.0,
+                                                                                                                                          "Roll":  0.0,
+                                                                                                                                          "Yaw":  0.0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1.0,
+                                                                                                                                       "Y":  1.0,
+                                                                                                                                       "Z":  1.0
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Alien",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AStaticMeshActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -0.84999999999999987,
+                                                                                                                                          "Y":  -3.62,
+                                                                                                                                          "Z":  0.62
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  90
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.0017,
+                                                                                                                                       "Y":  0.0017,
+                                                                                                                                       "Z":  0.0017
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "Class":  "UStaticMeshComponent",
+                                                                                    "DefaultSubobjectName":  "UStaticMeshComponent",
+                                                                                    "Name":  "UStaticMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Static",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "StaticMesh":  "FBX/Little_Green_Men_Alien_/Little_Green_Men_Alien__Static.fbx.bin",
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0.0,
+                                                                                                                                          "Y":  0.0,
+                                                                                                                                          "Z":  0.0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0.0,
+                                                                                                                                          "Roll":  0.0,
+                                                                                                                                          "Yaw":  0.0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1.0,
+                                                                                                                                       "Y":  1.0,
+                                                                                                                                       "Z":  1.0
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Alien_1",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
+                                                             "Class":  "AStaticMeshActor",
+                                                             "Components":  [
+                                                                                {
+                                                                                    "Class":  "USceneComponent",
+                                                                                    "DefaultSubobjectName":  "DefaultSceneRoot",
+                                                                                    "Name":  "DefaultSceneRoot",
+                                                                                    "Parent":  "",
+                                                                                    "Properties":  {
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  -0.54999999999999993,
+                                                                                                                                          "Y":  -3.62,
+                                                                                                                                          "Z":  0.62
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0,
+                                                                                                                                          "Roll":  0,
+                                                                                                                                          "Yaw":  102
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  0.0017,
+                                                                                                                                       "Y":  0.0017,
+                                                                                                                                       "Z":  0.0017
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                },
+                                                                                {
+                                                                                    "Class":  "UStaticMeshComponent",
+                                                                                    "DefaultSubobjectName":  "UStaticMeshComponent",
+                                                                                    "Name":  "UStaticMeshComponent",
+                                                                                    "OverrideMaterials":  [
+
+                                                                                                          ],
+                                                                                    "Parent":  "DefaultSceneRoot",
+                                                                                    "Properties":  {
+                                                                                                       "BodyInstance":  {
+                                                                                                                            "AngularDamping":  0.05000000074505806,
+                                                                                                                            "CollisionEnabled":  "QueryAndPhysics",
+                                                                                                                            "LinearDamping":  0.009999999776482582,
+                                                                                                                            "MassInKgOverride":  0.0,
+                                                                                                                            "Mobility":  "Static",
+                                                                                                                            "ObjectType":  "WorldDynamic",
+                                                                                                                            "PhysMaterialOverride":  null,
+                                                                                                                            "bDrivable":  false,
+                                                                                                                            "bSimulatePhysics":  false,
+                                                                                                                            "bUseCCD":  false
+                                                                                                                        },
+                                                                                                       "StaticMesh":  "FBX/Little_Green_Men_Alien_/Little_Green_Men_Alien__Static.fbx.bin",
+                                                                                                       "Transform":  {
+                                                                                                                         "Location":  {
+                                                                                                                                          "X":  0.0,
+                                                                                                                                          "Y":  0.0,
+                                                                                                                                          "Z":  0.0
+                                                                                                                                      },
+                                                                                                                         "Rotation":  {
+                                                                                                                                          "Pitch":  0.0,
+                                                                                                                                          "Roll":  0.0,
+                                                                                                                                          "Yaw":  0.0
+                                                                                                                                      },
+                                                                                                                         "Scale":  {
+                                                                                                                                       "X":  1.0,
+                                                                                                                                       "Y":  1.0,
+                                                                                                                                       "Z":  1.0
+                                                                                                                                   }
+                                                                                                                     },
+                                                                                                       "bAutoActivate":  true,
+                                                                                                       "bCastShadow":  true,
+                                                                                                       "bGenerateOverlapEvents":  true,
+                                                                                                       "bHiddenInGame":  false,
+                                                                                                       "bReceiveShadow":  true,
+                                                                                                       "bReceivesDecals":  true,
+                                                                                                       "bVisible":  true
+                                                                                                   }
+                                                                                }
+                                                                            ],
+                                                             "Name":  "Alien_2",
+                                                             "ParentActor":  "",
+                                                             "ParentComponent":  "",
+                                                             "Properties":  {
+                                                                                "ScriptPath":  "",
+                                                                                "bActorEnableCollision":  true
+                                                                            },
+                                                             "RootComponentName":  "DefaultSceneRoot"
+                                                         },
+                                                         {
                                                              "Class":  "AToyRoomDirector",
                                                              "Components":  [
                                                                                 {
@@ -39196,7 +39988,7 @@
                                                                                 "ScriptPath":  "",
                                                                                 "bActorEnableCollision":  false,
                                                                                 "CameraSmoothing":  2.2,
-                                                                                "OrbitRadius":  1.5,
+                                                                                "OrbitRadius":  1.3,
                                                                                 "OrbitHeight":  0.45,
                                                                                 "OrbitSpeed":  12,
                                                                                 "FieldOfView":  55

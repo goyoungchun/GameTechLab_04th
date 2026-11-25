@@ -229,18 +229,7 @@ void AWoodyToyActor::BeginPlay()
 
 AToyRoomHumanActor* AWoodyToyActor::FindHumanInRoom() const
 {
-	ULevel* Level = GetWorld() ? GetWorld()->GetPersistentLevel() : nullptr;
-	if (!Level) return nullptr;
-	const FVector Location = GetActorLocation();
-	for (AActor* Actor : Level->GetActors())
-	{
-		AToyRoomHumanActor* Human = Cast<AToyRoomHumanActor>(Actor);
-		if (Human && Human->IsInRoom() && FVector::Distance(Human->GetActorLocation(), Location) <= NoticeDistance)
-		{
-			return Human;
-		}
-	}
-	return nullptr;
+	return ToyRoomRagdoll::FindHumanInRoom(GetWorld(), GetActorLocation(), NoticeDistance);
 }
 
 void AWoodyToyActor::Tick(float DeltaTime)
@@ -286,24 +275,28 @@ void AWoodyToyActor::GoLimp()
 	}
 	bLimp = true;
 
+	// 키네마틱으로 걷던 바디에 걷던 속도를 넘겨, 그대로 앞으로 고꾸라지게 한다
 	const FVector Velocity = YawToForward(Yaw) * (WalkSpeed * LimpMomentum);
-	MeshComponent->Stop();
 	StabilizeRagdollBodies();
+	if (ToyRoomRagdoll::StartRagdoll(MeshComponent, Velocity))
+	{
+		KRS_LOG(Info, "ToyRoom: Woody went limp");
+	}
+}
+
+bool ToyRoomRagdoll::StartRagdoll(USkeletalMeshComponent* MeshComponent, const FVector& Velocity)
+{
+	MeshComponent->Stop();
 	MeshComponent->SetSimulatePhysics(true);
 	if (!MeshComponent->IsRagdollSimulating())
 	{
-		KRS_LOG(Warning, "ToyRoom: Woody has no physics bodies (missing .phys?), cannot ragdoll");
-		return;
+		KRS_LOG(Warning, "ToyRoom: {} has no physics bodies (missing .phys?), cannot ragdoll",
+			MeshComponent->GetOwner() ? MeshComponent->GetOwner()->GetName() : FString("?"));
+		return false;
 	}
-
-	// 키네마틱으로 걷던 바디에 걷던 속도를 넘겨, 그대로 앞으로 고꾸라지게 한다
 	for (FBodyInstance* Body : MeshComponent->Bodies)
 	{
-		if (!Body || !Body->Actor || !Body->IsSimulatingPhysics())
-		{
-			continue;
-		}
-		physx::PxRigidDynamic* Dynamic = Body->Actor->is<physx::PxRigidDynamic>();
+		physx::PxRigidDynamic* Dynamic = Body && Body->Actor && Body->IsSimulatingPhysics() ? Body->Actor->is<physx::PxRigidDynamic>() : nullptr;
 		if (!Dynamic)
 		{
 			continue;
@@ -312,11 +305,36 @@ void AWoodyToyActor::GoLimp()
 		Dynamic->setLinearVelocity(K2PVector(Velocity));
 		Dynamic->wakeUp();
 	}
-	KRS_LOG(Info, "ToyRoom: Woody went limp");
+	return true;
+}
+
+AToyRoomHumanActor* ToyRoomRagdoll::FindHumanInRoom(UWorld* World, const FVector& Location, float NoticeDistance)
+{
+	ULevel* Level = World ? World->GetPersistentLevel() : nullptr;
+	if (!Level) return nullptr;
+	for (AActor* Actor : Level->GetActors())
+	{
+		AToyRoomHumanActor* Human = Cast<AToyRoomHumanActor>(Actor);
+		if (Human && Human->IsInRoom() && FVector::Distance(Human->GetActorLocation(), Location) <= NoticeDistance)
+		{
+			return Human;
+		}
+	}
+	return nullptr;
 }
 
 void AWoodyToyActor::StabilizeRagdollBodies()
 {
+	ToyRoomRagdoll::Stabilize(MeshComponent, RagdollMassRangeMin, RagdollMassRangeMax, RagdollSolverIterations, RagdollAngularDamping);
+}
+
+void ToyRoomRagdoll::Stabilize(USkeletalMeshComponent* MeshComponent, float RagdollMassRangeMin, float RagdollMassRangeMax,
+	int32 RagdollSolverIterations, float RagdollAngularDamping)
+{
+	if (!MeshComponent)
+	{
+		return;
+	}
 	// 자동 생성된 바디에는 손가락·이·무릎 보조 본처럼 몇 그램짜리가 수백 그램짜리 몸통에 조인트로 붙어 있다.
 	// 질량비가 100:1을 넘으면 PhysX 조인트 솔버가 수렴하지 못해, 바닥에 누운 뒤에도 바디가 계속 떨린다.
 	// 가장 무거운 바디 대비 최소 질량을 보장하고, 솔버 반복을 늘리고, 회전을 감쇠해 봉제 인형처럼 가라앉게 한다.
@@ -401,6 +419,172 @@ void AWoodyToyActor::StabilizeRagdollBodies()
 FVector AWoodyToyActor::GetBodyLocation() const
 {
 	return BoneWorldLocation(MeshComponent, "Spine2", GetActorLocation() + FVector(0.0f, 0.0f, 0.3f));
+}
+
+// ============================================================================
+// AToyRoomToyActor
+// ============================================================================
+
+AToyRoomToyActor::AToyRoomToyActor()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("SkeletalMeshComponent");
+	MeshComponent->SetupAttachment(GetRootComponent());
+}
+
+bool AToyRoomToyActor::MakePreset(FProceduralWalkRig& Rig, FProceduralWalkParams& Params) const
+{
+	Params = FProceduralWalkParams();
+	Params.bWalk = false;
+	Params.CycleSeconds = 2.6f;
+	if (IdlePreset == "Jesse")
+	{
+		Rig.Root = "Pelvis"; Rig.Pelvis = "Pelvis";
+		Rig.Spine = { "Spine1", "Spine2", "Spine3", "Spine4" };
+		Rig.Head = "Head";
+		Rig.LegLeft = { "L_Thigh", "L_Knee", "L_Ankle" };
+		Rig.LegRight = { "R_Thigh", "R_Knee", "R_Ankle" };
+		Rig.ArmLeft = { "L_Shoulder", "L_Elbow", "L_Hand" };
+		Rig.ArmRight = { "R_Shoulder", "R_Elbow", "R_Hand" };
+		Rig.ToeLeft = "L_Toe"; Rig.ToeRight = "R_Toe";
+		Params.ArmHangDeg = 14.0f;
+		Params.BreathDeg = 2.5f;
+		return true;
+	}
+	if (IdlePreset == "Buzz")
+	{
+		Rig.Root = "Pelvis"; Rig.Pelvis = "Pelvis";
+		Rig.Spine = { "Waist", "chest" };
+		Rig.Head = "Head";
+		Rig.LegLeft = { "L_Thigh", "L_knee", "L_Foot" };
+		Rig.LegRight = { "R_Thigh", "R_knee", "R_Foot" };
+		Rig.ArmLeft = { "L_Shoulder", "L_Elbow", "L_Hand" };
+		Rig.ArmRight = { "R_Shoulder", "R_Elbow", "R_Hand" };
+		Rig.ToeLeft = "L_Toe"; Rig.ToeRight = "R_Toe";
+		// 버즈는 가슴판이 넓어 팔을 덜 내리고, 팔꿈치를 굽혀 허리에 손을 얹은 듯한 자세
+		Params.ArmHangDeg = 28.0f;
+		Params.ElbowBaseDeg = 35.0f;
+		Params.SpineLeanDeg = -2.0f;
+		return true;
+	}
+	if (IdlePreset == "Rex")
+	{
+		Rig.Root = "center"; Rig.Pelvis = "koshi";
+		Rig.Spine = { "hara1", "hara2", "mune" };
+		Rig.Head = "atama";
+		Rig.LegLeft = { "l momo", "l sune", "l ashi1" };
+		Rig.LegRight = { "r momo", "r sune", "r ashi1" };
+		Rig.ArmLeft = { "l ude1", "l ude2", "l te" };
+		Rig.ArmRight = { "r ude1", "r ude2", "r te" };
+		// 짧은 앞발은 거의 그대로 두고 크게 숨쉬며 고개를 끄덕인다
+		Params.ArmHangDeg = 70.0f;
+		Params.BreathDeg = 3.0f;
+		Params.KneeBaseDeg = 0.0f;
+		Params.CycleSeconds = 2.0f;
+		return true;
+	}
+	if (IdlePreset == "Potato")
+	{
+		Rig.Root = "bip_pelvis"; Rig.Pelvis = "bip_pelvis";
+		Rig.Spine = { "bip_spine_0", "bip_spine_1" };
+		Rig.LegLeft = { "bip_hip_L", "bip_knee_L", "bip_foot_L" };
+		Rig.LegRight = { "bip_hip_R", "bip_knee_R", "bip_foot_R" };
+		Rig.ArmLeft = { "bip_upperArm_L", "bip_lowerArm_L", "bip_hand_L" };
+		Rig.ArmRight = { "bip_upperArm_R", "bip_lowerArm_R", "bip_hand_R" };
+		Rig.ToeLeft = "bip_toe_L"; Rig.ToeRight = "bip_toe_R";
+		// 감자 몸통 옆으로 팔을 내밀어 둔다
+		Params.ArmHangDeg = 50.0f;
+		Params.IdleArmSwayDeg = 8.0f;
+		Params.BreathDeg = 2.0f;
+		return true;
+	}
+	return false;
+}
+
+void AToyRoomToyActor::BeginPlay()
+{
+	Super::BeginPlay();
+	bLimp = false;
+	Time = 0.0f;
+	// 장난감마다 움직임이 어긋나도록 이름으로 위상을 정한다
+	Phase = static_cast<float>(std::hash<FString>{}(GetName()) % 1000) / 1000.0f * 2.0f * PI;
+
+	FProceduralWalkRig Rig;
+	FProceduralWalkParams Params;
+	FProceduralWalkInfo Info;
+	BaseYaw = MeshYawOffset;
+	USkeletalMesh* Mesh = MeshComponent->GetSkeletalMesh();
+	const bool bPreset = Mesh && MakePreset(Rig, Params);
+	if (bPreset)
+	{
+		SetupCharacterMesh(MeshComponent, Rig, Params, MeshScale, Info);
+		BaseYaw = MeshComponent->GetRelativeRotation().Yaw;
+
+		// 대기 클립: 메시 옆에 <메시 이름>_Idle.anim.bin
+		const FString MeshPath = Mesh->GetPath();
+		const size_t Slash = MeshPath.find_last_of('/');
+		const FString Dir = Slash == FString::npos ? FString() : MeshPath.substr(0, Slash + 1);
+		const FString File = Slash == FString::npos ? MeshPath : MeshPath.substr(Slash + 1);
+		const FString IdlePath = Dir + File.substr(0, File.find('.')) + "_Idle.anim.bin";
+		if (UAnimSequence* Idle = ProceduralWalkAnim::LoadOrGenerate(Mesh, MeshPath, IdlePath, Rig, Params, bRegenerateAnimations))
+		{
+			MeshComponent->PlayAnimation(Idle, true);
+			// 같은 클립이라도 장난감마다 다른 위치에서 시작한다
+			if (UAnimSingleNodeInstance* Instance = MeshComponent->GetSingleNodeInstance())
+			{
+				Instance->SetPosition(Phase / (2.0f * PI) * Instance->GetLength());
+			}
+		}
+	}
+	else
+	{
+		MeshComponent->SetRelativeScale3D(FVector(MeshScale, MeshScale, MeshScale));
+	}
+	ApplyAlivePose(0.0f, 0.0f);
+
+	// 메시는 생성자가 아니라 씬에서 들어오므로, 컴포넌트가 등록될 때는 메시가 없어 랙돌 바디가 만들어지지 않는다
+	if (Mesh && !MeshComponent->IsPhysicsStateCreated())
+	{
+		MeshComponent->CreatePhysicsState();
+	}
+}
+
+void AToyRoomToyActor::ApplyAlivePose(float Bob, float Rock)
+{
+	// 메시 컴포넌트만 움직인다 (액터 위치는 그대로). 흔들기는 메시가 보는 방향의 좌우(Roll)
+	MeshComponent->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, Bob), FRotator(0.0f, BaseYaw, Rock));
+}
+
+void AToyRoomToyActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	if (bLimp || DeltaTime <= 0.0f)
+	{
+		return;
+	}
+	if (ToyRoomRagdoll::FindHumanInRoom(GetWorld(), GetActorLocation(), NoticeDistance))
+	{
+		GoLimp();
+		return;
+	}
+
+	// 신이 난 장난감처럼 통통 들썩이며 좌우로 흔든다 (|sin|으로 바닥을 차고 오르는 느낌)
+	Time += DeltaTime;
+	const float W = 2.0f * PI / std::max(0.2f, AlivePeriod);
+	const float Bob = AliveBobHeight * std::fabs(std::sin(W * Time + Phase));
+	const float Rock = AliveRockDeg * std::sin(0.5f * W * Time + Phase);
+	ApplyAlivePose(Bob, Rock);
+}
+
+void AToyRoomToyActor::GoLimp()
+{
+	if (bLimp)
+	{
+		return;
+	}
+	bLimp = true;
+	ToyRoomRagdoll::Stabilize(MeshComponent, 0.35f, 2.5f, 16, 0.6f);
+	ToyRoomRagdoll::StartRagdoll(MeshComponent, FVector::ZeroVector);
 }
 
 // ============================================================================

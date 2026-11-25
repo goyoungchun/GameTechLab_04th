@@ -10,6 +10,18 @@ class UCameraComponent;
 class UAnimSequence;
 class AToyRoomHumanActor;
 class AWoodyToyActor;
+class UWorld;
+
+// 장난감 랙돌 공용 처리 (우디·다른 장난감이 같이 쓴다)
+namespace ToyRoomRagdoll
+{
+	// 질량을 중앙값 [Min, Max]배로 묶고, 조인트 앵커 거리로 최소 관성을 보장하고, 솔버 반복·감쇠를 높인다
+	void Stabilize(USkeletalMeshComponent* Mesh, float MassRangeMin, float MassRangeMax, int32 SolverIterations, float AngularDamping);
+	// 애니메이션을 끄고 랙돌로 바꾼 뒤 모든 바디에 Velocity를 준다. 바디가 없으면 false
+	bool StartRagdoll(USkeletalMeshComponent* Mesh, const FVector& Velocity);
+	// 방에 들어와 Location에서 NoticeDistance 안에 있는 사람
+	AToyRoomHumanActor* FindHumanInRoom(UWorld* World, const FVector& Location, float NoticeDistance);
+}
 
 // 장난감 방(ToyRoom.scene) 연출용 액터들.
 // - AWoodyToyActor: 우디가 방 안을 돌아다니다 사람이 방에 들어오면 그 자리에서 랙돌로 쓰러진다 (장난감은 사람 앞에서 움직이지 않는다)
@@ -84,6 +96,55 @@ private:
 	int32 WaypointIndex = 0;
 	float Yaw = 0.0f;
 	float WalkSpeed = 0.0f;   // m/s
+	bool bLimp = false;
+};
+
+// 우디 친구들 (버즈, 제시, 렉스, 미스터 포테이토 헤드, 햄 등). 제자리에서 살아 있는 듯 움직이다가
+// 사람이 방에 들어오면 우디처럼 그 자리에서 랙돌로 쓰러진다.
+// IdlePreset에 리그 이름(Jesse/Buzz/Rex/Potato)을 주면 스켈레톤으로 대기 클립을 만들어 재생하고,
+// 비워 두면(사족 보행 햄 등) 몸 전체를 살짝 들썩이고 흔든다.
+UCLASS()
+class AToyRoomToyActor : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AToyRoomToyActor();
+
+	void BeginPlay() override;
+	void Tick(float DeltaTime) override;
+	USkeletalMeshComponent* GetMesh() const { return MeshComponent; }
+	void GoLimp();
+	bool IsLimp() const { return bLimp; }
+
+	UPROPERTY(EditAnywhere)
+	float MeshScale = 0.01f;
+	// "Jesse", "Buzz", "Rex", "Potato" 또는 빈 문자열
+	UPROPERTY(EditAnywhere)
+	FString IdlePreset;
+	// 프리셋이 없을 때 메시의 앞(얼굴)이 액터 +X를 보도록 돌리는 각도
+	UPROPERTY(EditAnywhere)
+	float MeshYawOffset = 0.0f;
+	// 살아 있는 동작: 들썩이는 높이(m), 좌우로 흔드는 각도, 한 번 흔드는 주기(초)
+	UPROPERTY(EditAnywhere)
+	float AliveBobHeight = 0.01f;
+	UPROPERTY(EditAnywhere)
+	float AliveRockDeg = 4.0f;
+	UPROPERTY(EditAnywhere)
+	float AlivePeriod = 1.6f;
+	UPROPERTY(EditAnywhere)
+	float NoticeDistance = 8.0f;
+	UPROPERTY(EditAnywhere)
+	bool bRegenerateAnimations = false;
+
+private:
+	bool MakePreset(FProceduralWalkRig& OutRig, FProceduralWalkParams& OutParams) const;
+	void ApplyAlivePose(float Bob, float Rock);
+
+	USkeletalMeshComponent* MeshComponent = nullptr;
+	float BaseYaw = 0.0f;
+	float Time = 0.0f;
+	float Phase = 0.0f;
 	bool bLimp = false;
 };
 
