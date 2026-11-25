@@ -176,21 +176,58 @@ float4 mainPS(VSOutput Input) : SV_Target
         Result += SampleColor * GhostTints[i] * GhostWeights[i] * EdgeWeight * Energy;
     }
 
-    // Optical Halo Arc — 광원 반대편 광축 둘레에 얇고 선명한 무지개 회절 호(arc)를 만든다
+    // Optical Halo Arc — 광축 둘레에 생기는 얇고 또렷한 무지개 회절 링/호
     if (HaloIntensity > 1e-4f && HaloWidth > 1e-4f)
     {
-        float RingRadius = HaloWidth * 3.5f;
-        float2 HaloUV = 0.5f - (CenterToUV - RadialDir * RingRadius) / AspectVec;
+        float RingRadius = clamp(HaloWidth * 3.5f, 0.06f, 0.65f);
+        float RingThickness = 0.011f;
+        float ChromaSpread = max(ChromaticDistortion, 0.002f) * 2.2f;
+        float BandLimit = RingThickness * 3.5f + ChromaSpread;
 
-        float2 HaloInside = smoothstep(0.0f, 0.10f, min(HaloUV, 1.0f - HaloUV));
-        float HaloRadial = smoothstep(0.65f, 0.05f, length((HaloUV - 0.5f) * AspectVec));
-        float HaloW = pow(HaloRadial, 3.0f) * HaloInside.x * HaloInside.y;
-
-        if (HaloW > 1e-4f)
+        if (abs(PixelDist - RingRadius) < BandLimit)
         {
-            float2 HaloDispersion = (RadialDir / AspectVec) * max(ChromaticDistortion, 0.002f) * 3.2f;
-            float3 HaloColor = SampleSpectral(BrightTexture, HaloUV, HaloDispersion);
-            Result += HaloColor * HaloW * HaloIntensity;
+            static const float SpecOffsets[5] = { -1.0f, -0.5f, 0.0f, 0.5f, 1.0f };
+            static const float3 SpecWeights[5] =
+            {
+                float3(0.55f, 0.00f, 0.00f),
+                float3(0.45f, 0.35f, 0.00f),
+                float3(0.00f, 0.50f, 0.10f),
+                float3(0.00f, 0.15f, 0.45f),
+                float3(0.00f, 0.00f, 0.45f)
+            };
+
+            // 파장별로 링 반지름을 미세하게 벌려 얇고 또렷한 무지개 테두리 프로파일을 만든다
+            float3 SpectralRing = 0.0f;
+            [unroll]
+            for (int s = 0; s < 5; ++s)
+            {
+                float Delta = (PixelDist - (RingRadius + SpecOffsets[s] * ChromaSpread)) / RingThickness;
+                SpectralRing += SpecWeights[s] * exp(-Delta * Delta);
+            }
+
+            // 원본 밝기(BrightTexture)를 주력으로 읽어 선명도와 HDR 세기를 살리고, 보케로 샘플 사이 빈틈을 메운다
+            float3 HaloLight = 0.0f;
+            [unroll]
+            for (int rIdx = 0; rIdx < 12; ++rIdx)
+            {
+                float SampleR = 0.05f + rIdx * 0.05f; // 0.05 ~ 0.60 (축 외곽 광원)
+                float2 HaloUV = 0.5f - (RadialDir * SampleR) / AspectVec;
+                float2 HaloInside = smoothstep(0.0f, 0.06f, min(HaloUV, 1.0f - HaloUV));
+                // 정면(r≈0)에서는 경통 스침 반사가 없으므로 사라지고, 외곽으로 갈수록 자연스러운 회절 호가 나타난다
+                float OffAxisWeight = smoothstep(0.07f, 0.25f, SampleR)
+                                    * smoothstep(0.68f, 0.48f, SampleR);
+                float W = OffAxisWeight * HaloInside.x * HaloInside.y;
+
+                float3 BrightVal = BrightTexture.SampleLevel(LinearClamp, HaloUV, 0).rgb;
+                float3 BokehVal = BokehTexture.SampleLevel(LinearClamp, HaloUV, 0).rgb;
+                HaloLight = max(HaloLight, max(BrightVal, BokehVal * 0.8f) * W);
+            }
+
+            // 고스트와 같은 노출 전 HDR 스케일을 유지하되 극단적 과포화만 부드럽게 막는다
+            float HaloLuma = dot(HaloLight, float3(0.2126f, 0.7152f, 0.0722f));
+            HaloLight *= 40.0f / (40.0f + HaloLuma);
+
+            Result += HaloLight * SpectralRing * (HaloIntensity * 2.2f);
         }
     }
 

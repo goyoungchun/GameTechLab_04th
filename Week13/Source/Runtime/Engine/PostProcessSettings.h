@@ -83,12 +83,12 @@ struct FPostProcessSettings
 	bool bOverride_LensFlareHaloWidth = false;
 	// 할로 링의 반지름(UV). 광원 위치와 상관없이 링 크기는 이 값으로 고정된다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
-	float LensFlareHaloWidth = 0.07f;
+	float LensFlareHaloWidth = 0.05f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareHaloIntensity = false;
-	// 할로 세기. 링은 광원 빛을 넓은 둘레에 그대로 복사하므로 고스트보다 낮게 둔다
+	// 할로 세기
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=2, Delta=0.01))
-	float LensFlareHaloIntensity = 0.35f;
+	float LensFlareHaloIntensity = 1.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_LensFlareBokehSize = false;
 	// 고스트 원판 반경(반해상도 px). 광원 점을 조리개 모양(DepthOfFieldBladeCount 각형)으로 번지게 하는 크기
