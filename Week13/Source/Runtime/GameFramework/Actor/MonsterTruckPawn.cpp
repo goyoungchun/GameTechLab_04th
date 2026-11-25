@@ -3,11 +3,14 @@
 #include "Asset/AssetManager.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/DecalComponent.h"
+#include "Components/ParticleSystemComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/Misc/Paths.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Particles/ParticleEmitterInstance.h"
 #include "Physics/PhysicalMaterial.h"
 #include "Physics/PhysScene.h"
 #include "Physics/PhysicsCore.h"
@@ -15,6 +18,7 @@
 #include "Physics/PhysXConversions.h"
 #include "Physics/PhysXFilterShader.h"
 #include "Serialization/StructuredArchiveSlots.h"
+#include <geometry/PxConvexMesh.h>
 #include <vehicle/PxVehicleNoDrive.h>
 #include <vehicle/PxVehicleTireFriction.h>
 #include <vehicle/PxVehicleUpdate.h>
@@ -31,9 +35,17 @@ namespace
 	constexpr PxU32 MaxPhysicsStepsPerFrame = 4;
 	constexpr float WheelRadius = 0.827f;
 	constexpr float WheelWidth = 1.052f;
+	constexpr float HardLandingSpeed = 6.0f;
+	constexpr float LandingUprightThreshold = 0.80f;
+	constexpr float LandingSkin = 0.015f;
+	constexpr PxU32 MaxLandingSweepSegments = 4;
 	constexpr float TruckMass = 3280.0f;
 	constexpr float DefaultTireGrip = 1.20f;
 	constexpr char StuntTrackMaterial[] = "Truck/Arena/LoopStuntSurface.pmat";
+	constexpr char TreadTexturePath[] = "Truck/Effects/TireTreadColor.png";
+	constexpr char DustTemplatePath[] = "Truck/Effects/WheelDust.particle";
+	constexpr int32 MaxTreadDecals = 256;
+	constexpr float TreadSpacing = 1.45f;
 	const FVector BedLocation(-1.10f, 0.0f, 0.30f);
 	const PxVec3 CenterOfMass(-0.16f, 0.0f, -0.15f);
 	const PxVec3 WheelCenters[WheelCount] = {
@@ -58,6 +70,40 @@ namespace
 	PxQueryHitType::Enum FilterSuspensionSweep(PxFilterData, PxFilterData Surface, const void*, PxU32, PxHitFlags&)
 	{
 		return (Surface.word3 & ECollisionFlags::Drivable) ? PxQueryHitType::eTOUCH : PxQueryHitType::eNONE;
+	}
+
+	struct FLandingSweepFilter : PxQueryFilterCallback
+	{
+		FLandingSweepFilter(const PxVec3& Up, const PxMaterial* StuntSurface) : Up(Up), StuntSurface(StuntSurface) {}
+
+		PxQueryHitType::Enum preFilter(const PxFilterData&, const PxShape* Shape, const PxRigidActor*, PxHitFlags&) override
+		{
+			const PxFilterData Surface = Shape->getQueryFilterData();
+			return (Surface.word0 & CategoryBit(ECollisionCategory::WorldStatic)) && (Surface.word3 & ECollisionFlags::Drivable)
+				&& Shape->getFlags().isSet(PxShapeFlag::eSIMULATION_SHAPE) ? PxQueryHitType::eBLOCK : PxQueryHitType::eNONE;
+		}
+
+		PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit& QueryHit) override
+		{
+			const auto& Hit = static_cast<const PxSweepHit&>(QueryHit);
+			if (Hit.normal.dot(Up) < 0.30f ||
+				(StuntSurface && Hit.shape->getMaterialFromInternalFaceIndex(Hit.faceIndex) == StuntSurface))
+				return PxQueryHitType::eNONE;
+			return PxQueryHitType::eBLOCK;
+		}
+
+		const PxVec3 Up;
+		const PxMaterial* StuntSurface;
+	};
+
+	float WheelSupportProjection(const PxConvexMeshGeometry& Geometry, const PxTransform& Pose, const PxVec3& Normal)
+	{
+		const PxVec3 LocalNormal = Pose.q.rotateInv(Normal);
+		const PxVec3* Vertices = Geometry.convexMesh->getVertices();
+		float Minimum = PX_MAX_F32;
+		for (PxU32 Index = 0; Index < Geometry.convexMesh->getNbVertices(); ++Index)
+			Minimum = PxMin(Minimum, LocalNormal.dot(Geometry.scale.transform(Vertices[Index])));
+		return Normal.dot(Pose.p) + Minimum;
 	}
 
 	PxConvexMesh* CookWheel()
@@ -129,8 +175,23 @@ namespace
 
 struct FMonsterTruckPhysics
 {
+	struct FWheelEffect
+	{
+		UParticleSystemComponent* DustEmitter = nullptr;
+		PxVec3 Point = PxVec3(0);
+		PxVec3 Normal = PxVec3(0, 0, 1);
+		PxVec3 Velocity = PxVec3(0);
+		PxVec3 TreadStart = PxVec3(0);
+		PxVec3 PreviousNormal = PxVec3(0, 0, 1);
+		float DustCarry = 0.0f;
+		bool bOnGround = false;
+		bool bDustSurface = false;
+		bool bHasTreadStart = false;
+	};
+
 	~FMonsterTruckPhysics()
 	{
+		if (PreSimulateHandle) PhysScene->OnPreSimulate.Remove(PreSimulateHandle);
 		if (Vehicle) Vehicle->free();
 		if (Batch) Batch->release();
 		if (Friction) Friction->release();
@@ -145,6 +206,241 @@ struct FMonsterTruckPhysics
 		for (PxU32 Index = 0; Index < WheelCount; ++Index)
 			Pose.Wheels[Index] = P2KTransform(WheelShapes[Index]->getLocalPose());
 		return Pose;
+	}
+
+	void InitializeWheelEffects(AMonsterTruckPawn& Owner)
+	{
+		const auto& Content = FPaths::ProjectContentDir();
+		std::error_code Error;
+		if (std::filesystem::is_regular_file(Content / TreadTexturePath, Error))
+			TreadTexture = UAssetManager::Get().LoadTexture(TreadTexturePath);
+		if (!std::filesystem::is_regular_file(Content / DustTemplatePath, Error)) return;
+		UParticleSystem* DustTemplate = UAssetManager::LoadParticleSystem(DustTemplatePath);
+		if (!DustTemplate) return;
+		for (FWheelEffect& Wheel : WheelEffects)
+		{
+			Wheel.DustEmitter = Cast<UParticleSystemComponent>(Owner.AddComponent(UParticleSystemComponent::StaticClass(), NAME_None));
+			if (!Wheel.DustEmitter) continue;
+			Wheel.DustEmitter->DetachFromParent(EAttachmentRule::KeepRelative);
+			Wheel.DustEmitter->SetFlags(EObjectFlags::RF_Transient);
+			Wheel.DustEmitter->SetTemplate(DustTemplate);
+		}
+	}
+
+	void RemoveWheelEffects(AMonsterTruckPawn& Owner)
+	{
+		for (UDecalComponent* Decal : TreadDecals) Owner.DestroyComponent(Decal);
+		for (const FWheelEffect& Wheel : WheelEffects)
+			if (Wheel.DustEmitter) Owner.DestroyComponent(Wheel.DustEmitter);
+	}
+
+	void CaptureWheelEffects()
+	{
+		const PxVec3 CenterOfMassWorld = Truck->getGlobalPose().transform(Truck->getCMassLocalPose().p);
+		const PxVec3 Linear = Truck->getLinearVelocity();
+		const PxVec3 Angular = Truck->getAngularVelocity();
+		for (PxU32 Index = 0; Index < WheelCount; ++Index)
+		{
+			const PxWheelQueryResult& Contact = WheelResults[Index];
+			FWheelEffect& Effect = WheelEffects[Index];
+			Effect.bOnGround = !Contact.isInAir && Contact.tireContactActor && Contact.tireContactActor->is<PxRigidStatic>();
+			if (!Effect.bOnGround) continue;
+			Effect.Point = Contact.tireContactPoint;
+			Effect.Normal = Contact.tireContactNormal;
+			const PxVec3 ContactVelocity = Linear + Angular.cross(Effect.Point - CenterOfMassWorld);
+			Effect.Velocity = ContactVelocity - Effect.Normal * ContactVelocity.dot(Effect.Normal);
+			Effect.bDustSurface = Effect.Normal.z > 0.45f && Contact.tireSurfaceMaterial != StuntSurface;
+		}
+	}
+
+	struct FLandingContact
+	{
+		PxVec3 Normal = PxVec3(0);
+		PxVec3 Point = PxVec3(0);
+		float Gap = 0.0f;
+		float InitialDepth = 0.0f;
+	};
+
+	bool SweepWheelForLanding(PxU32 Index, const PxTransform* BodyPoses, PxU32 Segments,
+		FLandingSweepFilter& Filter, FLandingContact& OutContact) const
+	{
+		PxConvexMeshGeometry Geometry;
+		WheelShapes[Index]->getConvexMeshGeometry(Geometry);
+		const PxTransform LocalPose = WheelShapes[Index]->getLocalPose();
+		const PxTransform Start = BodyPoses[0] * LocalPose;
+		const PxTransform End = BodyPoses[Segments] * LocalPose;
+		const PxQueryFilterData QueryFlags(PxQueryFlag::eSTATIC | PxQueryFlag::ePREFILTER | PxQueryFlag::ePOSTFILTER);
+		const PxHitFlags HitFlags = PxHitFlag::eDEFAULT | PxHitFlag::eMTD;
+		const PxWheelQueryResult& Suspension = WheelResults[Index];
+		for (PxU32 Segment = 0; Segment <= Segments; ++Segment)
+		{
+			const PxTransform From = BodyPoses[Segment] * LocalPose;
+			const PxVec3 Delta = Segment < Segments ? BodyPoses[Segment + 1].transform(LocalPose.p) - From.p : PxVec3(0);
+			const float Distance = Delta.magnitude();
+			const PxVec3 Direction = Distance > 1.e-5f ? Delta / Distance : -Filter.Up;
+			PxSweepBuffer Result;
+			// 마지막의 거리 0인 스윕도 검사해 회전으로만 생긴 겹침을 찾는다.
+			if (!Truck->getScene()->sweep(Geometry, From, Direction, Distance, Result, HitFlags, QueryFlags, &Filter) || !Result.hasBlock)
+				continue;
+
+			const PxSweepHit& Hit = Result.block;
+			const float Depth = PxMax(-Hit.distance, 0.0f);
+			const float SurfaceProjection = Depth > 0.0f ? WheelSupportProjection(Geometry, From, Hit.normal) + Depth : Hit.normal.dot(Hit.position);
+			const float EndGap = WheelSupportProjection(Geometry, End, Hit.normal) - SurfaceProjection;
+			const float InitialDepth = Segment == 0 ? Depth : 0.0f;
+			const bool bSuspensionSupportsHit = !Suspension.isInAir && Suspension.tireContactActor == Hit.actor &&
+				Suspension.tireContactNormal.dot(Hit.normal) > 0.9f;
+			const float AllowedDepth = bSuspensionSupportsHit ? 0.09f : LandingSkin;
+			if (EndGap >= -AllowedDepth && InitialDepth <= AllowedDepth) continue;
+
+			OutContact.Normal = Hit.normal;
+			OutContact.Point = Hit.position;
+			OutContact.Gap = WheelSupportProjection(Geometry, Start, Hit.normal) - SurfaceProjection;
+			OutContact.InitialDepth = InitialDepth;
+			return true;
+		}
+		return false;
+	}
+
+	void ResolveLanding(float DeltaTime)
+	{
+		if (Truck->isSleeping()) return;
+		const PxVec3 Gravity = Truck->getScene()->getGravity();
+		const PxVec3 Up = -Gravity.getNormalized();
+		if (Up.isZero()) return;
+		const PxTransform Body = Truck->getGlobalPose();
+		const PxVec3 Linear = Truck->getLinearVelocity();
+		const PxVec3 Angular = Truck->getAngularVelocity();
+		if (!bLandingRecovery && Linear.dot(Up) >= -HardLandingSpeed && Body.q.getBasisVector2().dot(Up) >= LandingUprightThreshold)
+			return;
+
+		const PxVec3 GravityDelta = Truck->getActorFlags().isSet(PxActorFlag::eDISABLE_GRAVITY) ? PxVec3(0) : Gravity * DeltaTime;
+		const PxTransform MassPose = Body * Truck->getCMassLocalPose();
+		const float AngularSpeed = Angular.magnitude();
+		const float Rotation = AngularSpeed * DeltaTime;
+		const PxU32 Segments = PxClamp(static_cast<PxU32>(std::ceil(Rotation / 0.075f)), 1u, MaxLandingSweepSegments);
+		PxTransform BodyPoses[MaxLandingSweepSegments + 1];
+		BodyPoses[0] = Body;
+		for (PxU32 Segment = 1; Segment <= Segments; ++Segment)
+		{
+			const float Fraction = static_cast<float>(Segment) / Segments;
+			const PxQuat Turn = AngularSpeed > 1.e-5f ? PxQuat(Rotation * Fraction, Angular / AngularSpeed) : PxQuat(PxIdentity);
+			const PxVec3 MassPosition = MassPose.p + (Linear + GravityDelta) * (DeltaTime * Fraction);
+			BodyPoses[Segment] = PxTransform(MassPosition + Turn.rotate(Body.p - MassPose.p), Turn * Body.q);
+		}
+
+		FLandingSweepFilter Filter(Up, StuntSurface);
+		FLandingContact Contacts[WheelCount];
+		PxU32 Count = 0;
+		for (PxU32 Index = 0; Index < WheelCount; ++Index)
+			if (SweepWheelForLanding(Index, BodyPoses, Segments, Filter, Contacts[Count])) ++Count;
+		bLandingRecovery = Count != 0;
+		if (!bLandingRecovery) return;
+
+		// 이미 겹친 바퀴는 여러 바퀴의 MTD를 합쳐 차체를 필요한 만큼만 이동시킨다.
+		PxVec3 Correction(0);
+		for (PxU32 Iteration = 0; Iteration < 2; ++Iteration)
+			for (PxU32 Index = 0; Index < Count; ++Index)
+			{
+				const FLandingContact& Contact = Contacts[Index];
+				Correction += Contact.Normal * PxMax(0.0f, Contact.InitialDepth - LandingSkin - Correction.dot(Contact.Normal));
+			}
+		Correction *= 1.0f / PxMax(1.0f, Correction.magnitude() / 0.25f);
+		if (!Correction.isZero()) Truck->setGlobalPose(PxTransform(Body.p + Correction, Body.q));
+
+		// 남은 거리만큼은 내려가도록 허용하고, 접촉점의 법선 방향 속도만 제한한다.
+		const float InvMass = Truck->getInvMass();
+		const PxVec3 InvInertia = Truck->getMassSpaceInvInertiaTensor();
+		PxVec3 NextLinear = Linear + GravityDelta;
+		PxVec3 NextAngular = Angular;
+		for (PxU32 Iteration = 0; Iteration < 4; ++Iteration)
+			for (PxU32 Index = 0; Index < Count; ++Index)
+			{
+				const FLandingContact& Contact = Contacts[Index];
+				const PxVec3 Arm = Contact.Point - (MassPose.p + Correction);
+				const PxVec3 Torque = Arm.cross(Contact.Normal);
+				const PxVec3 AngularPerImpulse = MassPose.q.rotate(MassPose.q.rotateInv(Torque).multiply(InvInertia));
+				const float Gap = Contact.Gap + Correction.dot(Contact.Normal);
+				const float TargetSpeed = -PxMax(Gap - LandingSkin, 0.0f) / DeltaTime;
+				const float ContactSpeed = Contact.Normal.dot(NextLinear) + Torque.dot(NextAngular);
+				const float Impulse = PxMax(TargetSpeed - ContactSpeed, 0.0f) / (InvMass + Torque.dot(AngularPerImpulse));
+				NextLinear += Contact.Normal * (InvMass * Impulse);
+				NextAngular += AngularPerImpulse * Impulse;
+			}
+		Truck->setLinearVelocity(NextLinear - GravityDelta);
+		Truck->setAngularVelocity(NextAngular);
+	}
+
+	void StampTread(AMonsterTruckPawn& Owner, const PxVec3& Start, const PxVec3& End, const PxVec3& Normal)
+	{
+		const PxVec3 Delta = End - Start;
+		const PxVec3 Tangent = (Delta - Normal * Delta.dot(Normal)).getNormalized();
+		if (Tangent.isZero()) return;
+		if (TreadDecals.Num() >= MaxTreadDecals)
+		{
+			Owner.DestroyComponent(TreadDecals[0]);
+			TreadDecals.RemoveAt(0);
+		}
+		auto* Decal = Cast<UDecalComponent>(Owner.AddComponent(UDecalComponent::StaticClass(), NAME_None));
+		if (!Decal) return;
+		Decal->DetachFromParent(EAttachmentRule::KeepRelative);
+		Decal->SetFlags(EObjectFlags::RF_Transient);
+		const PxVec3 Forward = -Normal;
+		const PxQuat Rotation(PxMat33(Forward, Tangent.cross(Forward), Tangent));
+		Decal->SetTransform(FTransform(P2KQuat(Rotation), P2KVector((Start + End) * 0.5f)));
+		const float HalfLength = Delta.magnitude() * 0.5f;
+		Decal->SetExtent(FVector(0.26f + HalfLength * 0.18f, WheelWidth * 0.49f, HalfLength + 0.11f));
+		Decal->SetDecalTexture(TreadTexture);
+		Decal->SetFadeTimes(0.0f, 0.0f, 1.5f, 1.7f);
+		Decal->TickComponent(0.0f);
+		TreadDecals.Add(Decal);
+	}
+
+	void UpdateWheelEffects(AMonsterTruckPawn& Owner, float DeltaTime, bool bReset)
+	{
+		for (int32 Index = TreadDecals.Num() - 1; Index >= 0; --Index)
+		{
+			if (TreadDecals[Index]->GetFade() > 0.0f) continue;
+			Owner.DestroyComponent(TreadDecals[Index]);
+			TreadDecals.RemoveAt(Index);
+		}
+
+		for (FWheelEffect& Effect : WheelEffects)
+		{
+			const float Speed = Effect.Velocity.magnitude();
+			if (bReset || !Effect.bOnGround || Speed < 0.8f)
+			{
+				Effect.bHasTreadStart = false;
+				Effect.DustCarry = 0.0f;
+				continue;
+			}
+			if (TreadTexture)
+			{
+				const float Distance = (Effect.Point - Effect.TreadStart).magnitude();
+				const bool bContinuous = Effect.bHasTreadStart && Distance < 3.7f && Effect.Normal.dot(Effect.PreviousNormal) > 0.70f;
+				if (!bContinuous || Distance >= TreadSpacing)
+				{
+					if (bContinuous)
+						StampTread(Owner, Effect.TreadStart, Effect.Point, (Effect.Normal + Effect.PreviousNormal).getNormalized());
+					Effect.TreadStart = Effect.Point;
+					Effect.PreviousNormal = Effect.Normal;
+					Effect.bHasTreadStart = true;
+				}
+			}
+			if (!Effect.DustEmitter || !Effect.bDustSurface || Speed < 1.6f)
+			{
+				Effect.DustCarry = 0.0f;
+				continue;
+			}
+			Effect.DustCarry += FMath::Lerp(6.0f, 20.0f, FMath::Clamp((Speed - 1.6f) / 17.0f, 0.0f, 1.0f)) * DeltaTime;
+			const int32 Count = static_cast<int32>(Effect.DustCarry);
+			Effect.DustCarry -= Count;
+			if (Count == 0) continue;
+			const FVector Origin = P2KVector(Effect.Point + Effect.Normal * 0.10f - Effect.Velocity.getNormalized() * 0.16f);
+			const FVector Velocity = P2KVector(Effect.Velocity * 0.075f + Effect.Normal * (0.5f + Speed * 0.018f));
+			for (FParticleEmitterInstance* Emitter : Effect.DustEmitter->GetEmitterInstances())
+				Emitter->ForceSpawn(Count, Origin, Velocity);
+		}
 	}
 
 	void UpdateStuntFlip(PxScene& Scene, PxU32 GroundedWheels)
@@ -205,6 +501,8 @@ struct FMonsterTruckPhysics
 	}
 
 	PxRigidDynamic* Truck = nullptr;
+	FPhysScene* PhysScene = nullptr;
+	FDelegateHandle PreSimulateHandle = 0;
 	PxVehicleNoDrive* Vehicle = nullptr;
 	PxBatchQuery* Batch = nullptr;
 	PxVehicleDrivableSurfaceToTireFrictionPairs* Friction = nullptr;
@@ -220,6 +518,10 @@ struct FMonsterTruckPhysics
 	float TimeSincePhysicsStep = 0.0f;
 	bool bStuntCrest = false;
 	bool bStuntFlipInAir = false;
+	bool bLandingRecovery = false;
+	FWheelEffect WheelEffects[WheelCount];
+	TArray<UDecalComponent*> TreadDecals;
+	UTexture2D* TreadTexture = nullptr;
 };
 
 UMonsterTruckDriveComponent::UMonsterTruckDriveComponent()
@@ -331,12 +633,15 @@ void AMonsterTruckPawn::BeginPlay()
 	CameraArm->ResetCameraLag();
 	if (!SetupVehicle())
 		KRS_LOG(Error, "MonsterTruck: vehicle setup failed.");
+	else
+		Physics->InitializeWheelEffects(*this);
 }
 
 void AMonsterTruckPawn::EndPlay()
 {
 	if (Physics)
 	{
+		Physics->RemoveWheelEffects(*this);
 		SCOPED_SCENE_WRITE_LOCK(Chassis->BodyInstance.Scene->GetPxScene());
 		Physics.reset();
 	}
@@ -367,7 +672,6 @@ bool AMonsterTruckPawn::SetupVehicle()
 	if (!WheelMesh) return false;
 	const PxShapeFlags WheelFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSIMULATION_SHAPE;
 	FMaskFilter WheelFilter = ChassisBody.MakeMaskFilter();
-	// 배럴 같은 PhysicsBody는 바퀴가 밀고, 주행 표면의 접지는 차량 서스펜션이 처리한다.
 	WheelFilter.CollidesWith &= CategoryBit(ECollisionCategory::PhysicsBody);
 	const PxFilterData WheelSimulationFilter = K2PFilterData(WheelFilter);
 	const PxU32 ExistingShapes = State->Truck->getNbShapes();
@@ -384,7 +688,7 @@ bool AMonsterTruckPawn::SetupVehicle()
 		}
 	}
 	WheelMesh->release();
-	for (auto* Shape : State->WheelShapes)
+	for (PxShape* Shape : State->WheelShapes)
 		if (!Shape) return false;
 	if (!AttachCollisionBox(ChassisBody, *DefaultMaterial, PxVec3(0.7f, 0.75f, 0.50f), PxVec3(0.88f, 0, 0.70f)) ||
 		!AttachCollisionBox(ChassisBody, *DefaultMaterial, PxVec3(1.15f, 0.92f, 0.41f), K2PVector(BedLocation) + PxVec3(0, 0, 0.32f)))
@@ -461,6 +765,8 @@ bool AMonsterTruckPawn::SetupVehicle()
 
 	State->VisualPoseTimestamp = Scene->getTimestamp();
 	State->PreviousVisualPose = State->CurrentVisualPose = State->ReadVisualPose(ChassisBody.Scale3D);
+	State->PhysScene = ChassisBody.Scene;
+	State->PreSimulateHandle = State->PhysScene->OnPreSimulate.AddRaw(State.get(), &FMonsterTruckPhysics::ResolveLanding);
 	Physics = std::move(State);
 	return true;
 }
@@ -491,6 +797,7 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 		State.Vehicle->setToRestState();
 		State.bStuntCrest = false;
 		State.bStuntFlipInAir = false;
+		State.bLandingRecovery = false;
 		Steering = 0.0f;
 		bResetCameraLag = true;
 	}
@@ -533,6 +840,7 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 	PxVehicleSuspensionSweeps(State.Batch, 1, Vehicles, WheelCount, State.SweepResults, HitsPerWheel, nullptr, 0.98f, 1.0f);
 	PxVehicleWheelQueryResult Results{ State.WheelResults, WheelCount };
 	PxVehicleUpdates(Step, Scene->getGravity(), *State.Friction, 1, Vehicles, &Results);
+	State.CaptureWheelEffects();
 }
 
 void AMonsterTruckPawn::Tick(float DeltaTime)
@@ -556,6 +864,8 @@ void AMonsterTruckPawn::Tick(float DeltaTime)
 	}
 
 	const float CompletedTime = static_cast<float>(CompletedSteps) * PhysicsStep;
+	if (CompletedSteps > 0 || bResetCameraLag)
+		State.UpdateWheelEffects(*this, CompletedTime, bResetCameraLag);
 	if (CompletedSteps > 0)
 		State.VisualPoseInterval = CompletedTime;
 	// PhysScene은 최대 스텝 수에 도달하면 해당 프레임의 남은 누적 시간을 비운다.

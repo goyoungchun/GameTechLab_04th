@@ -211,6 +211,7 @@ void FPhysScene::Tick(float DeltaTime)
 			// fetchResults 안에서 불리는 이벤트 콜백은 이 락 안에서 돌므로 콜백에서 락을 다시 잡지 않는다.
 			{
 				SCOPED_SCENE_WRITE_LOCK(Scene);
+				OnPreSimulate.Broadcast(FixedTimeStep);
 				Scene->simulate(FixedTimeStep);
 				Scene->fetchResults(true);
 			}

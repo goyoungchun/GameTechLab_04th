@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Delegate/Delegate.h"
 #include "Core/Types.h"
 #include "PhysicsQueryTypes.h"
 
@@ -51,6 +52,8 @@ public:
 
 	// 고정 간격으로 simulate → fetchResults를 반복하고, 움직인 바디를 컴포넌트에 반영한다.
 	void Tick(float DeltaTime);
+	// 메인 스레드에서 씬 쓰기 락을 잡은 채 각 고정 스텝 직전에 호출한다.
+	TDelegate<float> OnPreSimulate;
 
 	// 가장 가까운 blocking hit 하나. 맞으면 true.
 	bool RaycastSingle(const FVector& Start, const FVector& End, FHitResult& OutHit, const FCollisionQueryParams& Params = FCollisionQueryParams()) const;
