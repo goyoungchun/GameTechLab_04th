@@ -297,14 +297,23 @@ bool AMonsterTruckPawn::SetupVehicle()
 	State->Truck = ChassisBody.Actor->is<PxRigidDynamic>();
 	PxConvexMesh* WheelMesh = CookWheel();
 	if (!WheelMesh) return false;
-	const PxShapeFlags WheelFlags(PxShapeFlag::eVISUALIZATION);
+	const PxShapeFlags WheelFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSIMULATION_SHAPE;
+	FMaskFilter WheelFilter = ChassisBody.MakeMaskFilter();
+	// 배럴 같은 PhysicsBody는 바퀴가 밀고, 주행 표면의 접지는 차량 서스펜션이 처리한다.
+	WheelFilter.CollidesWith &= CategoryBit(ECollisionCategory::PhysicsBody);
+	const PxFilterData WheelSimulationFilter = K2PFilterData(WheelFilter);
 	const PxU32 ExistingShapes = State->Truck->getNbShapes();
 	for (PxU32 Index = 0; Index < WheelCount; ++Index)
 	{
-		State->WheelShapes[Index] = PxRigidActorExt::createExclusiveShape(*State->Truck,
+		PxShape* Shape = PxRigidActorExt::createExclusiveShape(*State->Truck,
 			PxConvexMeshGeometry(WheelMesh), *DefaultMaterial, WheelFlags);
-		if (State->WheelShapes[Index])
-			State->WheelShapes[Index]->setLocalPose(PxTransform(WheelCenters[Index]));
+		State->WheelShapes[Index] = Shape;
+		if (Shape)
+		{
+			Shape->setLocalPose(PxTransform(WheelCenters[Index]));
+			Shape->setSimulationFilterData(WheelSimulationFilter);
+			Shape->userData = &ChassisBody;
+		}
 	}
 	WheelMesh->release();
 	for (auto* Shape : State->WheelShapes)
@@ -395,6 +404,7 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 
 	const auto* Controller = GetController();
 	const bool bBrake = Controller && Controller->IsKeyDown(static_cast<int32>(EKeyCode::Space));
+	const bool bBoostHeld = Controller && Controller->IsKeyDown(static_cast<int32>(EKeyCode::Shift));
 	const bool bResetDown = Controller && Controller->IsKeyDown(static_cast<int32>(EKeyCode::R));
 	const bool bReset = bResetDown && !bResetKeyDown;
 	bResetKeyDown = bResetDown;
@@ -424,14 +434,18 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 	const float Throttle = FMath::Clamp(DriveInput.X, -1.0f, 1.0f);
 	const bool bDirectionBrake = Speed > 0.7f && Throttle * ForwardSpeed < 0.0f;
 	const bool bBraking = bBrake || bDirectionBrake;
-	const float SpeedLimit = Throttle >= 0.0f ? 23.0f : 6.0f;
+	const bool bBoosting = bBoostHeld && Throttle > 0.0f && !bBraking;
+	float SpeedLimit = 23.0f;
+	if (Throttle < 0.0f) SpeedLimit = 6.0f;
+	if (bBoosting) SpeedLimit = 36.0f;
+	const float DriveTorque = bBoosting ? 5200.0f : 3100.0f;
 	const float TorqueFactor = FMath::Clamp((SpeedLimit - Speed) / 3.0f, 0.0f, 1.0f);
 	for (PxU32 Index = 0; Index < WheelCount; ++Index)
 	{
 		const float Slip = std::abs(State.WheelResults[Index].longitudinalSlip);
 		const float GripControl = State.WheelResults[Index].isInAir ? 0.25f :
 			1.0f - 0.62f * FMath::Clamp((Slip - 0.18f) / 0.50f, 0.0f, 1.0f);
-		State.Vehicle->setDriveTorque(Index, bBraking ? 0.0f : Throttle * 3100.0f * TorqueFactor * GripControl);
+		State.Vehicle->setDriveTorque(Index, bBraking ? 0.0f : Throttle * DriveTorque * TorqueFactor * GripControl);
 		State.Vehicle->setBrakeTorque(Index, bBraking ? 5800.0f : Throttle == 0.0f ? 190.0f : 0.0f);
 		State.Vehicle->setSteerAngle(Index, Index < 2 ? FrontSteer : RearSteer);
 	}

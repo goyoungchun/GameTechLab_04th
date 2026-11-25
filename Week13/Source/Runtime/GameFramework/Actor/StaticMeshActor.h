@@ -10,6 +10,7 @@ class AStaticMeshActor :public AActor
 	GENERATED_BODY()
 public:
 	AStaticMeshActor();
+	void Serialize(FStructuredArchive::FRecord Record) override;
 	virtual ~AStaticMeshActor() = default;
 
 	virtual void BeginPlay() override;
