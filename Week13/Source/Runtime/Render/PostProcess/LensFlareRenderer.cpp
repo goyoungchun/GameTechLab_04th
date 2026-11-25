@@ -98,11 +98,15 @@ bool FLensFlareRenderer::RenderBokeh(const FSceneView& View, FTexture2D* BrightT
 	return DrawFullscreen(BokehPipelineState, BrightTexture);
 }
 
-bool FLensFlareRenderer::RenderGhosts(const FSceneView& View, FTexture2D* BrightTexture)
+bool FLensFlareRenderer::RenderGhosts(const FSceneView& View, FTexture2D* BokehTexture, FTexture2D* BrightTexture)
 {
 	if (!ConstantBuffer) return false;
 	UploadConstants(View);
-	return DrawFullscreen(GhostPipelineState, BrightTexture);
+	if (BrightTexture)
+		RenderCommand::BindShaderResource(1, BrightTexture, EShaderBindFlagBits::Pixel);
+	const bool bOk = DrawFullscreen(GhostPipelineState, BokehTexture);
+	RenderCommand::UnbindShaderResources(1, 1, EShaderBindFlagBits::Pixel);
+	return bOk;
 }
 
 bool FLensFlareRenderer::RenderBlur(FTexture2D* SourceTexture, float DirectionX, float DirectionY)
@@ -122,5 +126,7 @@ bool FLensFlareRenderer::RenderComposite(const FSceneView& View, FTexture2D* Gho
 	UploadConstants(View);
 	if (DirtTexture)
 		RenderCommand::BindShaderResource(1, DirtTexture.get(), EShaderBindFlagBits::Pixel);
-	return DrawFullscreen(CompositePipelineState, GhostTexture);
+	const bool bOk = DrawFullscreen(CompositePipelineState, GhostTexture);
+	RenderCommand::UnbindShaderResources(1, 1, EShaderBindFlagBits::Pixel);
+	return bOk;
 }

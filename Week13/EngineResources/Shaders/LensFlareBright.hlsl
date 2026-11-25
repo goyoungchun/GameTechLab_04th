@@ -49,10 +49,14 @@ float4 mainPS(VSOutput Input) : SV_Target
     OutputSize *= 0.5f;
     float2 UV = Input.Position.xy / OutputSize;
 
-    // 장면 색을 읽어 Threshold를 넘은 만큼만 남긴다
-    float4 Color = SceneColorTexture.Sample(LinearClamp, UV);
-    float Luma = dot(Color.rgb, float3(0.2126, 0.7152, 0.0722));
-    float Excess = max(Luma - Threshold, 0);
-    Color.rgb *= Excess / max(Luma, 1e-4);
-    return float4(Color.rgb, 1);
+    // 장면 색을 읽어 부드러운 소프트 니(soft knee)로 Threshold를 넘은 밝은 광원만 추출한다
+    float3 Color = max(SceneColorTexture.Sample(LinearClamp, UV).rgb, 0.0f);
+    float Luma = dot(Color, float3(0.2126f, 0.7152f, 0.0722f));
+    float Knee = max(Threshold * 0.35f, 0.05f);
+    float Soft = clamp(Luma - Threshold + Knee, 0.0f, 2.0f * Knee);
+    Soft = (Soft * Soft) / (4.0f * Knee + 1e-4f);
+    float Contribution = max(Soft, Luma - Threshold) / max(Luma, 1e-4f);
+    // 극단적 파이어플라이 픽셀이 보케 커널 전체를 터뜨리지 않도록 상한을 둔다
+    Color = min(Color * Contribution, 64.0f);
+    return float4(Color, 1.0f);
 }

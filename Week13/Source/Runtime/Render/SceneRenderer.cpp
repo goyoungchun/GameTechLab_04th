@@ -959,12 +959,12 @@ bool FSceneRenderer::AddViewportPasses(FRenderGraphBuilder& Graph, FRenderer* Re
 
 		FRenderGraphRasterPassDesc GhostPass{};
 		GhostPass.Name = "LensFlareGhost";
-		GhostPass.ReadTextures = { Shaped };
+		GhostPass.ReadTextures = { Shaped, Bright };
 		GhostPass.ColorAttachments = { { Ghost, ERenderGraphLoadAction::Clear, { 0.0f, 0.0f, 0.0f, 0.0f } } };
-		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Shaped]
+		if (!Graph.AddRasterPass(std::move(GhostPass), [this, Renderer, &Graph, Shaped, Bright]
 			{
 				if (FLensFlareRenderer* Flare = Renderer->GetLensFlare())
-					Flare->RenderGhosts(View, Graph.Resolve(Shaped));
+					Flare->RenderGhosts(View, Graph.Resolve(Shaped), Graph.Resolve(Bright));
 			})) return false;
 
 		// 읽는 텍스처에 그대로 쓸 수 없으니 가로 결과는 Temp에, 세로 결과는 Blurred에 받는다

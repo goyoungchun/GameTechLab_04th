@@ -33,8 +33,9 @@ VSOutput mainVS(uint VertexID : SV_VertexID)
 
 float4 mainPS(VSOutput Input) : SV_Target
 {
-    static const int BlurRadius = 8; // R
-    static const float BlurSigma = (float)BlurRadius / 2.5f; // σ (R의 1/2~1/3)
+    // 다각형 조리개 윤곽과 광학 림·색분산을 뭉개지 않으면서 반해상도 계단 현상만 부드럽게 정돈하는 미세 블러
+    static const int BlurRadius = 2;
+    static const float BlurSigma = 1.05f;
     
     float2 Size;
     SourceTexture.GetDimensions(Size.x, Size.y);
@@ -50,7 +51,7 @@ float4 mainPS(VSOutput Input) : SV_Target
     for (int i = -BlurRadius; i <= BlurRadius; ++i)
     {
         float Weight = exp(-i * i / (2 * BlurSigma * BlurSigma)); // i 텍셀 떨어진 샘플의 가중치
-        float2 SampleUV = UV + BlurDirection * (i / Size); // UV에서 BlurDirection 방향으로 i칸 이동
+        float2 SampleUV = UV + TexelStep * i; // UV에서 BlurDirection 방향으로 i칸 이동
         Result += SourceTexture.Sample(LinearClamp, SampleUV).rgb * Weight;
         WeightSum += Weight;
     }
