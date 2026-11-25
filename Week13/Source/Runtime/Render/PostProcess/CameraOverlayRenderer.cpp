@@ -42,6 +42,7 @@ bool FCameraOverlayRenderer::OnRender(const FSceneView& View, uint32 Width, uint
     Data.TanHalfFov.V[1] = bLens ? 1.0f / View.ProjectionMatrix.M[2][1] : 0.0f;
     Data.PupilRadius = PP.LensMaxAperture / std::max(PP.DepthOfFieldFstop, 0.5f);
     Data.LensVignetteAmount = bLens ? PP.LensVignetteAmount : 0.0f;
+    Data.BarrelRadius = std::max(PP.LensBarrelRadius, 1.0f);
 
     RenderCommand::BindPipelineState(PipelineState);
     RenderCommand::BindVertexBuffer(nullptr);

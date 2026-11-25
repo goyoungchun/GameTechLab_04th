@@ -123,6 +123,8 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.LensVignetteAmount = 1.0f;
 	PP.bOverride_LensMaxAperture = true;
 	PP.LensMaxAperture = FPhotoCameraState::ApertureStops[0];
+	PP.bOverride_LensBarrelRadius = true;
+	PP.LensBarrelRadius = 1.2f;
 	PP.bOverride_CameraShutterSpeed = true;
 	PP.CameraShutterSpeed = 1.0f / State.GetShutterSeconds();
 	PP.bOverride_CameraISO = true;

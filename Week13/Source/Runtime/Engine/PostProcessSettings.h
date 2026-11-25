@@ -26,6 +26,11 @@ struct FPostProcessSettings
 	// 렌즈 최대 개방 F-Stop. 이 값에서 동공이 경통과 같은 크기가 된다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0.5, ClampMax=32, Delta=0.1))
 	float LensMaxAperture = 1.4f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensBarrelRadius = false;
+	// 최대 개방 동공 반지름을 1로 둔 경통 반지름. 1보다 클수록 중앙부가 개방에서도 잘리지 않는다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=1, ClampMax=3, Delta=0.01))
+	float LensBarrelRadius = 1.2f;
 
 	// ---------- Depth of Field ----------
 	UPROPERTY(EditAnywhere)

@@ -17,6 +17,7 @@ void FPostProcessSettings::OverrideBlend(const FPostProcessSettings& Src, float 
 	BlendFloat(Src.bOverride_VignetteIntensity, VignetteIntensity, Src.VignetteIntensity);
 	BlendFloat(Src.bOverride_LensVignetteAmount, LensVignetteAmount, Src.LensVignetteAmount);
 	BlendFloat(Src.bOverride_LensMaxAperture, LensMaxAperture, Src.LensMaxAperture);
+	BlendFloat(Src.bOverride_LensBarrelRadius, LensBarrelRadius, Src.LensBarrelRadius);
 	BlendFloat(Src.bOverride_DepthOfFieldFocalDistance, DepthOfFieldFocalDistance, Src.DepthOfFieldFocalDistance);
 	BlendFloat(Src.bOverride_DepthOfFieldFocusRange, DepthOfFieldFocusRange, Src.DepthOfFieldFocusRange);
 	BlendFloat(Src.bOverride_DepthOfFieldFstop, DepthOfFieldFstop, Src.DepthOfFieldFstop);

@@ -15,7 +15,8 @@ struct alignas(16) FCameraOverlayData
 	FVector2 TanHalfFov;
 	float PupilRadius;
 	float LensVignetteAmount;
-	float Padding[2];
+	float BarrelRadius;
+	float Padding;
 };
 static_assert(sizeof(FCameraOverlayData) == 64);
 
