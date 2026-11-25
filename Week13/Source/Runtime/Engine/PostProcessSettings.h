@@ -16,6 +16,16 @@ struct FPostProcessSettings
 	bool bOverride_VignetteIntensity = false;
 	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=1, Delta=0.01))
 	float VignetteIntensity = 0.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensVignetteAmount = false;
+	// 렌즈 경통 깊이(k). 0이면 자연·광학 비네팅을 둘 다 끈다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0, ClampMax=4, Delta=0.01))
+	float LensVignetteAmount = 0.0f;
+	UPROPERTY(EditAnywhere)
+	bool bOverride_LensMaxAperture = false;
+	// 렌즈 최대 개방 F-Stop. 이 값에서 동공이 경통과 같은 크기가 된다
+	UPROPERTY(EditAnywhere, meta=(ClampMin=0.5, ClampMax=32, Delta=0.1))
+	float LensMaxAperture = 1.4f;
 
 	// ---------- Depth of Field ----------
 	UPROPERTY(EditAnywhere)

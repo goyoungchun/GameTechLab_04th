@@ -35,6 +35,14 @@ bool FCameraOverlayRenderer::OnRender(const FSceneView& View, uint32 Width, uint
     Data.LetterboxAmount = bOverlay ? FMath::Clamp(View.LetterboxAmount, 0.0f, 1.0f) : 0.0f;
     Data.LetterboxAspect = std::max(View.LetterboxAspect, 0.1f);
 
+    // 우리 투영 행렬은 Forward가 X라서 화면 x 배율은 M[1][0], y 배율은 M[2][1]에 있다
+    const FPostProcessSettings& PP = View.FinalPostProcessSettings;
+    const bool bLens = bVignette && View.bIsPerspective && PP.LensVignetteAmount > 0.0f;
+    Data.TanHalfFov.V[0] = bLens ? 1.0f / View.ProjectionMatrix.M[1][0] : 0.0f;
+    Data.TanHalfFov.V[1] = bLens ? 1.0f / View.ProjectionMatrix.M[2][1] : 0.0f;
+    Data.PupilRadius = PP.LensMaxAperture / std::max(PP.DepthOfFieldFstop, 0.5f);
+    Data.LensVignetteAmount = bLens ? PP.LensVignetteAmount : 0.0f;
+
     RenderCommand::BindPipelineState(PipelineState);
     RenderCommand::BindVertexBuffer(nullptr);
     RenderCommand::UpdateBufferData(ConstantBuffer.get(), &Data, sizeof(Data));

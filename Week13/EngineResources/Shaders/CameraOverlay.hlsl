@@ -6,8 +6,43 @@ cbuffer CameraOverlayConstants : register(b0)
     float VignettePower; // 가장자리 경도
     float LetterboxAmount; // 0~1
     float LetterboxAspect; // 2.39 = 시네마스코프
+    float2 TanHalfFov; // 화면 가장자리까지의 tan(반화각). 0이면 렌즈 비네팅 끔
+    float PupilRadius; // 경통 반지름 1 기준 동공 반지름 = 최대 개방 N / 현재 N
+    float LensVignetteAmount; // 경통 깊이 k. 어긋남 d = k * tanθ
     float2 Padding;
 };
+
+// 조리개와 상관없이 화각만으로 정해지는 감쇠
+float NaturalVignette(float TanTheta)
+{
+    const float InvCos2 = 1.0f + TanTheta * TanTheta; // = 1 / cos²θ
+    return 1.0f / (InvCos2 * InvCos2);
+}
+
+// 경통 원(반지름 1)과 동공 원(반지름 PupilRadius)이 D만큼 어긋났을 때 동공이 살아남는 비율
+float OpticalVignette(float TanTheta)
+{
+    float D = LensVignetteAmount * TanTheta;
+    if (PupilRadius + D <= 1)
+    {
+        return 1.f;
+    }
+    else if (D >= 1 + PupilRadius)
+    {
+        return 0.f;
+    }
+    else
+    {
+        const float R = 1.0f;
+        const float r = PupilRadius;
+        // 경통 중심-동공 중심-교점 삼각형에 코사인 법칙. 오차로 ±1을 넘으면 acos가 NaN이라 막는다
+        const float Alpha = acos(clamp((D * D + R * R - r * r) / (2.0f * D * R), -1.0f, 1.0f));
+        const float Beta = acos(clamp((D * D + r * r - R * R) / (2.0f * D * r), -1.0f, 1.0f));
+        // 활꼴 = 부채꼴 - 삼각형. 반각이 90도를 넘으면 cos가 음수라 반원보다 큰 활꼴도 같은 식으로 나온다
+        const float Lens = R * R * (Alpha - sin(Alpha) * cos(Alpha)) + r * r * (Beta - sin(Beta) * cos(Beta));
+        return saturate(Lens / (3.14159265f * r * r));
+    }
+}
 
 struct FPSInput
 {
@@ -36,6 +71,16 @@ float4 mainPS(FPSInput Input) : SV_Target
     // 2) Vignette: 화면비 보정한 중심 거리 → 원형 유지 (보정 안 하면 가로로 긴 타원)
     float2 D = (UV - 0.5f) * float2(ViewAspect, 1.0f);
     float V = pow(saturate(1.0f - dot(D, D) * VignetteIntensity), VignettePower);
+
+    // NDC(-1~1)에 반화각 tan을 곱하면 픽셀 시선의 tanθ가 바로 나온다
+    if (LensVignetteAmount > 0.0f)
+    {
+        const float2 NDC = UV * 2.0f - 1.0f;
+        const float TanTheta = length(NDC * TanHalfFov);
+        const float LensV = NaturalVignette(TanTheta) * OpticalVignette(TanTheta);
+        // 톤맵 뒤 감마 값에 덮으므로, 선형 감쇠를 감마로 바꿔야 실제보다 어두워지지 않는다
+        V *= pow(saturate(LensV), 1.0f / 2.2f);
+    }
 
     // 3) Fade + Vignette를 블렌드 식 하나로 (위 유도)
     const float a = FadeColor.a;

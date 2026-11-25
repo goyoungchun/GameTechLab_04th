@@ -118,6 +118,11 @@ bool UCameraModifier_Photo::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOu
 	PP.bOverride_DepthOfFieldSensorWidth = true;
 	// DOF 렌더러는 센서 폭과 투영 행렬로 렌즈 길이를 되찾으므로, 화면 전체 기준 폭을 넘겨야 같은 mm가 나온다
 	PP.DepthOfFieldSensorWidth = ScreenFilmWidth;
+	// 셰이더가 같은 DepthOfFieldFstop을 읽으므로, 조리개를 돌리면 DOF와 비네팅이 함께 바뀐다
+	PP.bOverride_LensVignetteAmount = true;
+	PP.LensVignetteAmount = 1.0f;
+	PP.bOverride_LensMaxAperture = true;
+	PP.LensMaxAperture = FPhotoCameraState::ApertureStops[0];
 	PP.bOverride_CameraShutterSpeed = true;
 	PP.CameraShutterSpeed = 1.0f / State.GetShutterSeconds();
 	PP.bOverride_CameraISO = true;
