@@ -359,6 +359,25 @@ void FViewportsPanel::DrawProjectionMenu(FEditorViewportClient& Client)
         ImGui::SliderInt("Blade Count", &PP.DepthOfFieldBladeCount, 4, 16, "%d", ImGuiSliderFlags_AlwaysClamp);
         ImGui::EndDisabled();
         ImGui::PopID();
+
+        SectionHeader("Lens Flares");
+        OverrideSlider("Intensity", PP.bOverride_LensFlareIntensity, PP.LensFlareIntensity, 0.0f, 16.0f, "%.2f", 0);
+        OverrideSlider("Threshold", PP.bOverride_LensFlareThreshold, PP.LensFlareThreshold, 0.0f, 64.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        OverrideSlider("Ghost Dispersal", PP.bOverride_LensFlareGhostDispersal, PP.LensFlareGhostDispersal, 0.0f, 1.0f, "%.2f", 0);
+        OverrideSlider("Halo Width", PP.bOverride_LensFlareHaloWidth, PP.LensFlareHaloWidth, 0.0f, 1.0f, "%.2f", 0);
+        OverrideSlider("Halo Intensity", PP.bOverride_LensFlareHaloIntensity, PP.LensFlareHaloIntensity, 0.0f, 2.0f, "%.2f", 0);
+        OverrideSlider("Bokeh Size", PP.bOverride_LensFlareBokehSize, PP.LensFlareBokehSize, 0.0f, 64.0f, "%.1f", 0);
+        OverrideSlider("Chromatic Distortion", PP.bOverride_LensFlareChromaticDistortion, PP.LensFlareChromaticDistortion, 0.0f, 0.1f, "%.3f", 0);
+        OverrideSlider("Dirt Intensity", PP.bOverride_LensFlareDirtIntensity, PP.LensFlareDirtIntensity, 0.0f, 8.0f, "%.2f", 0);
+
+        ImGui::PushID("GhostCount");
+        ImGui::Checkbox("##Override", &PP.bOverride_LensFlareGhostCount);
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!PP.bOverride_LensFlareGhostCount);
+        ImGui::SetNextItemWidth(EditorStyle::Scale(190.0f));
+        ImGui::SliderInt("Ghost Count", &PP.LensFlareGhostCount, 1, 16, "%d", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        ImGui::PopID();
     }
 
     SectionHeader("Transform");

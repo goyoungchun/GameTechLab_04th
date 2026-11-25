@@ -1036,6 +1036,7 @@ void UEditorEngine::Tick(const float DeltaTime)
 					ShowFlags.CameraOverlay = S.ShowFlags.CameraOverlay;
 					ShowFlags.DepthOfField = S.ShowFlags.DepthOfField;
 					ShowFlags.VisualizeDepthOfField = S.ShowFlags.VisualizeDepthOfField;
+					ShowFlags.LensFlares = S.ShowFlags.LensFlares;
 					ShowFlags.SkeletalMeshes = S.ShowFlags.SkeletalMeshes;
 					ShowFlags.Particles = S.ShowFlags.Particles;
 					ShowFlags.RootBone = S.ShowFlags.RootBone;

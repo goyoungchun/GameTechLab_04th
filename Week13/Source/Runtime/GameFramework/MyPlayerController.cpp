@@ -91,9 +91,9 @@ bool AMyPlayerController::HandlePhotoKey(int32 Key)
 	if (!IsPhotoModeActive()) return false;
 	UCameraModifier_Photo* Photo = GetPhotoModifier(false);
 
-	// 위/아래: 조리개를 조이고 연다. 오른쪽/왼쪽: 셔터를 빠르게/느리게
-	if (Key == static_cast<int32>(EKeyCode::Up))    { Photo->StepAperture(+1); return true; }
-	if (Key == static_cast<int32>(EKeyCode::Down))  { Photo->StepAperture(-1); return true; }
+	// 위/아래: 조리개를 열고 조인다. 오른쪽/왼쪽: 셔터를 빠르게/느리게
+	if (Key == static_cast<int32>(EKeyCode::Up))    { Photo->StepAperture(-1); return true; }
+	if (Key == static_cast<int32>(EKeyCode::Down))  { Photo->StepAperture(+1); return true; }
 	if (Key == static_cast<int32>(EKeyCode::Right)) { Photo->StepShutter(+1);  return true; }
 	if (Key == static_cast<int32>(EKeyCode::Left))  { Photo->StepShutter(-1);  return true; }
 	// F: AF를 다시 켜거나 끈다 (휠을 돌리면 MF로 넘어간다)
