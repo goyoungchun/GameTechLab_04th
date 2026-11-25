@@ -43,6 +43,11 @@ public:
 
 	virtual void OnRenderLine(class FLineBatcher& LineBatcher);
 
+	// 미리보기 씬 깊이와 비교해 그릴 것 (메시에 가려지는 반투명 형상). 씬 깊이를 유지한 오버레이 패스에서 부른다.
+	virtual void OnRenderSceneOverlay(const struct FSceneView& View) {}
+	// 씬 위에 항상 보이게 그릴 것. 깊이를 비운 오버레이 패스에서 선·기즈모보다 먼저 부른다.
+	virtual void OnRenderForegroundOverlay(const struct FSceneView& View) {}
+
 	////////////////////////////////////////////////////////////
 	// Getter
 	////////////////////////////////////////////////////////////

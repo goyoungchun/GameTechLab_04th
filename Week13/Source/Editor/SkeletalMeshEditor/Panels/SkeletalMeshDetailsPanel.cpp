@@ -31,6 +31,11 @@ void FSkeletalMeshDetailsPanel::DrawContent()
 	{
 		Editor.GeneratePhysicsAsset();
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("Open Physics Asset"))
+	{
+		Editor.OpenPhysicsAssetEditor();
+	}
 	ImGui::Checkbox("Show Physics Bodies", &Editor.bShowPhysicsBodies);
 
 	if (UPhysicsAsset* Asset = Editor.GetPhysicsAsset())

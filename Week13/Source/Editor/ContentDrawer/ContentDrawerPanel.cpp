@@ -18,6 +18,7 @@
 #include "Particles/ParticleSystemFile.h"
 #include "Physics/PhysicalMaterial.h"
 #include "Physics/PhysicalMaterialFile.h"
+#include "Physics/PhysicsAssetFile.h"
 #include "Render/MaterialFile.h"
 
 namespace
@@ -365,6 +366,10 @@ namespace
 		if (PhysicalMaterialFile::IsPhysicalMaterialPath(PathString))
 		{
 			return { "Physical Material", IM_COL32(232, 148, 64, 255), true };
+		}
+		if (PhysicsAssetFile::IsPhysicsAssetPath(PathString))
+		{
+			return { "Physics Asset", IM_COL32(222, 196, 82, 255), true };
 		}
 		if (FFbxMeshBake::IsBakedPath(PathString))
 		{
@@ -1189,6 +1194,10 @@ void FContentDrawerPanel::RenderContents()
 					{
 						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(PhysicalMaterialIconPath);
 					}
+					else if (PhysicsAssetFile::IsPhysicsAssetPath(PathString))
+					{
+						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(PhysicsAssetIconPath);
+					}
 					else if (Path.extension() == ".scene")
 					{
 						Thumbnail = UAssetManager::GetAssetByPath<UTexture2D>(SceneIconPath);
@@ -1203,7 +1212,9 @@ void FContentDrawerPanel::RenderContents()
 				const bool bIsSelected = (SelectedAssetPath == Path);
 				const bool bRenamingThis = (!bInlineRenameInTree && InlineRenameTarget == Path);
 				const FAssetCardStyle CardStyle = ClassifyAssetCard(Path, PathString, bIsDirectory);
-				const bool bIsPhysicalMaterial = !bIsDirectory && PhysicalMaterialFile::IsPhysicalMaterialPath(PathString);
+				// 아이콘 이미지를 카드에 꽉 채워 보여 주는 에셋
+				const bool bIsFullImageIcon = !bIsDirectory &&
+					(PhysicalMaterialFile::IsPhysicalMaterialPath(PathString) || PhysicsAssetFile::IsPhysicsAssetPath(PathString));
 
 				const ImTextureID TileTextureId = (MeshThumbId != ImTextureID_Invalid)
 					? MeshThumbId
@@ -1211,7 +1222,7 @@ void FContentDrawerPanel::RenderContents()
 						? reinterpret_cast<ImTextureID>(Thumbnail->GetResource()->GetSRV())
 						: ImTextureID_Invalid);
 				const bool bIsRenderedMeshThumb = (MeshThumbId != ImTextureID_Invalid);
-				const bool bIsFullImageThumb = (!bIsRenderedMeshThumb && (TextureAsset != nullptr || FontAsset != nullptr || bIsPhysicalMaterial));
+				const bool bIsFullImageThumb = (!bIsRenderedMeshThumb && (TextureAsset != nullptr || FontAsset != nullptr || bIsFullImageIcon));
 
 				const ImVec2 CardMin = ImGui::GetCursorScreenPos();
 				bool bHovered = false;
@@ -1352,7 +1363,8 @@ void FContentDrawerPanel::RenderContents()
 
 						else if ((BlendSpaceFile::IsBlendSpacePath(PathString) || AnimBlueprintFile::IsAnimBlueprintPath(PathString)
 							|| ParticleSystemFile::IsParticleSystemPath(PathString) || MaterialFile::IsMaterialPath(PathString)
-							|| PhysicalMaterialFile::IsPhysicalMaterialPath(PathString)) && OnOpenMesh)
+							|| PhysicalMaterialFile::IsPhysicalMaterialPath(PathString)
+							|| PhysicsAssetFile::IsPhysicsAssetPath(PathString)) && OnOpenMesh)
 						{
 							OnOpenMesh(PathString);
 						}

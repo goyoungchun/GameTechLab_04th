@@ -9,6 +9,7 @@
 #include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
+#include "FPhysXSimulationFilterCallback.h"
 
 namespace
 {
@@ -127,6 +128,8 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 				| physx::PxSceneFlag::eREQUIRE_RW_LOCK;
 	EventCallback = MakeUnique<FPhysXSimulationEventCallback>(*this);
 	Desc.simulationEventCallback = EventCallback.get();
+	FilterCallback = MakeUnique<FPhysXSimulationFilterCallback>();
+	Desc.filterCallback = FilterCallback.get();
 
 	if (!Desc.isValid())
 	{
@@ -174,6 +177,19 @@ FPhysScene::~FPhysScene()
 	Scene->release();
 	Scene = nullptr;
 	FPhysicsCore::Get().OnSceneDestroyed();
+}
+
+void FPhysScene::SetGravity(const FVector& Gravity)
+{
+	if (!Scene)
+		return;
+	SCOPED_SCENE_WRITE_LOCK(Scene);
+	Scene->setGravity(K2PVector(Gravity));
+}
+
+FVector FPhysScene::GetGravity() const
+{
+	return Scene ? P2KVector(Scene->getGravity()) : FVector(0.0f, 0.0f, 0.0f);
 }
 
 void FPhysScene::Tick(float DeltaTime)
@@ -236,6 +252,11 @@ void FPhysScene::SyncActiveActors()
 			FBodyInstance* Body = FBodyInstance::FromActor(RigidActor);
 			if (!Body || !Body->OwnerComponent || !Body->IsSimulatingPhysics())
 				continue;   // Kinematic은 컴포넌트가 주인이다. 물리 결과로 덮어쓰지 않는다
+
+			if (Body->InstanceBoneIndex >= 0)
+			{
+				continue;
+			}
 
 			Poses.Add(FPendingPose{ Body->OwnerComponent, RigidActor->getGlobalPose() });
 		}

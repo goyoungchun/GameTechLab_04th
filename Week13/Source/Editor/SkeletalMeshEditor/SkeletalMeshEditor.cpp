@@ -161,6 +161,7 @@ void FSkeletalMeshEditor::GeneratePhysicsAsset()
 
 	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys). 로드와 같은 경로 함수를 쓴다
 	const FString Path = MakePhysicsAssetPath(*Mesh);
+	Mesh->SetPhysicsAsset(PhysicsAsset);
 	if (!PhysicsAssetFile::Write(std::filesystem::path(Path), *PhysicsAsset, Error))
 		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
 	else
@@ -178,6 +179,25 @@ void FSkeletalMeshEditor::LoadPhysicsAsset()
 		return;   // 아직 Generate한 적 없음 → 조용히 넘어간다 (경고 X)
 
 	PhysicsAsset = UAssetManager::LoadPhysicsAsset(Path);
+}
+
+void FSkeletalMeshEditor::OpenPhysicsAssetEditor()
+{
+	if (!Mesh)
+		return;
+
+	const FString Path = MakePhysicsAssetPath(*Mesh);
+	if (!std::filesystem::exists(Path))
+	{
+		GeneratePhysicsAsset();
+		if (!std::filesystem::exists(Path))
+			return;   // 생성·저장 실패는 GeneratePhysicsAsset이 로그를 남긴다
+
+		// 에셋 매니저 캐시의 객체로 바꿔 두어야 Physics Asset 에디터와 같은 객체를 편집한다
+		LoadPhysicsAsset();
+	}
+
+	EditorManager.OpenEditor(Path);
 }
 
 void FSkeletalMeshEditor::DrawPhysicsBodies(FLineBatcher& LineBatcher) const

@@ -4,6 +4,7 @@
 #include "Math/Vector.h"
 #include "Math/Quat.h"
 #include "BodySetupCore.h"
+#include "BodyInstance.h"   // UPROPERTY 구조체 멤버는 리플렉션 등록 코드가 완전한 타입을 요구한다
 #include "BodySetup.generated.h"
 
 namespace physx
@@ -12,8 +13,6 @@ namespace physx
 	class PxTriangleMesh;
 	class PxRigidActor;
 }
-
-struct FBodyInstance;
 
 // 충돌 형상 하나. Center/Rotation은 바디(컴포넌트 또는 본) 로컬 공간 기준이다.
 struct FKShapeElem
@@ -74,6 +73,11 @@ public:
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 
 	FKAggregateGeom AggGeom;
+
+	// 이 바디를 인스턴스화할 때 복사해 갈 기본 설정 (질량, 댐핑, 충돌, 물리 머티리얼).
+	// PhysicsAsset 바디마다 값이 다르다. 시뮬레이션 여부는 여기가 아니라 PhysicsType이 정한다.
+	UPROPERTY(EditAnywhere)
+	FBodyInstance DefaultInstance;
 
 	// 형상을 만드는 쪽(StaticMesh 등)이 정한다. 저장하지 않는다.
 	ECollisionTraceFlag CollisionTraceFlag = ECollisionTraceFlag::UseSimpleAndComplex;

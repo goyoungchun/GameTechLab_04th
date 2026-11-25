@@ -14,7 +14,8 @@ struct FPreviewViewportToolbarState
 void DrawPreviewViewToolbar(
     FSkeletalPreviewEditor& Editor,
     FPreviewViewportToolbarState& State,
-    const std::function<void()>& LeftToolbarContent = nullptr);
+    const std::function<void()>& LeftToolbarContent = nullptr,
+    const std::function<void()>& ShowMenuContent = nullptr);   // 표시 메뉴(눈 아이콘) 맨 위에 넣을 항목
 
 class FSkeletalPreviewViewportPanel : public TAssetEditorPanel<FSkeletalPreviewEditor>
 {

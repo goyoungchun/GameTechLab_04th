@@ -397,6 +397,12 @@ void UAssetManager::CreateDefaultMeshes()
 	FStaticMeshData* GizmoSphereData = FGeometryGenerator::GetMeshData("GizmoSphere");
 	RegisterAsset("GizmoSphere", CreateStaticMesh(GizmoSphereData));
 
+	// Physics Asset 에디터의 바디·조인트 표시용
+	for (const char* Name : { "PhysicsHemisphere", "PhysicsCylinder", "PhysicsFan" })
+	{
+		RegisterAsset(Name, CreateStaticMesh(FGeometryGenerator::GetMeshData(Name)));
+	}
+
 	const FBillboardVertex Vertices[] =
 	{
 		{ FVector(0.0f, -0.5f,  0.5f), FVector2(0.0f, 0.0f) },

@@ -49,6 +49,12 @@ void USkinnedMeshComponent::SetSkeletalMesh(USkeletalMesh* InMesh)
 	
 	ClearOverrideMaterials();
 	RecreateMeshObject();
+
+	if (IsPhysicsStateCreated())
+	{
+		DestroyPhysicsState();
+		CreatePhysicsState();
+	}
 }
 
 FPrimitiveSceneProxy* USkinnedMeshComponent::CreateSceneProxy()
@@ -184,5 +190,3 @@ void USkinnedMeshComponent::Serialize(FStructuredArchive::FRecord Record)
 	if (Record.GetUnderlyingArchive().IsLoading())
 		RecreateMeshObject();
 }
-
-

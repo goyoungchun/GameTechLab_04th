@@ -23,6 +23,9 @@
 #include "Editor/PhysicalMaterialEditor/PhysicalMaterialEditor.h"
 #include "Physics/PhysicalMaterial.h"
 #include "Physics/PhysicalMaterialFile.h"
+#include "Editor/PhysicsAssetEditor/PhysicsAssetEditor.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetFile.h"
 
 #include <filesystem>
 #include <commdlg.h>
@@ -45,7 +48,29 @@ namespace
 		{ "UI Editor...", L"Open UI Editor", L"Widget (*.widget)\0*.widget\0" },
 		{ "Particle System Editor...", L"Open Particle System Editor", L"Particle System (*.particle)\0*.particle\0" },
 		{ "Material Editor...", L"Open Material Editor", L"Material (*.mat)\0*.mat\0" },
+		{ "Physics Asset Editor...", L"Open Physics Asset Editor", L"Physics Asset (*.phys)\0*.phys\0" },
 	};
+
+	// .phys는 메시 파일 옆에 같은 이름으로 저장된다 (Character.fbx.bin ↔ Character.fbx.phys)
+	USkeletalMesh* LoadSkeletalMeshForPhysicsAsset(const FString& PhysicsAssetPath)
+	{
+		std::filesystem::path MeshPath(PhysicsAssetPath);
+		MeshPath.replace_extension(".bin");
+		const FString MeshKey = MeshPath.generic_string();
+
+		if (USkeletalMesh* Loaded = UAssetManager::GetAssetByPath<USkeletalMesh>(MeshKey))
+			return Loaded;
+
+		const FString FilePath = FAssetUtils::ResolveAssetFilePath(MeshKey);
+		if (FilePath.empty() || !FFbxMeshBake::IsBakedPath(FilePath))
+			return nullptr;
+
+		FString Error;
+		URenderAsset* Asset = UAssetManager::LoadFbxMesh(FilePath, Error);
+		if (!Asset)
+			KRS_LOG(Warning, "Failed to load mesh for physics asset: {} ({})", MeshKey, Error);
+		return Cast<USkeletalMesh>(Asset);
+	}
 }
 
 FEditorManager::FEditorManager(UEditorEngine& InEditorEngine)
@@ -93,7 +118,8 @@ void FEditorManager::ShowEditorAssetPicker(int32 EditorType)
 		(EditorType == 4 && BlendSpaceFile::IsBlendSpacePath(Path)) ||
 		(EditorType == 5 && FUIEditor::IsWidgetPath(Path)) ||
 		(EditorType == 6 && ParticleSystemFile::IsParticleSystemPath(Path)) ||
-		(EditorType == 7 && MaterialFile::IsMaterialPath(Path));
+		(EditorType == 7 && MaterialFile::IsMaterialPath(Path)) ||
+		(EditorType == 8 && PhysicsAssetFile::IsPhysicsAssetPath(Path));
 	if (!bMatchesType)
 	{
 		MessageBoxW(Dialog.hwndOwner, L"Select an asset matching the editor type.", Launcher.Title, MB_OK | MB_ICONWARNING);
@@ -202,6 +228,34 @@ void FEditorManager::CreateEditor(const FString& AssetPath)
 		}
 
 		Editors.Add(std::move(Editor));
+		return;
+	}
+
+	if (PhysicsAssetFile::IsPhysicsAssetPath(AssetPath))
+	{
+		USkeletalMesh* Mesh = LoadSkeletalMeshForPhysicsAsset(AssetPath);
+		if (!Mesh)
+		{
+			KRS_LOG(Warning, "Physics asset has no matching skeletal mesh next to it: {}", AssetPath);
+			return;
+		}
+
+		UPhysicsAsset* PhysicsAsset = UAssetManager::LoadPhysicsAsset(AssetPath);
+		if (!PhysicsAsset)
+		{
+			return;     // 경고는 LoadPhysicsAsset이 남긴다
+		}
+
+		TUniquePtr<FAssetEditor> Editor = MakeUnique<FPhysicsAssetEditor>(EditorEngine, *this, AssetPath, *Mesh, *PhysicsAsset);
+		if (!Editor->Initialize())
+		{
+			Editor->Shutdown();
+			KRS_LOG(Warning, "Physics asset editor initialization failed: {}", AssetPath);
+			return;
+		}
+
+		Editors.Add(std::move(Editor));
+		KRS_LOG(Info, "Opened physics asset editor: {}", AssetPath);
 		return;
 	}
 

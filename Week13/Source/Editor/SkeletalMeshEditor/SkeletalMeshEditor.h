@@ -66,6 +66,8 @@ public:
 	UPhysicsAsset* GetPhysicsAsset() const { return PhysicsAsset; }
 
 	void LoadPhysicsAsset();
+	// .phys를 Physics Asset 에디터로 연다. 아직 없으면 먼저 생성해 저장한다
+	void OpenPhysicsAssetEditor();
 
 	bool bShowPhysicsBodies = true;
 
