@@ -20,7 +20,7 @@
     },
     "Textures": [
         "C:/Dev/week13/Week13_Team5/DefaultProject/Content/FBX/city/Textures/facades.jpeg",
-        ""
+        "FBX/city/textures/facades_normal.jpeg"
     ],
     "TwoSided": false,
     "UVScrollSpeed": [

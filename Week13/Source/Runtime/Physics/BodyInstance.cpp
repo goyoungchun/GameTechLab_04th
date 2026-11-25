@@ -196,6 +196,22 @@ FBodyInstance* FBodyInstance::FromActor(const physx::PxRigidActor* InActor)
 	return InActor ? static_cast<FBodyInstance*>(InActor->userData) : nullptr;
 }
 
+void FBodyInstance::CopyBodyInstancePropertiesFrom(const FBodyInstance& From)
+{
+	Mobility = From.Mobility;
+	bSimulatePhysics = From.bSimulatePhysics;
+	MassInKgOverride = From.MassInKgOverride;
+	LinearDamping = From.LinearDamping;
+	AngularDamping = From.AngularDamping;
+	CollisionEnabled = From.CollisionEnabled;
+	ObjectType = From.ObjectType;
+	bDrivable = From.bDrivable;
+	bUseCCD = From.bUseCCD;
+	CollidesWith = From.CollidesWith;
+	OwnerId = From.OwnerId;
+	PhysMaterialOverride = From.PhysMaterialOverride;
+}
+
 void FBodyInstance::AddImpulseAtLocation(const FVector& Impulse, const FVector& WorldLocation)
 {
 	physx::PxRigidDynamic* Dynamic = Actor ? Actor->is<physx::PxRigidDynamic>() : nullptr;

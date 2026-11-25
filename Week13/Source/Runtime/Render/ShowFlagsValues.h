@@ -20,6 +20,7 @@ SHOWFLAG(StaticMeshes,    true,  true,  Common,    "StaticMesh",   "Static Meshe
 
 // ---------- Physics ----------
 SHOWFLAG(Collision,       false, true,  Physics,   "Bounds",       "Collision")
+SHOWFLAG(PhysicsBodies,       false, false,  Physics,   "Bounds",       "Physics Bodies")
 
 // ---------- Post Process ----------
 SHOWFLAG(Vignette,        true,  true,  PostProcess, "Lighting",   "Vignette")

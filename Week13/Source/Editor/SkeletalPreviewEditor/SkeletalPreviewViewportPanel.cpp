@@ -178,9 +178,13 @@ namespace
         }
     }
 
-    void DrawShowFlagsMenu(FSkeletalPreviewEditor& Editor)
+    void DrawShowFlagsMenu(FSkeletalPreviewEditor& Editor, const std::function<void()>& ExtraContent)
     {
         using namespace ViewportToolbarWidgets;
+
+        // 에디터별 항목(예: Physics Rendering)을 맨 위에 둔다
+        if (ExtraContent)
+            ExtraContent();
 
         SectionHeader("Scene Elements");
         if (BeginIconMenu("SkeletalMesh", "Mesh"))
@@ -248,7 +252,8 @@ namespace
 void DrawPreviewViewToolbar(
     FSkeletalPreviewEditor& Editor,
     FPreviewViewportToolbarState& State,
-    const std::function<void()>& LeftToolbarContent)
+    const std::function<void()>& LeftToolbarContent,
+    const std::function<void()>& ShowMenuContent)
 {
     using namespace ViewportToolbarWidgets;
 
@@ -392,7 +397,7 @@ void DrawPreviewViewToolbar(
         }
         if (EditorStyle::BeginButtonPopup("PreviewShowFlagsPopup", ShowAnchor, EditorStyle::Scale(220.0f)))
         {
-            DrawShowFlagsMenu(Editor);
+            DrawShowFlagsMenu(Editor, ShowMenuContent);
             ImGui::EndPopup();
         }
 

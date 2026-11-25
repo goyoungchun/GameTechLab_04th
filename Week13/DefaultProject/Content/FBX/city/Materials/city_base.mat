@@ -20,7 +20,7 @@
     },
     "Textures": [
         "C:/Dev/week13/Week13_Team5/DefaultProject/Content/FBX/city/Textures/floor_Material_001_BaseColor.jpeg",
-        ""
+        "FBX/city/textures/floor_Material.001_Normal.jpeg"
     ],
     "TwoSided": false,
     "UVScrollSpeed": [

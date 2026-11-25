@@ -18,10 +18,14 @@
 #include "Core/Misc/Paths.h"
 #include "Editor/AssetEditor/FPreviewScene.h"
 #include "Editor/KurisuEd/EditorEngine.h"
+#include "Editor/PhysicsAssetEditor/PhysicsAssetDebugRenderer.h"
+#include "Editor/PhysicsAssetEditor/PhysicsAssetEditorMath.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewports/EditorViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetFile.h"
 #include "Math/BoxSphereBounds.h"
 #include "Render/Material.h"
 #include "Render/MaterialFile.h"
@@ -29,6 +33,7 @@
 #include "Render/RenderCommand.h"
 #include "Render/Renderer.h"
 #include "Render/RenderResourceManager.h"
+#include "Render/SceneView.h"
 #include "Render/SceneRenderer.h"
 #include "Render/SkeletalMesh.h"
 
@@ -301,6 +306,13 @@ public:
 		EngineShowFlags.SkeletalMeshes = true;
 	}
 
+	// 피직스 에셋 썸네일: 메시 위에 바디를 겹쳐 그린다. nullptr이면 그리지 않는다
+	void SetPhysicsOverlay(const UPhysicsAsset* InPhysicsAsset, const USkeletalMeshComponent* InMeshComp)
+	{
+		OverlayPhysicsAsset = InPhysicsAsset;
+		OverlayMeshComp = InMeshComp;
+	}
+
 	void ApplySettings(const FEditorSettings* Settings, bool bTranslucentPreview = false)
 	{
 		bUseCheckerBackground = !bTranslucentPreview;
@@ -316,6 +328,9 @@ public:
 
 private:
 	bool bUseCheckerBackground = true;
+	const UPhysicsAsset* OverlayPhysicsAsset = nullptr;
+	const USkeletalMeshComponent* OverlayMeshComp = nullptr;
+	TUniquePtr<FPhysicsAssetDebugRenderer> PhysicsDebugRenderer;
 	// ThumbnailCheckerShader.hlsl의 cbuffer와 같은 배치
 	struct FCheckerConstants
 	{
@@ -332,6 +347,12 @@ private:
 protected:
 	void Draw(const FSceneView* View, FScenePassCallbacks& Callbacks) override
 	{
+		if (OverlayPhysicsAsset && OverlayMeshComp && View)
+		{
+			// 체커 배경(EditorGrid) 다음 패스에서 그려야 배경에 덮이지 않는다
+			const FMatrix ViewProjection = View->ViewProjectionMatrix;
+			Callbacks.Overlays.EditorOutline = [this, ViewProjection]() { DrawPhysicsBodies(ViewProjection); };
+		}
 		if (!bUseCheckerBackground)
 		{
 			return;
@@ -374,6 +395,39 @@ protected:
 			RenderCommand::Draw(3);
 		};
 	}
+
+private:
+	void DrawPhysicsBodies(const FMatrix& ViewProjection)
+	{
+		const USkeletalMesh* Mesh = OverlayMeshComp->GetSkeletalMesh();
+		if (!Mesh)
+		{
+			return;
+		}
+		if (!PhysicsDebugRenderer)
+		{
+			PhysicsDebugRenderer = MakeUnique<FPhysicsAssetDebugRenderer>();
+		}
+
+		using PhysicsAssetEditorMath::MakeMatrix;
+		PhysicsDebugRenderer->Begin(ViewProjection, true);
+		const FVector4& Color = PhysicsDebugColors::Body;
+		for (const UBodySetup* Setup : OverlayPhysicsAsset->BodySetup)
+		{
+			const int32 Bone = Setup ? Mesh->FindBoneIndex(Setup->BoneName.ToString()) : -1;
+			if (Bone < 0)
+			{
+				continue;
+			}
+			const FMatrix BoneToWorld = OverlayMeshComp->GetBoneWorldMatrix(Bone);
+			for (const FKSphylElem& S : Setup->AggGeom.SphylElems)
+				PhysicsDebugRenderer->DrawCapsule(MakeMatrix(S.Center, S.Rotation) * BoneToWorld, S.Radius, S.Length, Color);
+			for (const FKBoxElem& B : Setup->AggGeom.BoxElems)
+				PhysicsDebugRenderer->DrawBox(MakeMatrix(B.Center, B.Rotation) * BoneToWorld, B.Extent, Color);
+			for (const FKSphereElem& S : Setup->AggGeom.SphereElems)
+				PhysicsDebugRenderer->DrawSphere(MakeMatrix(S.Center, S.Rotation) * BoneToWorld, S.Radius, Color);
+		}
+	}
 };
 
 FMeshThumbnailRenderer::FMeshThumbnailRenderer() = default;
@@ -390,7 +444,8 @@ bool FMeshThumbnailRenderer::IsSupportedMeshFile(const fs::path& FilePath, const
 		|| AnimSequenceFile::IsAnimSequencePath(Utf8Path)
 		|| BlendSpaceFile::IsBlendSpacePath(Utf8Path)
 		|| AnimBlueprintFile::IsAnimBlueprintPath(Utf8Path)
-		|| MaterialFile::IsMaterialPath(Utf8Path);
+		|| MaterialFile::IsMaterialPath(Utf8Path)
+		|| PhysicsAssetFile::IsPhysicsAssetPath(Utf8Path);
 }
 
 ImTextureID FMeshThumbnailRenderer::GetOrRequestThumbnail(
@@ -575,6 +630,8 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 	bool bIsTranslucentPreview = false;
 
 	StaticMeshComp->ClearOverrideMaterials();
+	FThumbnailViewportClient* ThumbnailClient = static_cast<FThumbnailViewportClient*>(ViewportClient.get());
+	ThumbnailClient->SetPhysicsOverlay(nullptr, nullptr);
 
 	if (Request.Utf8Path.starts_with("builtin_mesh:"))
 	{
@@ -620,6 +677,19 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 			BoundsBox = Sphere->GetRenderBounds();
 			bValidMesh = AreBoundsFinite(BoundsBox);
 			bIsTranslucentPreview = Material->IsTranslucent();
+		}
+	}
+	else if (PhysicsAssetFile::IsPhysicsAssetPath(Request.Utf8Path))
+	{
+		// X.fbx.phys의 메시는 옆의 X.fbx.bin
+		fs::path MeshPath = Request.FilePath;
+		MeshPath.replace_extension(".bin");
+		USkeletalMesh* PreviewMesh = TryLoadSkeletalMeshCandidate(FPaths::ToUtf8(MeshPath));
+		const UPhysicsAsset* PhysicsAsset = UAssetManager::LoadPhysicsAsset(Request.Utf8Path);
+		bValidMesh = SetupSkeletalThumbnail(PreviewMesh, nullptr, StaticMeshComp, SkeletalMeshComp, BoundsBox);
+		if (bValidMesh && PhysicsAsset)
+		{
+			ThumbnailClient->SetPhysicsOverlay(PhysicsAsset, SkeletalMeshComp);
 		}
 	}
 	else if (AnimSequenceFile::IsAnimSequencePath(Request.Utf8Path))
@@ -692,7 +762,7 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 		return;
 	}
 
-	static_cast<FThumbnailViewportClient*>(ViewportClient.get())->ApplySettings(Engine.GetEditorSettings(), bIsTranslucentPreview);
+	ThumbnailClient->ApplySettings(Engine.GetEditorSettings(), bIsTranslucentPreview);
 
 	PreviewScene->Tick(0.0f);
 	if (UWorld* PreviewWorld = PreviewScene->GetWorld())
@@ -738,6 +808,7 @@ void FMeshThumbnailRenderer::RenderMeshToCache(const FPendingRequest& Request, U
 		}
 	}
 
+	ThumbnailClient->SetPhysicsOverlay(nullptr, nullptr);
 	StaticMeshComp->ClearOverrideMaterials();
 	StaticMeshComp->SetStaticMesh(nullptr);
 	SkeletalMeshComp->SetSkeletalMesh(nullptr);

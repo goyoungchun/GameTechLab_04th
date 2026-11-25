@@ -14,9 +14,15 @@ class FClothingSimulationNv;
 
 // World의 SkeletalMeshComponent마다 root 디버그를 그린다 (DrawCollisionShapes와 같은 방식). PIE의 Show Root에서 호출
 void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher);
+void DrawPhysicsBodiesDebug(UWorld* World, FLineBatcher* LineBatcher);
+
 class UAnimationAsset;
 class UAnimSingleNodeInstance;
 class UAnimGraphInstance;
+
+struct FBodyInstance;
+struct FConstraintInstance;
+class UPhysicsAsset;
 
 UCLASS()
 class USkeletalMeshComponent : public USkinnedMeshComponent
@@ -88,12 +94,35 @@ public:
 	UPROPERTY()
 	bool bEnableClothingSimulation = true;
 
+	// Physics Asset 추가
+	UPhysicsAsset* GetPhysicsAsset() const;
+
+	int32 FindBodyIndexByBone(const FString& BoneName) const;
+	FBodyInstance* GetBodyInstanceByBone(const FString& BoneName) const;
+
+	TArray<FBodyInstance*> Bodies;
+	TArray<FConstraintInstance*> Constraints;
+
+	bool CanBodiesCollide(const FBodyInstance& A, const FBodyInstance& B) const override;
+
+	bool IsRagdollSimulating() const;
+
+	void SetSimulatePhysics(bool bSimulate) override;
+
+	// 바디(PhysX 실제 포즈)와 조인트를 와이어로 그린다
+	void DrawPhysicsDebug(FLineBatcher* LineBatcher) const;
+
 protected:
 	// 단일 애니메이션 에셋 경로/루프/재생 속도를 씬에 저장·복원한다 (Serialize에서 부른다)
 	void SerializeSingleAnimation(FStructuredArchive::FRecord& Record);
 
 	void RefreshBoneTransforms() override;
 	void OnSkeletalMeshChanged() override;
+
+	// Physics Asset
+	virtual bool ShouldCreatePhysicsState() const override;
+	virtual void OnCreatePhysicsState() override;
+	virtual void OnDestroyPhysicsState() override;
 
 private:
 	void UpdateClothingSimulation(float DeltaTime);
@@ -117,4 +146,13 @@ private:
 	FClothingSimulationData ClothSimData;
 	bool bClothTeleportPending = true;
 	bool bSuspendClothingSimulation = false;
+
+	// Physics Asset
+	void InstantiatePhysicsAssetBodies_Internal();
+	void TermArticulated();
+
+	void UpdateKinematicBonesToAnim();
+	bool bTeleportBodiesNextUpdate = true;
+
+	void ApplyPhysicsToBonePose();
 };

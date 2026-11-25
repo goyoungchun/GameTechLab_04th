@@ -19,7 +19,7 @@ class USkeletalMeshComponent;
 class UEditorEngine;
 class FRenderer;
 
-// 콘텐츠 드로어의 .obj / .fbx.bin / .anim.bin / .blendspace / .animblueprint / .mat 에셋용 오프스크린 3D 썸네일 렌더러·캐시.
+// 콘텐츠 드로어의 .obj / .fbx.bin / .anim.bin / .blendspace / .animblueprint / .mat / .phys 에셋용 오프스크린 3D 썸네일 렌더러·캐시.
 // 프레임 드랍을 막기 위해 미생성 썸네일은 큐에 넣고 프레임당 1개씩 렌더한다.
 class FMeshThumbnailRenderer
 {

@@ -11,6 +11,7 @@ namespace physx
 class UWorld;
 class UPrimitiveComponent;
 class FPhysXSimulationEventCallback;
+class FPhysXSimulationFilterCallback;
 
 // onContact에서 모은 충돌 한 건. 디스패치 때 양쪽에 DispatchHit을 보낸다.
 struct FCollisionNotifyInfo
@@ -44,6 +45,10 @@ public:
 	physx::PxScene* GetPxScene() const { return Scene; }
 	UWorld* GetOwningWorld() const { return OwningWorld; }
 
+	// 씬 전체 중력 (기본 0, 0, -9.81)
+	void SetGravity(const FVector& Gravity);
+	FVector GetGravity() const;
+
 	// 고정 간격으로 simulate → fetchResults를 반복하고, 움직인 바디를 컴포넌트에 반영한다.
 	void Tick(float DeltaTime);
 
@@ -74,4 +79,6 @@ private:
 	UWorld* OwningWorld = nullptr;
 	physx::PxScene* Scene = nullptr;
 	float TimeAccumulator = 0.0f;
+
+	TUniquePtr<FPhysXSimulationFilterCallback> FilterCallback;
 };
