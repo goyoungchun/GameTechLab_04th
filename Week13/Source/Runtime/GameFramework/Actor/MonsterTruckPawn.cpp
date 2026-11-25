@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Physics/PhysicalMaterial.h"
 #include "Physics/PhysScene.h"
 #include "Physics/PhysicsCore.h"
 #include "Physics/PhysicsLock.h"
@@ -109,10 +110,9 @@ namespace
 		return Pairs;
 	}
 
-	PxShape* AttachCollisionBox(FBodyInstance& Body, const PxVec3& HalfSize, const PxVec3& Offset)
+	PxShape* AttachCollisionBox(FBodyInstance& Body, PxMaterial& Material, const PxVec3& HalfSize, const PxVec3& Offset)
 	{
-		PxShape* Shape = PxRigidActorExt::createExclusiveShape(*Body.Actor, PxBoxGeometry(HalfSize),
-			*FPhysicsCore::Get().GetDefaultMaterial());
+		PxShape* Shape = PxRigidActorExt::createExclusiveShape(*Body.Actor, PxBoxGeometry(HalfSize), Material);
 		if (Shape)
 		{
 			Shape->setLocalPose(PxTransform(Offset));
@@ -286,6 +286,8 @@ bool AMonsterTruckPawn::SetupVehicle()
 	auto& ChassisBody = Chassis->BodyInstance;
 	if (!ChassisBody.IsSimulatingPhysics()) return false;
 	auto& Core = FPhysicsCore::Get();
+	PxMaterial* DefaultMaterial = Core.GetDefaultPhysMaterial()->GetPxMaterial();
+	if (!DefaultMaterial) return false;
 	// Vehicle SDK의 축은 전역 설정이다. 차량을 준비할 때 엔진의 Z-up, X-forward 기준을 지정한다.
 	PxVehicleSetBasisVectors(PxVec3(0, 0, 1), PxVec3(1, 0, 0));
 
@@ -300,15 +302,15 @@ bool AMonsterTruckPawn::SetupVehicle()
 	for (PxU32 Index = 0; Index < WheelCount; ++Index)
 	{
 		State->WheelShapes[Index] = PxRigidActorExt::createExclusiveShape(*State->Truck,
-			PxConvexMeshGeometry(WheelMesh), *Core.GetDefaultMaterial(), WheelFlags);
+			PxConvexMeshGeometry(WheelMesh), *DefaultMaterial, WheelFlags);
 		if (State->WheelShapes[Index])
 			State->WheelShapes[Index]->setLocalPose(PxTransform(WheelCenters[Index]));
 	}
 	WheelMesh->release();
 	for (auto* Shape : State->WheelShapes)
 		if (!Shape) return false;
-	if (!AttachCollisionBox(ChassisBody, PxVec3(0.7f, 0.75f, 0.50f), PxVec3(0.88f, 0, 0.70f)) ||
-		!AttachCollisionBox(ChassisBody, PxVec3(1.15f, 0.92f, 0.41f), K2PVector(BedLocation) + PxVec3(0, 0, 0.32f)))
+	if (!AttachCollisionBox(ChassisBody, *DefaultMaterial, PxVec3(0.7f, 0.75f, 0.50f), PxVec3(0.88f, 0, 0.70f)) ||
+		!AttachCollisionBox(ChassisBody, *DefaultMaterial, PxVec3(1.15f, 0.92f, 0.41f), K2PVector(BedLocation) + PxVec3(0, 0, 0.32f)))
 		return false;
 
 	State->Truck->setMass(TruckMass);
@@ -377,7 +379,7 @@ bool AMonsterTruckPawn::SetupVehicle()
 	BatchDesc.queryMemory.sweepTouchBufferSize = WheelCount * HitsPerWheel;
 	BatchDesc.preFilterShader = FilterSuspensionSweep;
 	State->Batch = Scene->createBatchQuery(BatchDesc);
-	State->Friction = CreateTireFrictionPairs(*Core.GetPhysics(), *Core.GetDefaultMaterial());
+	State->Friction = CreateTireFrictionPairs(*Core.GetPhysics(), *DefaultMaterial);
 	if (!State->Batch || !State->Friction) return false;
 
 	State->VisualPoseTimestamp = Scene->getTimestamp();
