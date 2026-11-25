@@ -41,7 +41,7 @@ struct FSceneView
 	bool NeedsCameraOverlay(bool bVignette, bool bOverlay) const
 	{
 		return (bOverlay && (OverlayColor.A > 0.0f || LetterboxAmount > 0.0f))
-			|| (bVignette && FinalPostProcessSettings.VignetteIntensity > 0.0f);
+			|| (bVignette && (FinalPostProcessSettings.VignetteIntensity > 0.0f || FinalPostProcessSettings.LensVignetteAmount > 0.0f));
 	}
 
 	FViewContext ToViewContext() const

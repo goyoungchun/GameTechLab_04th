@@ -12,9 +12,13 @@ struct alignas(16) FCameraOverlayData
 	float VignettePower;
 	float LetterboxAmount;
 	float LetterboxAspect;
-	float Padding[2];
+	FVector2 TanHalfFov;
+	float PupilRadius;
+	float LensVignetteAmount;
+	float BarrelRadius;
+	float Padding;
 };
-static_assert(sizeof(FCameraOverlayData) == 48);
+static_assert(sizeof(FCameraOverlayData) == 64);
 
 class FCameraOverlayRenderer
 {

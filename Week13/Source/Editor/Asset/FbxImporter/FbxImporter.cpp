@@ -256,6 +256,23 @@ namespace
 		return Node->EvaluateGlobalTransform();
 	}
 
+	// Global의 스케일만 되돌리는 행렬 S⁻¹. Global = T·R·S 이므로 Global·S⁻¹ = T·R 이 된다.
+	// Blender Armature(×100)나 인치 단위 루트(×2.54)처럼 스켈레톤에 걸린 스케일을 Bone 공간에서 뺄 때 쓴다.
+	FbxAMatrix MakeScaleRemover(const FbxAMatrix& Global)
+	{
+		const FbxVector4 Scale = Global.GetS();
+		FbxVector4 Inverse(1, 1, 1);
+		for (int Axis = 0; Axis < 3; ++Axis)
+		{
+			// 0에 가까운 축은 역수가 발산하므로 그대로 둔다 (원래도 Bind 검사에서 걸러지는 경우다)
+			if (std::isfinite(Scale[Axis]) && std::abs(Scale[Axis]) > 1e-8) Inverse[Axis] = 1.0 / Scale[Axis];
+		}
+		FbxAMatrix Remover;
+		Remover.SetIdentity();
+		Remover.SetS(Inverse);
+		return Remover;
+	}
+
 	bool IsFiniteMatrix(const FbxAMatrix& Matrix)
 	{
 		const double* Values = Matrix;
@@ -753,6 +770,7 @@ void FFbxImporter::ClearSkeletonData()
 {
 	Bones.Empty();
 	BoneIndices.Empty();
+	BindScaleRemovers.Empty();
 	RigidBindMeshes.Empty();
 	for (FFbxMeshNodeData& Mesh : MeshNodes) Mesh.RigidBoneIndex = -1;
 }
@@ -798,7 +816,9 @@ bool FFbxImporter::ReadSkeletonData(TArray<FString>& OutWarnings, FString& OutEr
 	TMap<FbxNode*, int32> ResultIndices;
 	TSet<FString> Names;
 	TArray<FBoneInfo> ResultBones;
-	TArray<FbxAMatrix> BindGlobals;
+	TArray<FbxAMatrix> BindGlobals;            // 원본 Bind Global. rigid Mesh Geometry를 굽는 데 쓴다
+	TArray<FbxAMatrix> NormalizedBindGlobals;  // 스케일을 뺀 Bind Global. Bone의 Local/Inverse Bind를 만든다
+	TArray<FbxAMatrix> ResultScaleRemovers;
 	TArray<FMatrix> BindWorlds;
 	for (int32 I = 0; I < Nodes.Num(); ++I)
 	{
@@ -817,7 +837,13 @@ bool FFbxImporter::ReadSkeletonData(TArray<FString>& OutWarnings, FString& OutEr
 		const FbxAMatrix Global = ReadBindGlobal(Scene, Node, Clusters, OutWarnings);
 		const double GlobalDeterminant = Global.Determinant();
 		if (!IsFiniteMatrix(Global) || !std::isfinite(GlobalDeterminant) || GlobalDeterminant == 0) { OutError = "FBX: invalid Bind Global: " + Bone.Name; return false; }
-		const FbxAMatrix Local = Bone.ParentIndex < 0 ? Global : BindGlobals[Bone.ParentIndex].Inverse() * Global;
+		// 스켈레톤 스케일 정규화: Bone Global에서 자기 스케일을 빼서 모든 Bone의 Bind 월드 스케일을 1로 만든다.
+		// 정점은 이미 컴포넌트 공간이라 그대로 두고, 애니메이션 Global에도 같은 S⁻¹을 곱하므로
+		// 스키닝 결과(InverseBind × 현재 Global)는 원본과 같다. 대신 Bone 공간이 실제 단위(cm)가 되어
+		// 물리 에셋 생성처럼 Bone 공간에서 크기를 재는 코드가 Armature 스케일에 흔들리지 않는다.
+		const FbxAMatrix ScaleRemover = MakeScaleRemover(Global);
+		const FbxAMatrix NormalizedGlobal = Global * ScaleRemover;
+		const FbxAMatrix Local = Bone.ParentIndex < 0 ? NormalizedGlobal : NormalizedBindGlobals[Bone.ParentIndex].Inverse() * NormalizedGlobal;
 		if (!IsFiniteMatrix(Local)) { OutError = "FBX: non-finite Bind Local: " + Bone.Name; return false; }
 		const FbxVector4 Translation = Local.GetT();
 		const FbxQuaternion Rotation = Local.GetQ();
@@ -846,6 +872,8 @@ bool FFbxImporter::ReadSkeletonData(TArray<FString>& OutWarnings, FString& OutEr
 		ResultIndices.Add(Node, I);
 		ResultBones.Add(std::move(Bone));
 		BindGlobals.Add(Global);
+		NormalizedBindGlobals.Add(NormalizedGlobal);
+		ResultScaleRemovers.Add(ScaleRemover);
 		BindWorlds.Add(World);
 	}
 	for (FbxCluster* Cluster : Clusters)
@@ -879,6 +907,7 @@ bool FFbxImporter::ReadSkeletonData(TArray<FString>& OutWarnings, FString& OutEr
 	}
 	Bones = std::move(ResultBones);
 	BoneIndices = std::move(ResultIndices);
+	BindScaleRemovers = std::move(ResultScaleRemovers);
 	RigidBindMeshes = std::move(ResultRigidMeshes);
 	for (FFbxMeshNodeData& Mesh : MeshNodes)
 		if (const FFbxMeshNodeData* Rigid = RigidBindMeshes.Find(Mesh.Node)) Mesh.RigidBoneIndex = Rigid->RigidBoneIndex;
@@ -911,7 +940,7 @@ bool FFbxImporter::ImportAnimations(TArray<UAnimSequence*>& OutSequences, TArray
 {
 	OutWarnings.Empty();
 	OutError.clear();
-	if (!Scene || Bones.IsEmpty() || BoneIndices.Num() != Bones.Num())
+	if (!Scene || Bones.IsEmpty() || BoneIndices.Num() != Bones.Num() || BindScaleRemovers.Num() != Bones.Num())
 	{
 		OutError = "FBX: read skeleton data before importing animations";
 		return false;
@@ -1137,7 +1166,8 @@ void FFbxImporter::ImportBoneTracks(const TArray<FbxTime>& SampleTimes, TArray<F
 	{
 		for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
 		{
-			Globals[BoneIndex] = Nodes[BoneIndex]->EvaluateGlobalTransform(Time);
+			// ReadSkeletonData와 같은 Bind 스케일 S⁻¹을 곱한다. Bind 이후 스케일 변화(스쿼시 등)는 비율로 남는다.
+			Globals[BoneIndex] = Nodes[BoneIndex]->EvaluateGlobalTransform(Time) * BindScaleRemovers[BoneIndex];
 		}
 
 		for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
