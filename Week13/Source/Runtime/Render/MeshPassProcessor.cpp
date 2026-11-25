@@ -312,11 +312,19 @@ bool FMeshPassProcessor::Build(const FSceneView& View, const FRenderQueue& Queue
 			Packet.Proxy ? Packet.Proxy->GetBounds() : ConservativeBounds, Packet.Proxy));
 		Batch.Items.Last().InstanceCount = Packet.InstanceCount;
 
-		// 웨이트 히트맵: Forward 패스의 오브젝트 상수 빈 칸(ShadowFlags.y)에 본 번호 + 1을 싣는다
-		if (Pass == EMeshPassType::Forward && Packet.DebugWeightBone >= 0)
+		// 웨이트 히트맵(>0) 또는 Cloth Paint 오버레이(-2 -> ShadowFlags.y = -1)
+		if (Pass == EMeshPassType::Forward)
 		{
-			auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
-			Constants->ShadowFlags.Y = static_cast<float>(Packet.DebugWeightBone + 1);
+			if (Packet.DebugWeightBone >= 0)
+			{
+				auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
+				Constants->ShadowFlags.Y = static_cast<float>(Packet.DebugWeightBone + 1);
+			}
+			else if (Packet.DebugWeightBone == -2)
+			{
+				auto* Constants = reinterpret_cast<FForwardObjectConstants*>(Batch.Items.Last().ObjectData.data());
+				Constants->ShadowFlags.Y = -1.0f;
+			}
 		}
 
 		Out.Add(std::move(Batch));
@@ -352,6 +360,9 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 					continue;
 				FMeshDrawBatch Batch{};
 				Batch.Pipeline = *Pipeline;
+				// 두께 없는 양면 메시(천, 잎)는 광원 쪽에서 뒷면만 보일 수 있으므로 컬링하지 않는다
+				if (Packet.Material && Packet.Material->bTwoSided)
+					Batch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
 				Batch.VertexFactory = VertexFactory;
 				if (!ApplyVertexFactory(Batch)) continue;
 				Batch.bUseObjectSlots = false;
@@ -385,6 +396,10 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 		}
 		if (!ApplyVertexFactory(Batch)) continue;
 
+		// 양면 섹션은 컬링을 끈 배치로 따로 모은다
+		FMeshDrawBatch TwoSidedBatch = Batch;
+		TwoSidedBatch.Pipeline.RasterizerState = ERasterizerState::SolidNone;
+
 		for (uint32 Index = 0; Index < MeshState.Sections.Num(); ++Index)
 		{
 			const FCachedMeshSection& Section = Proxy->GetSection(Index);
@@ -393,11 +408,14 @@ bool FMeshPassProcessor::Build(const TArray<FPrimitiveSceneProxy*>& ShadowMeshes
 			if (Section.Material && Section.Material->IsTranslucent())
 				continue;
 
-			Batch.Items.Add(std::move(MakeShadowItem(Proxy, Section.StartIndex, Section.IndexCount, PreTranslation)));
+			FMeshDrawBatch& Target = (Section.Material && Section.Material->bTwoSided) ? TwoSidedBatch : Batch;
+			Target.Items.Add(MakeShadowItem(Proxy, Section.StartIndex, Section.IndexCount, PreTranslation));
 		}
 
 		if (!Batch.Items.IsEmpty())
 			OutBatches.Add(std::move(Batch));
+		if (!TwoSidedBatch.Items.IsEmpty())
+			OutBatches.Add(std::move(TwoSidedBatch));
 	}
 	return true;
 }

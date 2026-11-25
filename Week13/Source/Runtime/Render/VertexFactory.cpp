@@ -69,6 +69,8 @@ void FGpuSkinVertexFactory::Bind() const
 {
 	FVertexFactory::Bind();
 	RenderCommand::BindShaderResource(BoneMatrixBufferSlot, BoneBuffer, EShaderBindFlagBits::Vertex);
+	RenderCommand::BindShaderResource(ClothMappingBufferSlot, ClothMappingBuffer, EShaderBindFlagBits::Vertex);
+	RenderCommand::BindShaderResource(ClothSimulBufferSlot, ClothSimulBuffer, EShaderBindFlagBits::Vertex);
 }
 
 void FInstancedVertexFactory::Bind() const

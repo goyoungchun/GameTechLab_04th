@@ -3,6 +3,7 @@
 #include "Editor/SkeletalMeshEditor/SkeletalMeshEditor.h"
 #include "Math/Transform.h"
 #include "Editor/Details/PropertyEditor.h"
+#include "Physics/PhysicsAsset.h"
 
 FSkeletalMeshDetailsPanel::FSkeletalMeshDetailsPanel(FSkeletalMeshEditor& InEditor)
 	: FSkeletalMeshEditorPanel(InEditor, "Details")
@@ -21,6 +22,20 @@ void FSkeletalMeshDetailsPanel::DrawContent()
 	if (ImGui::Button("Reset All Transform"))
 	{
 		Editor.ResetPose();
+	}
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Physics");
+	const char* GenerateLabel = Editor.GetPhysicsAsset() ? "Regenerate Physics Asset" : "Generate Physics Asset";
+	if (ImGui::Button(GenerateLabel))
+	{
+		Editor.GeneratePhysicsAsset();
+	}
+	ImGui::Checkbox("Show Physics Bodies", &Editor.bShowPhysicsBodies);
+
+	if (UPhysicsAsset* Asset = Editor.GetPhysicsAsset())
+	{
+		ImGui::Text("Bodies: %d", Asset->BodySetup.Num());
 	}
 
 	ImGui::Separator();

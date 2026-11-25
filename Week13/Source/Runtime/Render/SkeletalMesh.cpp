@@ -2,6 +2,14 @@
 #include "SkeletalMesh.h"
 #include "Render/RenderCommand.h"
 #include "Asset/AssetManager.h"
+#include "Clothing/ClothingAsset.h"
+#include "UObject/UObjectGlobals.h"
+
+#include <filesystem>
+
+#include "Asset/AssetUtils.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/PhysicsAssetUtils.h"
 
 namespace
 {
@@ -107,6 +115,9 @@ bool USkeletalMesh::Build(FSkeletalMeshData&& ImportData, FString& OutError, con
 	Materials = std::move(NewMaterials);
 	RenderData.LODRenderData.Empty();
 	RenderData.LODRenderData.Add(std::move(LOD));
+	SectionClothingBindings.SetNum(RenderData.LODRenderData[0].Sections.Num());
+	for (int32& Slot : SectionClothingBindings)
+		Slot = -1;
 	RenderStates.Reset();
 	return true;
 }
@@ -128,6 +139,211 @@ UMaterial* USkeletalMesh::GetMaterial(uint32 SlotIndex) const
 		return Materials[SlotIndex];
 	}
 	return UAssetManager::GetAssetByPath<UMaterial>("DefaultMaterial");
+}
+
+void USkeletalMesh::SetClothingAsset(UClothingAssetCommon* InAsset)
+{
+	if (!InAsset)
+	{
+		for (int32& Slot : SectionClothingBindings)
+			Slot = -1;
+		RebuildClothingMappingBuffer();
+		return;
+	}
+
+	int32 AssetIdx = -1;
+	for (int32 i = 0; i < MeshClothingAssets.Num(); ++i)
+	{
+		if (MeshClothingAssets[i] == InAsset)
+		{
+			AssetIdx = i;
+			break;
+		}
+	}
+	if (AssetIdx < 0)
+	{
+		AssetIdx = MeshClothingAssets.Num();
+		MeshClothingAssets.Add(InAsset);
+	}
+	ApplyClothingAssetToSection(InAsset->GetSourceSectionIndex(), InAsset);
+}
+
+UClothingAssetCommon* USkeletalMesh::GetClothingAsset() const
+{
+	for (int32 AssetIdx : SectionClothingBindings)
+	{
+		if (AssetIdx >= 0 && AssetIdx < MeshClothingAssets.Num() && MeshClothingAssets[AssetIdx])
+			return MeshClothingAssets[AssetIdx];
+	}
+	return nullptr;
+}
+
+UClothingAssetCommon* USkeletalMesh::CreateClothingAssetFromSection(int32 SectionIndex, const FString& Name)
+{
+	if (RenderData.LODRenderData.IsEmpty())
+		return nullptr;
+
+	const auto& Sections = RenderData.LODRenderData[0].Sections;
+	if (SectionIndex < 0 || SectionIndex >= Sections.Num())
+		return nullptr;
+
+	UClothingAssetCommon* Asset = NewObject<UClothingAssetCommon>();
+	if (!Asset || !Asset->InitializeForSection(*this, SectionIndex, Name))
+		return nullptr;
+
+	MeshClothingAssets.Add(Asset);
+	return Asset;
+}
+
+bool USkeletalMesh::ApplyClothingAssetToSection(int32 SectionIndex, UClothingAssetCommon* Asset)
+{
+	if (RenderData.LODRenderData.IsEmpty())
+		return false;
+
+	const int32 NumSections = RenderData.LODRenderData[0].Sections.Num();
+	if (SectionIndex < 0 || SectionIndex >= NumSections)
+		return false;
+
+	if (SectionClothingBindings.Num() != NumSections)
+	{
+		SectionClothingBindings.SetNum(NumSections);
+		for (int32& Slot : SectionClothingBindings)
+			Slot = -1;
+	}
+
+	int32 AssetIdx = -1;
+	if (Asset)
+	{
+		for (int32 i = 0; i < MeshClothingAssets.Num(); ++i)
+		{
+			if (MeshClothingAssets[i] == Asset)
+			{
+				AssetIdx = i;
+				break;
+			}
+		}
+		if (AssetIdx < 0)
+			return false;
+	}
+
+	SectionClothingBindings[SectionIndex] = AssetIdx;
+	RebuildClothingMappingBuffer();
+	return true;
+}
+
+void USkeletalMesh::RemoveClothingAssetFromSection(int32 SectionIndex)
+{
+	if (SectionIndex < 0 || SectionIndex >= SectionClothingBindings.Num())
+		return;
+	SectionClothingBindings[SectionIndex] = -1;
+	RebuildClothingMappingBuffer();
+}
+
+void USkeletalMesh::RemoveClothingAsset(UClothingAssetCommon* Asset)
+{
+	if (!Asset)
+		return;
+
+	int32 RemovedIdx = -1;
+	for (int32 i = 0; i < MeshClothingAssets.Num(); ++i)
+	{
+		if (MeshClothingAssets[i] == Asset)
+		{
+			RemovedIdx = i;
+			break;
+		}
+	}
+	if (RemovedIdx < 0)
+		return;
+
+	MeshClothingAssets.RemoveAt(RemovedIdx);
+	for (int32& Binding : SectionClothingBindings)
+	{
+		if (Binding == RemovedIdx)
+			Binding = -1;
+		else if (Binding > RemovedIdx)
+			--Binding;
+	}
+	RebuildClothingMappingBuffer();
+}
+
+UClothingAssetCommon* USkeletalMesh::GetClothingAssetForSection(int32 SectionIndex) const
+{
+	if (SectionIndex < 0 || SectionIndex >= SectionClothingBindings.Num())
+		return nullptr;
+	const int32 AssetIdx = SectionClothingBindings[SectionIndex];
+	if (AssetIdx < 0 || AssetIdx >= MeshClothingAssets.Num())
+		return nullptr;
+	return MeshClothingAssets[AssetIdx];
+}
+
+void USkeletalMesh::RebuildClothingMappingBuffer()
+{
+	ClothMappingBuffer.reset();
+
+	UClothingAssetCommon* ActiveAsset = GetClothingAsset();
+	if (!ActiveAsset || !ActiveAsset->IsValid())
+		return;
+
+	const TArray<FClothVertMapping>& Mapping = ActiveAsset->GetRenderToSimMapping();
+	if (Mapping.IsEmpty())
+		return;
+
+	ClothMappingBuffer = RenderCommand::CreateDynamicStructuredBuffer(
+		static_cast<uint32>(Mapping.Num()), sizeof(FClothVertMapping));
+	if (ClothMappingBuffer)
+	{
+		if (void* Dst = RenderCommand::MapWriteDiscard(ClothMappingBuffer.get()))
+		{
+			std::memcpy(Dst, Mapping.GetData(), sizeof(FClothVertMapping) * Mapping.Num());
+			RenderCommand::Unmap(ClothMappingBuffer.get());
+		}
+	}
+}
+
+bool USkeletalMesh::SaveClothingAssets(const FString& MeshFilePath, FString& OutError) const
+{
+	const FString ClothPath = ClothingAssetFile::GetClothBinaryPath(MeshFilePath);
+	if (ClothPath.empty())
+	{
+		OutError = "Invalid mesh file path for saving cloth binary.";
+		return false;
+	}
+	return ClothingAssetFile::Write(ClothPath, MeshClothingAssets, SectionClothingBindings, OutError);
+}
+
+bool USkeletalMesh::LoadClothingAssets(const FString& MeshFilePath)
+{
+	const FString ClothPath = ClothingAssetFile::GetClothBinaryPath(MeshFilePath);
+	const std::filesystem::path ClothFsPath(std::u8string_view(
+		reinterpret_cast<const char8_t*>(ClothPath.data()), ClothPath.size()));
+	if (ClothPath.empty() || !std::filesystem::exists(ClothFsPath))
+		return false;
+
+	TArray<UClothingAssetCommon*> LoadedAssets;
+	TArray<int32> LoadedBindings;
+	FString Error;
+	if (!ClothingAssetFile::Read(ClothPath, *this, LoadedAssets, LoadedBindings, Error))
+	{
+		if (!Error.empty())
+			KRS_LOG(Warning, "[Cloth] {}", Error);
+		return false;
+	}
+
+	MeshClothingAssets = std::move(LoadedAssets);
+	if (!RenderData.LODRenderData.IsEmpty())
+	{
+		const int32 NumSections = RenderData.LODRenderData[0].Sections.Num();
+		SectionClothingBindings.SetNum(NumSections);
+		for (int32 i = 0; i < NumSections; ++i)
+		{
+			const int32 Val = (i < LoadedBindings.Num()) ? LoadedBindings[i] : -1;
+			SectionClothingBindings[i] = (Val >= 0 && Val < MeshClothingAssets.Num()) ? Val : -1;
+		}
+	}
+	RebuildClothingMappingBuffer();
+	KRS_LOG(Info, "[Cloth] Loaded {} clothing asset(s) from {}", MeshClothingAssets.Num(), ClothPath);
+	return true;
 }
 
 size_t USkeletalMesh::FMaterialSlotsHash::operator()(const TArray<UMaterial*>& Slots) const
@@ -156,4 +372,43 @@ TSharedPtr<const FMeshRenderState> USkeletalMesh::GetRenderState(const TArray<UM
 	}
 	WeakState = State;
 	return State;
+}
+
+UPhysicsAsset* USkeletalMesh::GetPhysicsAsset() const
+{
+	if (bPhysicsAssetResolved)
+		return PhysicsAsset;
+	bPhysicsAssetResolved = true;
+
+	// 1) 저장된 .phys가 있으면 읽는다 (UAssetManager가 캐시한다)
+	const FString PhysPath = GetDefaultPhysicsAssetPath();
+	const FString FilePath = FAssetUtils::ResolveAssetFilePath(PhysPath);
+	if (!GetPath().empty() && std::filesystem::exists(FilePath.empty() ? PhysPath : FilePath))
+	{
+		PhysicsAsset = UAssetManager::LoadPhysicsAsset(PhysPath);
+		if (PhysicsAsset)
+			return PhysicsAsset;
+	}
+
+	// 2) 없으면 자동 생성. 랙돌을 바로 시험할 수 있게 한다.
+	UPhysicsAsset* Generated = NewObject<UPhysicsAsset>();
+	FString Error;
+	if (FPhysicsAssetUtils::CreateFromSkeletalMesh(*Generated, *this, FPhysAssetCreateParams{}, Error))
+	{
+		Generated->SetAssetPath(PhysPath);   // 에디터에서 저장하면 이 경로로 간다
+		PhysicsAsset = Generated;
+	}
+	else
+	{
+		KRS_LOG(Warning, "[Physics] No PhysicsAsset for {} ({})", GetPath(), Error);
+		delete Generated;
+	}
+	return PhysicsAsset;
+}
+
+FString USkeletalMesh::GetDefaultPhysicsAssetPath() const
+{
+	std::filesystem::path P(GetPath());
+	P.replace_extension(".phys");
+	return P.generic_string();
 }

@@ -18,6 +18,9 @@
 #include "Animation/BlendSpace1D.h"
 #include "Animation/BlendSpaceFile.h"
 #include "Asset/AssetManager.h"
+#include "Clothing/ClothingAsset.h"
+#include "Clothing/ClothingSimulationNv.h"
+#include "Render/SkeletalMeshObject.h"
 
 void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* InInstance)
 {
@@ -66,6 +69,8 @@ void USkeletalMeshComponent::BeginPlay()
 			}
 		}
 	}
+
+	CreateClothingSimulation();
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
@@ -102,6 +107,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         bUpdatingAnimation = false;
 	}
 	Super::TickComponent(DeltaTime);
+	UpdateClothingSimulation(DeltaTime);
 }
 
 const TArray<FBoneInfo>& USkeletalMeshComponent::GetBones() const
@@ -281,6 +287,7 @@ void USkeletalMeshComponent::OnSkeletalMeshChanged()
 	BoneSpaceTransforms.Reset();
 	for (const FBoneInfo& Bone : GetBones())
 		BoneSpaceTransforms.Add(Bone.LocalBindPose);
+	CreateClothingSimulation();
 }
 UAnimSingleNodeInstance* USkeletalMeshComponent::GetSingleNodeInstance() const
 {
@@ -451,6 +458,7 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
+	DestroyClothingSimulation();
     if (ManagedAnimGraph)
     {
         if (AnimInstance == ManagedAnimGraph.get())
@@ -462,6 +470,102 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
             ManagedAnimGraph->UninitializeAnimation();
         }
     }
+}
+
+void USkeletalMeshComponent::CreateClothingSimulation()
+{
+	DestroyClothingSimulation();
+
+	USkeletalMesh* Mesh = GetSkeletalMesh();
+	if (!Mesh || !bEnableClothingSimulation)
+		return;
+
+	UClothingAssetCommon* Asset = Mesh->GetClothingAsset();
+	if (!Asset || !Asset->IsValid())
+		return;
+
+	TUniquePtr<FClothingSimulationNv> NewSim = MakeUnique<FClothingSimulationNv>();
+	if (!NewSim->CreateClothFromAsset(*Asset))
+		return;
+
+	ClothingSimulation = std::move(NewSim);
+	bClothTeleportPending = true;
+}
+
+void USkeletalMeshComponent::DestroyClothingSimulation()
+{
+	if (ClothingSimulation)
+	{
+		ClothingSimulation->Shutdown();
+		ClothingSimulation.reset();
+	}
+	ClothSimData.Positions.Empty();
+	ClothSimData.Normals.Empty();
+	if (FSkeletalMeshObject* MeshObj = GetMeshObject())
+	{
+		MeshObj->UpdateClothData(nullptr);
+	}
+}
+
+void USkeletalMeshComponent::SetClothSimulationSuspended(bool bSuspend)
+{
+	bSuspendClothingSimulation = bSuspend;
+	if (bSuspend)
+	{
+		if (FSkeletalMeshObject* MeshObj = GetMeshObject())
+			MeshObj->UpdateClothData(nullptr);
+	}
+	else
+	{
+		bClothTeleportPending = true;
+	}
+}
+
+void USkeletalMeshComponent::RefreshClothingOnAllComponents(USkeletalMesh* TargetMesh)
+{
+	if (!TargetMesh)
+		return;
+
+	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
+	{
+		USkeletalMeshComponent* Comp = *It;
+		if (Comp && Comp->GetSkeletalMesh() == TargetMesh)
+		{
+			Comp->CreateClothingSimulation();
+		}
+	}
+}
+
+void USkeletalMeshComponent::UpdateClothingSimulation(float DeltaTime)
+{
+	FSkeletalMeshObject* MeshObj = GetMeshObject();
+	if (!MeshObj)
+		return;
+
+	if (!bEnableClothingSimulation || bSuspendClothingSimulation)
+	{
+		if (ClothingSimulation)
+			MeshObj->UpdateClothData(nullptr);
+		return;
+	}
+
+	// 에셋에 ClothingAsset이 나중에 바인딩된 경우 자동 생성
+	if (!ClothingSimulation)
+	{
+		USkeletalMesh* Mesh = GetSkeletalMesh();
+		if (Mesh && Mesh->GetClothingAsset() && Mesh->GetClothingAsset()->IsValid())
+			CreateClothingSimulation();
+		if (!ClothingSimulation)
+			return;
+	}
+
+	const FTransform ComponentToWorld(GetWorldRotation().Quaternion(), GetWorldLocation(), GetWorldScale3D());
+	ClothingSimulation->UpdateSkeletalPose(MeshObj->GetRefToLocal(), ComponentToWorld, bClothTeleportPending);
+	bClothTeleportPending = false;
+
+	ClothingSimulation->Simulate(DeltaTime);
+	ClothingSimulation->GetSimulationData(ClothSimData);
+	MeshObj->UpdateClothData(&ClothSimData);
 }
 
 const FString& USkeletalMeshComponent::GetAnimBlueprintPath() const

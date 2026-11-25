@@ -51,6 +51,31 @@ namespace
 		static const float Reference = FPostProcessSettings::ComputeEV100(SunnySixteenFstop, SunnySixteenShutter, SunnySixteenISO);
 		return Reference;
 	}
+
+	// ToneMapShader.hlsl의 ACESFilm과 같은 상수여야 화면 밝기를 거꾸로 풀 수 있다
+	constexpr float AcesA = 2.51f, AcesB = 0.03f, AcesC = 2.43f, AcesD = 0.59f, AcesE = 0.14f;
+
+	float ACESFilm(float X)
+	{
+		return std::clamp((X * (AcesA * X + AcesB)) / (X * (AcesC * X + AcesD) + AcesE), 0.0f, 1.0f);
+	}
+
+	// y = (aX²+bX)/(cX²+dX+e)를 X에 대한 2차식으로 놓고 양수 근을 고른다
+	float InverseACESFilm(float Y)
+	{
+		Y = std::clamp(Y, 0.0f, 0.99f);
+		const float A = AcesA - AcesC * Y;
+		const float B = AcesB - AcesD * Y;
+		return (-B + std::sqrt(B * B + 4.0f * A * AcesE * Y)) / (2.0f * A);
+	}
+
+	// 밝기는 감마 1(보정 없음) 화면 기준으로 맞춰 뒀다. 감마 g에서도 같은 화면 밝기가 나오려면
+	// 톤매핑 결과가 그 밝기의 g제곱이어야 하므로, 그 값이 나오는 선형 목표를 거꾸로 구한다
+	float GetMiddleGrayForGamma(float DisplayGamma)
+	{
+		if (DisplayGamma <= 1.0f) return MiddleGray;
+		return InverseACESFilm(std::pow(ACESFilm(MiddleGray), DisplayGamma));
+	}
 }
 
 float FPostProcessSettings::ComputeEV100(float Fstop, float ShutterSpeed, float ISO)
@@ -59,10 +84,10 @@ float FPostProcessSettings::ComputeEV100(float Fstop, float ShutterSpeed, float 
 	return std::log2(Fstop * Fstop * ShutterSpeed * 100.0f / ISO);
 }
 
-float FPostProcessSettings::GetMeteredEV100(float AverageLuminance)
+float FPostProcessSettings::GetMeteredEV100(float AverageLuminance, float DisplayGamma)
 {
 	// 화면 밝기 = 평균 휘도 x 2^(기준EV - EV) 이므로, 이것이 중간 회색이 되는 EV를 거꾸로 푼다
-	return GetReferenceEV100() + std::log2(std::max(AverageLuminance, 1e-6f) / MiddleGray);
+	return GetReferenceEV100() + std::log2(std::max(AverageLuminance, 1e-6f) / GetMiddleGrayForGamma(DisplayGamma));
 }
 
 float FPostProcessSettings::GetCameraEV100() const

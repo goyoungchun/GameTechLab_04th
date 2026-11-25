@@ -31,6 +31,18 @@ struct FCollisionShape
 	static FCollisionShape MakeSphere(float InRadius) { FCollisionShape S; S.Type = EType::Sphere; S.Radius = InRadius; return S; }
 	static FCollisionShape MakeBox(const FVector& InHalfExtent) { FCollisionShape S; S.Type = EType::Box; S.HalfExtent = InHalfExtent; return S; }
 	static FCollisionShape MakeCapsule(float InRadius, float InHalfHeight) { FCollisionShape S; S.Type = EType::Capsule; S.Radius = InRadius; S.HalfHeight = InHalfHeight; return S; }
+
+	// 부피가 없는 모양(반지름 0인 구 등). Sweep은 이 경우 레이로 처리한다.
+	bool IsNearlyZero() const
+	{
+		constexpr float Tolerance = 1.e-4f;
+		switch (Type)
+		{
+		case EType::Box:     return HalfExtent.X <= Tolerance && HalfExtent.Y <= Tolerance && HalfExtent.Z <= Tolerance;
+		case EType::Capsule: return Radius <= Tolerance && HalfHeight <= Tolerance;
+		default:             return Radius <= Tolerance;
+		}
+	}
 };
 
 // 무엇을 맞힐지. 기본은 모든 종류.

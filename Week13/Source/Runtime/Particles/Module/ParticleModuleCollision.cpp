@@ -5,7 +5,7 @@
 #include "Particles/ParticleTypes.h"
 #include "Components/ParticleSystemComponent.h"
 #include "Engine/World.h"
-#include "Collision/Ray.h"
+#include "Physics/PhysScene.h"
 #include "Collision/HitResult.h"
 
 UParticleModuleCollision::UParticleModuleCollision()
@@ -55,36 +55,16 @@ void UParticleModuleCollision::Update(FParticleEmitterInstance& Owner, int32 Off
 	if (World == nullptr)
 		return;
 
-	AActor* IgnoreActor = bIgnoreSourceActor ? Owner.Component->GetOwner() : nullptr;
-
-	// 1차: 이번 프레임에 검사할 경로 전체를 감싸는 월드 상자 (반지름 포함)
-	FBox SweepBounds(FVector(FLT_MAX), FVector(-FLT_MAX));
-	bool bAnySweep = false;
-	ParticleHelper::ForEachParticle(Owner, [&](FBaseParticle& Particle, uint8* ParticleBase)
-		{
-			if (Particle.Flags & STATE_Particle_IgnoreCollisions)
-				return;
-			if (!ParticleHelper::GetPayload<FParticleCollisionPayload>(ParticleBase, Offset).bInitialized)
-				return;
-
-			const float Radius = (std::max)(Particle.Size.X, Particle.Size.Y) * RadiusScale;
-			const FVector R(Radius, Radius, Radius);
-			const FVector A = Owner.SimulationToWorld(Particle.Location);
-			const FVector B = Owner.SimulationToWorld(Particle.Location + Particle.Velocity * DeltaTime);
-			SweepBounds.Expand(FBox(A - R, A + R));
-			SweepBounds.Expand(FBox(B - R, B + R));
-			bAnySweep = true;
-		});
-	if (!bAnySweep)
+	FPhysScene* PhysicsScene = World->GetPhysicsScene();
+	if (!PhysicsScene || !PhysicsScene->IsValid())
 		return;
 
-	// 후보는 에미터당 한 번만 모은다. 주변에 아무것도 없으면 파티클 검사를 통째로 건너뛴다
-	CandidateCache.Reset();
-	World->GatherSweepCandidates(SweepBounds, IgnoreActor, CandidateCache);
-	if (CandidateCache.IsEmpty())
-		return;
+	// 캐릭터(Pawn)에는 튀지 않고 배경·물체에만 부딪힌다. 트리거는 Sweep이 알아서 지나친다.
+	FCollisionQueryParams Params;
+	Params.IgnoreActor = bIgnoreSourceActor ? Owner.Component->GetOwner() : nullptr;
+	Params.ObjectTypesMask = AllCategoriesMask & ~CategoryBit(ECollisionCategory::Pawn);
 
-	// 2차: 파티클마다 후보에만 스윕
+	// 파티클마다 이번 프레임 이동 경로를 물리 씬에 쓸어 본다
 	ParticleHelper::ForEachParticle(Owner, [&](FBaseParticle& Particle, uint8* ParticleBase)
 		{
 			if (Particle.Flags & STATE_Particle_IgnoreCollisions)
@@ -103,16 +83,13 @@ void UParticleModuleCollision::Update(FParticleEmitterInstance& Owner, int32 Off
 			const FVector DeltaSim = Particle.Velocity * DeltaTime;
 			const FVector StartWorld = Owner.SimulationToWorld(StartSim);
 			const FVector EndWorld = Owner.SimulationToWorld(StartSim + DeltaSim);
-			const FVector Segment = EndWorld - StartWorld;
-			const float Length = Segment.Length();
-			if (Length <= 1.0e-4f)
+			if ((EndWorld - StartWorld).Length() <= 1.0e-4f)
 				return;
 
-			const FRay Ray{ StartWorld, Segment / Length };
 			const float Radius = (std::max)(Particle.Size.X, Particle.Size.Y) * RadiusScale;
 
 			FHitResult Hit;
-			if (!UWorld::SweepAgainstCandidates(CandidateCache, Ray, Length, Radius, Hit))
+			if (!PhysicsScene->SweepSingle(FCollisionShape::MakeSphere(Radius), FQuat::Identity(), StartWorld, EndWorld, Hit, Params))
 				return;
 			// 시작부터 겹쳐 있으면 법선을 믿을 수 없다 → 이번 프레임은 건너뛴다
 			if (Hit.bStartPenetrating)

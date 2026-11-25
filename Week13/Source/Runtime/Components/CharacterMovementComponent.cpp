@@ -157,17 +157,15 @@ bool UCharacterMovementComponent::FindFloor(float ExtraDistance, FHitResult& Out
 	const float TraceLength = GetCapsuleHalfHeight() + std::max(ExtraDistance, 0.0f);
 	UWorld* World = GetOwner()->GetWorld();
 
+	// 물리 씬이 없으면 바닥도 없다 (떨어지는 상태가 된다).
 	FPhysScene* PhysicsScene = World ? World->GetPhysicsScene() : nullptr;
-	if (PhysicsScene && PhysicsScene->IsValid())
-	{
-		// 이동 스윕과 같은 물리 씬 형상을 본다 (Static 메시는 삼각형, Movable은 볼록 껍질).
-		FCollisionQueryParams Params;
-		Params.IgnoreActor = GetOwner();
-		return PhysicsScene->RaycastSingle(Start, Start + FVector(0.0f, 0.0f, -TraceLength), OutHit, Params);
-	}
+	if (!PhysicsScene || !PhysicsScene->IsValid())
+		return false;
 
-	// PhysX가 꺼져 있으면 예전 판정 (메시는 AABB 윗면, 스킨드 메시는 삼각형)
-	return World->SweepSingle(FRay(Start, FVector(0.0f, 0.0f, -1.0f)), TraceLength, 0.0f, OutHit, GetOwner());
+	// 이동 스윕과 같은 물리 씬 형상을 본다 (Static 메시는 삼각형, Movable은 볼록 껍질).
+	FCollisionQueryParams Params;
+	Params.IgnoreActor = GetOwner();
+	return PhysicsScene->RaycastSingle(Start, Start + FVector(0.0f, 0.0f, -TraceLength), OutHit, Params);
 }
 
 float UCharacterMovementComponent::GetCapsuleHalfHeight() const

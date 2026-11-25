@@ -181,7 +181,7 @@ void UViewfinderWidget::NativeTick(float DeltaTime)
 	bMeterValid = Photo->IsPhotoModeActive() && FExposureMeterRenderer::GetAverageLuminance(AverageLuminance);
 	if (bMeterValid)
 	{
-		const float MeteredEV = FPostProcessSettings::GetMeteredEV100(AverageLuminance);
+		const float MeteredEV = FPostProcessSettings::GetMeteredEV100(AverageLuminance, FExposureMeterRenderer::GetDisplayGamma());
 		const float ShutterSpeed = 1.0f / State.GetShutterSeconds();
 		ExposureOffsetEV = MeteredEV - FPostProcessSettings::ComputeEV100(State.GetFstop(), ShutterSpeed, State.ISO);
 
@@ -217,7 +217,7 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 	// ---------- 프레임과 창 ----------
 	// 프레임 크기는 CameraModifier_Photo가 화각을 계산할 때와 같은 비율이어야 찍히는 범위가 맞는다
 	const float FrameH = R.H * FPhotoCameraState::FrameHeightOnScreen;
-	const float FrameW = FrameH * FPhotoCameraState::FilmAspect;
+	const float FrameW = FrameH * State.GetFilmAspect();
 	const float CX = R.X + R.W * 0.5f;
 	const float CY = R.Y + R.H * 0.5f;
 	const float FL = CX - FrameW * 0.5f, FR = CX + FrameW * 0.5f;
@@ -226,6 +226,9 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 	// 실제 거리계 카메라처럼 프레임선 바깥도 조금 보이게 창을 넓힌다
 	const float Pad = 26.0f * S;
 	const float WL = FL - Pad, WR = FR + Pad, WT = FT - Pad, WB = FB + Pad;
+	// 아래 글자들은 3:2 프레임 폭에 고정해서, 하프 프레임으로 좁아져도 가운데 거리계와 겹치지 않게 한다
+	const float BandL = CX - FrameH * FPhotoCameraState::FilmAspect * 0.5f - Pad;
+	const float BandR = CX + FrameH * FPhotoCameraState::FilmAspect * 0.5f + Pad;
 
 	const FLinearColor Mask = WithOpacity(MaskColor, Opacity);
 	DrawList.AddRect({ R.X, R.Y, R.W, WT - R.Y }, Mask);
@@ -370,7 +373,7 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 	{
 		const FString Counter = "No. " + std::to_string(Photo->GetShotCount());
 		const float BandH = R.Y + R.H - WB;
-		DrawList.AddText({ WR - 300.0f * S, WB, 300.0f * S, BandH }, Counter, *Font, 20.0f * S, Label, 2);
+		DrawList.AddText({ BandR - 300.0f * S, WB, 300.0f * S, BandH }, Counter, *Font, 20.0f * S, Label, 2);
 	}
 
 	// ---------- 셔터 막 ----------
@@ -388,8 +391,8 @@ void UViewfinderWidget::Paint(FUIDrawList& DrawList, float ParentOpacity) const
 	if (Font)
 	{
 		const FString Info = "ISO " + std::to_string(static_cast<int32>(State.ISO)) + "   " +
-			std::to_string(static_cast<int32>(std::lround(State.FocalLength))) + "mm";
+			std::to_string(static_cast<int32>(std::lround(State.FocalLength))) + "mm" + (State.bHalfFrame ? "   HALF" : "");
 		const float BandH = R.Y + R.H - WB;
-		DrawList.AddText({ WL, WB, 300.0f * S, BandH }, Info, *Font, 20.0f * S, Label, 0);
+		DrawList.AddText({ BandL, WB, 300.0f * S, BandH }, Info, *Font, 20.0f * S, Label, 0);
 	}
 }

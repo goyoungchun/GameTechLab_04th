@@ -27,6 +27,7 @@
 #include "Core/Async/TaskPool.h"
 #include "Tasks/Tasks.h"
 #include "Physics/PhysicsCore.h"
+#include "Clothing/ClothCore.h"
 
 #include "Render/RealtimeGPUProfiler.h"
 
@@ -207,6 +208,11 @@ bool FEngineLoop::Init()
 		KRS_LOG(Error, "[Physics] PhysX init failed. Physics disabled.");
 	}
 
+	if (!FClothCore::Get().Init())
+	{
+		KRS_LOG(Error, "[Cloth] NvCloth init failed. Cloth simulation disabled.");
+	}
+
 	GEngine = NewObject<UEngine>(nullptr, PendingEngineClass);
 	if (!GEngine)
 	{
@@ -321,6 +327,7 @@ void FEngineLoop::Exit()
 	FRenderResourceManager::Shutdown();
 
 	DestroyAllObjectsExceptEngine();
+	FClothCore::Get().Shutdown();
 	FPhysicsCore::Get().Shutdown();
 	delete GEngine;
 	GEngine = nullptr;

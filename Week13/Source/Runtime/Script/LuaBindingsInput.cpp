@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h"
 #include "Input/InputSystem.h"
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Camera/PlayerCameraManager.h"
@@ -183,19 +184,17 @@ namespace LuaBindingsDetail
 			{
 				AActor* Owner = OwnerFromEnv(Env);
 				UWorld* World = Owner ? Owner->GetWorld() : nullptr;
+				FPhysScene* PhysicsScene = World ? World->GetPhysicsScene() : nullptr;
 
-				if (!World || Direction.Dot(Direction) <= 0.0000001f)
+				if (!PhysicsScene || !PhysicsScene->IsValid() || Direction.Dot(Direction) <= 0.0000001f)
 				{
 					return sol::nullopt;
 				}
 
-				FRay Ray{
-					Origin,
-					Direction.Normalized()
-				};
-
+				// 물리 바디가 있는 것만 맞는다 (트리거는 지나친다). 레이 길이는 1km로 자른다.
+				constexpr float TraceDistance = 1000.0f;
 				FHitResult Hit;
-				if (!World->LineTraceSingle(Ray, Hit))
+				if (!PhysicsScene->RaycastSingle(Origin, Origin + Direction.Normalized() * TraceDistance, Hit))
 				{
 					return sol::nullopt;
 				}

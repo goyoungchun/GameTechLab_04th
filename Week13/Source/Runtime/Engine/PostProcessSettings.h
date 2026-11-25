@@ -71,7 +71,7 @@ struct FPostProcessSettings
 	bool bOverride_AutoExposureMinEV100 = false;
 	// 이보다 더 밝히지 않는다. 아주 어두운 곳이 회색으로 떠 보이지 않게 막는다
 	UPROPERTY(EditAnywhere, meta=(ClampMin=-10, ClampMax=24, Delta=0.1))
-	float AutoExposureMinEV100 = 11.0f;
+	float AutoExposureMinEV100 = 13.0f;
 	UPROPERTY(EditAnywhere)
 	bool bOverride_AutoExposureMaxEV100 = false;
 	// 이보다 더 어둡게 하지 않는다
@@ -99,8 +99,9 @@ struct FPostProcessSettings
 	// 조리개·셔터·ISO를 ISO 100 기준 노출값(EV100)으로 바꾼다. 클수록 빛을 적게 받는다
 	float GetCameraEV100() const;
 	static float ComputeEV100(float Fstop, float ShutterSpeed, float ISO);
-	// 노출계: 측정한 평균 휘도(노출 전 HDR)가 중간 회색으로 찍히려면 필요한 EV100
-	static float GetMeteredEV100(float AverageLuminance);
+	// 노출계: 측정한 평균 휘도(노출 전 HDR)가 중간 회색으로 찍히려면 필요한 EV100.
+	// DisplayGamma는 톤맵 패스가 실제로 거는 감마(보정을 껐으면 1)
+	static float GetMeteredEV100(float AverageLuminance, float DisplayGamma = 1.0f);
 	// 톤매핑 전에 곱할 배율. Sunny 16(f/16, 1/200초, ISO 200)에서 1이 되도록 맞췄다
 	float GetPhysicalCameraExposureScale() const;
 	// 어떤 EV100이든 톤매핑 배율로 바꾼다. 물리 노출과 자동 노출이 같은 기준점을 쓰게 한다

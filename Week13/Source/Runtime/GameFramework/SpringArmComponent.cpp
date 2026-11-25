@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "Engine/World.h"
+#include "Physics/PhysScene.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 
@@ -93,16 +94,17 @@ void USpringArmComponent::UpdateDesiredArmLocation(
 	FVector ResultLoc = DesiredLoc;
 	bool bCollisionHit = false;
 
-	if (bDoTrace && TargetArmLength > 0.0f)
+	FPhysScene* PhysicsScene = GetWorld() ? GetWorld()->GetPhysicsScene() : nullptr;
+	if (bDoTrace && TargetArmLength > 0.0f && PhysicsScene && PhysicsScene->IsValid())
 	{
-		const FVector ToCamera = DesiredLoc - ArmOrigin;
-		const float Len = ToCamera.Size();
+		// 자기 액터(캐릭터 캡슐 등)는 제외하고, 트리거가 아닌 모든 바디에 막힌다.
+		FCollisionQueryParams Params;
+		Params.IgnoreActor = GetOwner();
 
 		FHitResult Hit;
-		if (Len > 1.e-4f &&
-			GetWorld()->SweepSingle(FRay(ArmOrigin, ToCamera / Len), Len, ProbeSize, Hit, GetOwner(), true))
+		if (PhysicsScene->SweepSingle(FCollisionShape::MakeSphere(ProbeSize), FQuat::Identity(), ArmOrigin, DesiredLoc, Hit, Params))
 		{
-			ResultLoc = Hit.Location;
+			ResultLoc = Hit.Location;   // 막힌 지점의 구 중심
 			bCollisionHit = true;
 		}
 	}

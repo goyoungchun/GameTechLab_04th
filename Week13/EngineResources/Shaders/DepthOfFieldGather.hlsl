@@ -37,6 +37,18 @@ struct PSOutput
     float4 Near : SV_Target1; // RGB=near 블러 색, A=near가 이 픽셀을 덮는 비율(0~1)
 };
 
+static const float HighlightGain = 8.f; // k: 가장 밝을 때 몇 배까지 키울지
+static const float HighlightPower = 4.f; // p: 클수록 "정말 밝은 것만" 키운다
+
+// 밝은 이웃일수록 색 평균에서 더 큰 몫을 받아 보케 원판이 또렷해진다. 반환값은 1 이상
+float GetHighlightWeight(float3 Color)
+{
+    float Luma = dot(Color, float3(0.299, 0.587, 0.114));
+    // HDR 밝기는 끝이 없어서 pow가 폭주하므로, 0~1로 눌러 담아 가중치가 최대 1+k에서 멈추게 한다
+    float Compressed = Luma / (1 + Luma);
+    return 1 + HighlightGain * pow(Compressed, HighlightPower);
+}
+
 PSOutput mainPS(VSOutput Input)
 {
     static const float MaxCoCRadiusPx = 32.f;
@@ -71,17 +83,13 @@ PSOutput mainPS(VSOutput Input)
     }
     GatherRadiusHalfPx = DilatedRadiusHalfPx;
     
-    static const float HighlightGain = 8.f; // k: 가장 밝을 때 몇 배까지 키울지
-    static const float HighlightPower = 4.f; // p: 클수록 "정말 밝은 것만" 키운다
-
     float3 FarColorSum = 0, NearColorSum = 0;
     float FarWeightSum = 0, NearWeightSum = 0; // 닿은 개수: NearCoverage와 >0 검사용
     float FarColorWeightSum = 0, NearColorWeightSum = 0; // 색 평균 분모: 하이라이트 가중치 포함
     float MaxNearCoCPx = 0; // near가 얼마나 흐린지: 살짝 앞인 픽셀은 덮지 않으려고 쓴다
 
     // 내가 광점일 때 주변 어두운 색에 끌려가지 않게 가운데도 같은 가중치를 준다
-    float CenterLuma = dot(CenterSample.rgb, float3(0.299, 0.587, 0.114));
-    float CenterHighlight = 1 + HighlightGain * pow(CenterLuma, HighlightPower);
+    float CenterHighlight = GetHighlightWeight(CenterSample.rgb);
     if (CenterSample.a < 0)
     {
         NearColorSum = CenterSample.rgb * CenterHighlight;
@@ -113,8 +121,7 @@ PSOutput mainPS(VSOutput Input)
         float ReachWeight = saturate(NeighborCoCHalfPx - SampleDistHalfPx + 1.f); // 이웃 원판이 나까지 닿는가
         
         // Neighbor.rgb 밝기로 하이라이트 가중치를 구해 아래 색 누적에 반영한다
-        float Luma = dot(Neighbor.rgb, float3(0.299, 0.587, 0.114));
-        float HighlightWeight = 1 + HighlightGain * pow(Luma, HighlightPower);
+        float HighlightWeight = GetHighlightWeight(Neighbor.rgb);
         float ColorWeight = ReachWeight * HighlightWeight; // 안 닿으면 아무리 밝아도 0
 
         // Neighbor.a 부호로 far/near를 나눠 각각 누적한다
