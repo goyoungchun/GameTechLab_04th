@@ -29,6 +29,7 @@
 #include "Physics/PhysXIncludes.h"
 #include "Engine/World.h"
 #include "Physics/PhysicsLock.h"
+#include "Physics/PhysicsDebugDraw.h"
 
 namespace
 {
@@ -310,6 +311,47 @@ void USkeletalMeshComponent::SetSimulatePhysics(bool bSimulate)
 	}
 }
 
+void USkeletalMeshComponent::DrawPhysicsDebug(FLineBatcher* LineBatcher) const
+{
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();
+	if (!LineBatcher || !PhysAsset || Bodies.IsEmpty())
+		return;
+
+	const FVector4 KinematicColor(0.3f, 0.7f, 1.0f, 1.0f);
+	const FVector4 SimulatingColor(1.0f, 0.55f, 0.1f, 1.0f);
+
+	for (const FBodyInstance* Body : Bodies)
+	{
+		if (!Body || !Body->IsValidBodyInstance())
+			continue;
+		const int32 Index = Body->InstanceBodyIndex;
+		if (Index < 0 || Index >= PhysAsset->BodySetup.Num() || !PhysAsset->BodySetup[Index])
+			continue;
+
+		// 본 행렬이 아니라 PhysX 액터의 실제 포즈로 그린다 → 바디와 메시가 어긋나면 바로 보인다.
+		// GetWorldTransform에 Scale3D가 들어 있어 형상 크기도 맞는다
+		const FMatrix BodyToWorld = Body->GetWorldTransform().GetLocalMatrix();
+		const FVector4& Color = Body->IsSimulatingPhysics() ? SimulatingColor : KinematicColor;
+		DrawAggGeomWire(*LineBatcher, BodyToWorld, PhysAsset->BodySetup[Index]->AggGeom, Color);
+	}
+
+	const FVector4 JointColor(1.0f, 1.0f, 0.2f, 1.0f);
+	const FVector4 StretchedColor(1.0f, 0.15f, 0.15f, 1.0f);
+	constexpr float StretchThreshold = 0.01f;   // m. 이보다 벌어지면 조인트가 늘어난 것으로 본다
+
+	for (const FConstraintInstance* CI : Constraints)
+	{
+		FVector ParentPos, ChildPos;
+		if (!CI || !CI->GetJointWorldPositions(ParentPos, ChildPos))
+			continue;
+
+		const bool bStretched = (ChildPos - ParentPos).Size() > StretchThreshold;
+		LineBatcher->AddSphere(ParentPos, 0.02f, bStretched ? StretchedColor : JointColor, 6);
+		if (bStretched)
+			LineBatcher->AddLine(ParentPos, ChildPos, StretchedColor);
+	}
+}
+
 void USkeletalMeshComponent::SerializeSingleAnimation(FStructuredArchive::FRecord& Record)
 {
 	// 디테일 패널에서 고른 단일 애니메이션(SingleNodeInstance의 에셋)은 AnimInstance 객체가 아니라
@@ -538,6 +580,19 @@ void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher)
 		const USkeletalMeshComponent* Mesh = *It;
 		if (!Mesh || Mesh->GetWorld() != World || !Mesh->IsRegistered()) continue;
 		Mesh->DrawRootDebug(LineBatcher);
+	}
+}
+
+void DrawPhysicsBodiesDebug(UWorld* World, FLineBatcher* LineBatcher)
+{
+	if (!World || !LineBatcher)
+		return;
+	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
+	{
+		USkeletalMeshComponent* Comp = *It;
+		if (!Comp || Comp->GetWorld() != World || !Comp->IsRegistered())
+			continue;
+		Comp->DrawPhysicsDebug(LineBatcher);
 	}
 }
 

@@ -2214,4 +2214,14 @@ void UEditorEngine::DrawPIEDebug(UWorld* World, const FMatrix& ViewProjection)
 		LineBatcher->OnRender(ViewProjection);
 		LineBatcher->SetDepthTest(true);
 	}
+
+	// 바디는 메시 안에 있어 가려지므로 깊이 테스트 없이 그린다
+	if (Settings.ShowFlags.PhysicsBodies)
+	{
+		LineBatcher->BeginFrame();
+		DrawPhysicsBodiesDebug(World, LineBatcher);
+		LineBatcher->SetDepthTest(false);
+		LineBatcher->OnRender(ViewProjection);
+		LineBatcher->SetDepthTest(true);
+	}
 }

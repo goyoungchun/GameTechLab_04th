@@ -142,3 +142,23 @@ void FConstraintInstance::CopyConstraintParamsFrom(const FConstraintInstance& Fr
 	TwistLimitDegrees = From.TwistLimitDegrees;
 	// ConstraintData는 복사하지 않는다 — 같은 조인트를 두 번 release하게 된다
 }
+
+bool FConstraintInstance::GetJointWorldPositions(FVector& OutParent, FVector& OutChild) const
+{
+	if (!ConstraintData)
+		return false;
+
+	physx::PxRigidActor* Actor0 = nullptr;   // 부모
+	physx::PxRigidActor* Actor1 = nullptr;   // 자식
+	ConstraintData->getActors(Actor0, Actor1);
+	if (!Actor0 || !Actor1)
+		return false;
+
+	SCOPED_SCENE_READ_LOCK(Actor0->getScene());
+	// 액터 월드 포즈 × 조인트 로컬 프레임 = 조인트 프레임의 월드 포즈
+	const physx::PxTransform World0 = Actor0->getGlobalPose() * ConstraintData->getLocalPose(physx::PxJointActorIndex::eACTOR0);
+	const physx::PxTransform World1 = Actor1->getGlobalPose() * ConstraintData->getLocalPose(physx::PxJointActorIndex::eACTOR1);
+	OutParent = P2KVector(World0.p);
+	OutChild = P2KVector(World1.p);
+	return true;
+}
