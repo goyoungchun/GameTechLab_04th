@@ -920,6 +920,34 @@ void USkeletalMeshComponent::ApplyPhysicsToBonePose()
 
 	const FMatrix InvComponentWorld = GetWorldMatrix().Inverse();
 
+	// 0. 루트 바디: 조상 중에 바디가 없는 첫 바디. 그 위의 바디 없는 본(루트 사슬)은 이 바디를 강체처럼 따라가야 한다.
+	//    그대로 두면 루트 사슬 본은 랙돌이 쓰러져도 원래 자리에 남아, 거기 스키닝된 정점이 몸까지 길게 늘어난다
+	//    (UE에서는 컴포넌트가 루트 바디를 따라가 같은 효과가 난다)
+	//    랙돌이 꺼진 채 PhysicsType=Simulated 바디만 도는 경우(머리카락 등)는 애니메이션이 몸을 정하므로 옮기지 않는다
+	int32 RootBodyBone = -1;
+	for (int32 i = 0; i < Bones.Num() && RootBodyBone < 0 && IsRagdollSimulating(); ++i)
+	{
+		if (BoneBodies[i])
+			RootBodyBone = i;
+	}
+	bool bMoveRootChain = false;
+	FMatrix RootChainDelta = FMatrix::Identity;
+	if (RootBodyBone >= 0)
+	{
+		// 애니메이션 포즈의 루트 바디 본 행렬 → 물리 결과로 옮기는 변환 D (AnimCS · D = PhysCS)
+		TArray<FMatrix> AnimCS;
+		AnimCS.SetNum(RootBodyBone + 1);
+		for (int32 i = 0; i <= RootBodyBone; ++i)
+		{
+			const FMatrix Local = BoneSpaceTransforms[i].GetLocalMatrix();
+			const int32 Parent = Bones[i].ParentIndex;
+			AnimCS[i] = Parent < 0 ? Local : Local * AnimCS[Parent];
+		}
+		const FMatrix PhysCS = BoneBodies[RootBodyBone]->GetWorldTransform().GetLocalMatrix() * InvComponentWorld;
+		RootChainDelta = AnimCS[RootBodyBone].Inverse() * PhysCS;
+		bMoveRootChain = true;
+	}
+
 	// 1. 컴포넌트 공간 행렬을 다시 쌓는다. 부모가 먼저 오므로 앞에서부터 돌면 된다
 	TArray<FMatrix> NewCS;
 	NewCS.SetNum(Bones.Num());
@@ -933,18 +961,21 @@ void USkeletalMeshComponent::ApplyPhysicsToBonePose()
 		}
 		else
 		{
-			// 바디가 없는 본: 기존 로컬 포즈 그대로 부모를 따라간다
+			// 바디가 없는 본: 기존 로컬 포즈 그대로 부모를 따라간다. 최상위 본은 루트 바디를 따라 옮긴다
 			const FMatrix Local = BoneSpaceTransforms[i].GetLocalMatrix();
-			NewCS[i] = Parent < 0 ? Local : Local * NewCS[Parent];
+			if (Parent >= 0)
+				NewCS[i] = Local * NewCS[Parent];
+			else
+				NewCS[i] = bMoveRootChain ? Local * RootChainDelta : Local;
 		}
 	}
 
-	// 2. 바디가 있는 본만 부모 기준 로컬로 되돌린다 (없는 본은 로컬이 바뀌지 않았다)
+	// 2. 바디가 있는 본과 옮긴 최상위 본만 부모 기준 로컬로 되돌린다 (나머지는 로컬이 바뀌지 않았다)
 	for (int32 i = 0; i < Bones.Num(); ++i)
 	{
-		if (!BoneBodies[i])
-			continue;
 		const int32 Parent = Bones[i].ParentIndex;
+		if (!BoneBodies[i] && !(Parent < 0 && bMoveRootChain))
+			continue;
 		const FMatrix Local = Parent < 0 ? NewCS[i] : NewCS[i] * NewCS[Parent].Inverse();
 		BoneSpaceTransforms[i] = MatrixToTransform(Local);
 	}

@@ -1,0 +1,826 @@
+{
+    "Bodies": [
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": 1.0872220993041992,
+                            "Y": 0.0,
+                            "Z": 10.237992286682129
+                        },
+                        "Length": 12.377185821533203,
+                        "Radius": 18.191375732421875,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "waist",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -1.2369937896728516,
+                            "Y": -7.62939453125e-06,
+                            "Z": 19.345138549804688
+                        },
+                        "Length": 12.472000122070313,
+                        "Radius": 27.766040802001953,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "chest",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -2.2735700607299805,
+                            "Y": -1.9073486328125e-05,
+                            "Z": 20.73809051513672
+                        },
+                        "Length": 23.101303100585938,
+                        "Radius": 16.96103286743164,
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "head",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -0.71990966796875,
+                            "Y": -35.60218811035156,
+                            "Z": 0.18172073364257813
+                        },
+                        "Length": 24.912799835205078,
+                        "Radius": 18.92706871032715,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "L_collar",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -1.4957313537597656,
+                            "Y": -31.810707092285156,
+                            "Z": 0.1949024200439453
+                        },
+                        "Length": 34.732669830322266,
+                        "Radius": 15.139463424682617,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "L_elbow",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -0.7199115753173828,
+                            "Y": 35.60218811035156,
+                            "Z": 0.18172073364257813
+                        },
+                        "Length": 24.912803649902344,
+                        "Radius": 18.92706871032715,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "R_collar",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -1.4957356452941895,
+                            "Y": 31.810699462890625,
+                            "Z": 0.1948838233947754
+                        },
+                        "Length": 34.7326774597168,
+                        "Radius": 15.139459609985352,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.7071066498756409,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "R_elbow",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": 1.6021461486816406,
+                            "Y": 0.0,
+                            "Z": -32.861209869384766
+                        },
+                        "Length": 18.584129333496094,
+                        "Radius": 28.37860870361328,
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "hip",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -1.413255214691162,
+                            "Y": -0.06681203842163086,
+                            "Z": -22.86278533935547
+                        },
+                        "Length": 24.284103393554688,
+                        "Radius": 13.371475219726563,
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "L_knee",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": 11.117755889892578,
+                            "Y": -1.250500202178955,
+                            "Z": -10.445913314819336
+                        },
+                        "Length": 24.074840545654297,
+                        "Radius": 10.557851791381836,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.0,
+                            "Y": 0.7071066498756409,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "L_ankle",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": -1.4132542610168457,
+                            "Y": 0.06681203842163086,
+                            "Z": -22.86278533935547
+                        },
+                        "Length": 24.284103393554688,
+                        "Radius": 13.371475219726563,
+                        "Rotation": {
+                            "W": 1.0,
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "R_knee",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        },
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": 11.117755889892578,
+                            "Y": 1.250370979309082,
+                            "Z": -10.445924758911133
+                        },
+                        "Length": 24.074874877929688,
+                        "Radius": 10.55783462524414,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.0,
+                            "Y": 0.7071066498756409,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "R_ankle",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        }
+    ],
+    "CollisionDisable": [
+        {
+            "A": "chest",
+            "B": "waist"
+        },
+        {
+            "A": "head",
+            "B": "chest"
+        },
+        {
+            "A": "L_collar",
+            "B": "chest"
+        },
+        {
+            "A": "L_elbow",
+            "B": "L_collar"
+        },
+        {
+            "A": "R_collar",
+            "B": "chest"
+        },
+        {
+            "A": "R_elbow",
+            "B": "R_collar"
+        },
+        {
+            "A": "L_knee",
+            "B": "hip"
+        },
+        {
+            "A": "L_ankle",
+            "B": "L_knee"
+        },
+        {
+            "A": "R_knee",
+            "B": "hip"
+        },
+        {
+            "A": "R_ankle",
+            "B": "R_knee"
+        }
+    ],
+    "Constraints": [
+        {
+            "Bone1": "chest",
+            "Bone2": "waist",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": 4.02587465941906e-06,
+                        "Y": 8.059682841121685e-06,
+                        "Z": 22.514297485351563
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": -5.6843415472676226e-14,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": -5.6843412084544437e-14,
+                        "Z": 2.8421706042272218e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "head",
+            "Bone2": "chest",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": 0.407369464635849,
+                        "Y": 1.0370674317528028e-05,
+                        "Z": 47.958656311035156
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 1.0
+                    },
+                    "PriAxis2": {
+                        "X": -2.8421697571942746e-14,
+                        "Y": 6.692886398091194e-14,
+                        "Z": 1.0
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": -2.352158645635427e-07,
+                        "Z": 2.8421712818535796e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "L_collar",
+            "Bone2": "chest",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -2.4768760204315186,
+                        "Y": -5.644244194030762,
+                        "Z": 26.394573211669922
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": 1.8702757120792057e-09,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": 1.8702759341238107e-09,
+                        "Z": 2.8421706042272218e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "L_elbow",
+            "Bone2": "L_collar",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -0.25320014357566833,
+                        "Y": -62.44340133666992,
+                        "Z": 1.2105349014746025e-05
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": -2.931840603626057e-10,
+                        "Y": -0.9999999403953552,
+                        "Z": 8.344647994817933e-07
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": -2.931840881181813e-10,
+                        "Z": 4.302010204776559e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "R_collar",
+            "Bone2": "chest",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -2.4768762588500977,
+                        "Y": 5.644227981567383,
+                        "Z": 26.394573211669922
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": 1.8702757120792057e-09,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": 1.8702759341238107e-09,
+                        "Z": 2.8421706042272218e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "R_elbow",
+            "Bone2": "R_collar",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -0.25320661067962646,
+                        "Y": 62.44340133666992,
+                        "Z": 1.2105349014746025e-05
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": -0.9999999403953552,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": -2.932551146361817e-10,
+                        "Y": -0.9999999403953552,
+                        "Z": 8.344647994817933e-07
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": -2.932551423917573e-10,
+                        "Z": 4.302011898842453e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "L_knee",
+            "Bone2": "hip",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -1.5735310316085815,
+                        "Y": -14.477381706237793,
+                        "Z": -69.03451538085938
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 1.0
+                    },
+                    "PriAxis2": {
+                        "X": -2.8421706042272218e-14,
+                        "Y": 0.0,
+                        "Z": 1.0
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 2.8421706042272218e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "L_ankle",
+            "Bone2": "L_knee",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -3.670316696166992,
+                        "Y": 0.0,
+                        "Z": -47.297569274902344
+                    },
+                    "PriAxis1": {
+                        "X": 0.9999999403953552,
+                        "Y": 0.0,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": 0.9999999403953552,
+                        "Y": 0.0,
+                        "Z": 3.576278970740532e-07
+                    },
+                    "SecAxis1": {
+                        "X": 3.5762786865234375e-07,
+                        "Y": 0.0,
+                        "Z": -0.9999999403953552
+                    },
+                    "SecAxis2": {
+                        "X": 3.576278970740532e-07,
+                        "Y": 0.0,
+                        "Z": -0.9999999403953552
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "R_knee",
+            "Bone2": "hip",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -1.573531150817871,
+                        "Y": 14.477381706237793,
+                        "Z": -69.03451538085938
+                    },
+                    "PriAxis1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 1.0
+                    },
+                    "PriAxis2": {
+                        "X": -2.8421706042272218e-14,
+                        "Y": 6.708536517637843e-15,
+                        "Z": 1.0
+                    },
+                    "SecAxis1": {
+                        "X": 1.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "SecAxis2": {
+                        "X": 1.0,
+                        "Y": -2.2615692429894807e-08,
+                        "Z": 2.8421706042272218e-14
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        },
+        {
+            "Bone1": "R_ankle",
+            "Bone2": "R_knee",
+            "Properties": {
+                "DefaultInstance": {
+                    "Pos1": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "Z": 0.0
+                    },
+                    "Pos2": {
+                        "X": -3.6703147888183594,
+                        "Y": 0.00012907605560030788,
+                        "Z": -47.297576904296875
+                    },
+                    "PriAxis1": {
+                        "X": 0.9999999403953552,
+                        "Y": 0.0,
+                        "Z": 3.5762786865234375e-07
+                    },
+                    "PriAxis2": {
+                        "X": 0.9999999403953552,
+                        "Y": 2.2615688877181128e-08,
+                        "Z": 3.576278970740532e-07
+                    },
+                    "SecAxis1": {
+                        "X": 3.5762786865234375e-07,
+                        "Y": 0.0,
+                        "Z": -0.9999999403953552
+                    },
+                    "SecAxis2": {
+                        "X": 3.576278970740532e-07,
+                        "Y": 1.479653564658099e-14,
+                        "Z": -0.9999999403953552
+                    },
+                    "Swing1LimitDegrees": 45.0,
+                    "Swing1Motion": "Limited",
+                    "Swing2LimitDegrees": 45.0,
+                    "Swing2Motion": "Limited",
+                    "TwistLimitDegrees": 45.0,
+                    "TwistMotion": "Limited"
+                }
+            }
+        }
+    ],
+    "Properties": {},
+    "Version": 3
+}
