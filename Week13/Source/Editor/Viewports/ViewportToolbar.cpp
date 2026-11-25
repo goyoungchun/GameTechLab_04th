@@ -16,6 +16,7 @@
 #include "GameFramework/Actor/SpotLightActor.h"
 #include "GameFramework/Actor/AmbientLightActor.h"
 #include "GameFramework/Actor/DecalActor.h"
+#include "GameFramework/Actor/MonsterTruckPawn.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/Actor/KurisuCharacter.h"
 #include "Core/StatOverlay.h"
@@ -481,6 +482,7 @@ void FViewportsPanel::DrawSpawnMenu(FEditorViewportClient& Client)
     Spawn("Camera", ACameraActor::StaticClass());
     Spawn("Character", ACharacter::StaticClass());
     Spawn("Kurisu Character", AKurisuCharacter::StaticClass());
+    Spawn("Monster Truck", AMonsterTruckPawn::StaticClass());
     Spawn("Text", ATextRenderActor::StaticClass());
     ImGui::SeparatorText("Meshes");
     Spawn("Skeletal Mesh", ASkeletalMeshActor::StaticClass());
