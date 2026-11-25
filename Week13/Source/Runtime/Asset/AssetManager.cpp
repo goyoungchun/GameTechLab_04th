@@ -954,6 +954,44 @@ namespace
 		return Out.empty() ? Fallback : Out;
 	}
 
+	// 디퓨즈 텍스처에 클립 값보다 낮은 알파 픽셀이 있으면 컷아웃(Masked) 텍스처로 본다.
+	// 눈꺼풀·속눈썹·머리카락 카드처럼 투명 영역의 RGB가 검정인 텍스처를 Opaque로 그리면 검게 보이기 때문.
+	// 새 .mat을 처음 만들 때만 호출되므로 파일을 한 번 더 디코드하는 비용은 감수한다.
+	bool TextureHasCutoutAlpha(const FString& TexturePath, float ClipValue)
+	{
+		const FString Resolved = FAssetUtils::ResolveAssetFilePath(TexturePath);
+		if (Resolved.empty())
+		{
+			return false;
+		}
+
+		// HDR/DDS는 8비트 RGBA가 아니므로 검사하지 않는다.
+		FString Ext = FPaths::ToUtf8(FPaths::FromUtf8(Resolved).extension());
+		for (char& C : Ext) C = static_cast<char>(std::tolower(static_cast<unsigned char>(C)));
+		if (Ext == ".hdr" || Ext == ".dds")
+		{
+			return false;
+		}
+
+		const FImageData Data = ImageLoader::Load(Resolved);
+		if (!Data.IsValid() || Data.BytesPerPixel != 4)
+		{
+			return false;
+		}
+
+		const uint8 Threshold = static_cast<uint8>(std::clamp(ClipValue, 0.0f, 1.0f) * 255.0f);
+		const uint8* Pixels = Data.Pixels.GetData();
+		const size_t PixelCount = static_cast<size_t>(Data.Width) * Data.Height;
+		for (size_t i = 0; i < PixelCount; ++i)
+		{
+			if (Pixels[i * 4 + 3] < Threshold)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	FString ExtractMeshStemForMaterial(const fs::path& MeshPath)
 	{
 		FString FileName = FPaths::ToUtf8(MeshPath.filename());
@@ -1069,6 +1107,14 @@ namespace
 					if (UTexture2D* Texture = UAssetManager::Get().LoadTexture(Slot.DiffuseTexturePath))
 					{
 						Material->SetBaseColorTexture(Texture);
+
+						if (Material->BlendMode == EMaterialBlendMode::Opaque &&
+							TextureHasCutoutAlpha(Slot.DiffuseTexturePath, Material->OpacityMaskClipValue))
+						{
+							Material->BlendMode = EMaterialBlendMode::Masked;
+							Material->SyncLegacyStates();
+							KRS_LOG(Info, "Diffuse texture has alpha, using Masked blend mode: {}", MatKey);
+						}
 					}
 				}
 				if (!Slot.NormalTexturePath.empty())
