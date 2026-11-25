@@ -21,6 +21,30 @@
 #include "Clothing/ClothingAsset.h"
 #include "Clothing/ClothingSimulationNv.h"
 #include "Render/SkeletalMeshObject.h"
+#include "Physics/PhysicsAsset.h"
+#include "Physics/BodyInstance.h"
+#include "Physics/ConstraintInstance.h"
+#include "Physics/PhysScene.h"
+#include "Physics/PhysXConversions.h"
+#include "Physics/PhysXIncludes.h"
+#include "Engine/World.h"
+#include "Physics/PhysicsLock.h"
+#include "Physics/PhysicsDebugDraw.h"
+#include "Physics/PhysicsStats.h"
+
+namespace
+{
+	FTransform MatrixToTransform(const FMatrix& M)
+	{
+		FVector X(M[0][0], M[0][1], M[0][2]);
+		FVector Y(M[1][0], M[1][1], M[1][2]);
+		FVector Z(M[2][0], M[2][1], M[2][2]);
+		const FVector Scale(X.Size(), Y.Size(), Z.Size());
+		X = X.GetSafeNormal(); Y = Y.GetSafeNormal(); Z = Z.GetSafeNormal();
+		const physx::PxQuat Q(physx::PxMat33(K2PVector(X), K2PVector(Y), K2PVector(Z)));
+		return FTransform(P2KQuat(Q.getNormalized()), FVector(M[3][0], M[3][1], M[3][2]), Scale);
+	}
+}
 
 void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* InInstance)
 {
@@ -81,7 +105,13 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         ReloadAnimBlueprint();
     }
 
-	if (AnimInstance && GetSkeletalMesh())
+	const bool bRagdoll = IsRagdollSimulating();
+
+	if (bRagdoll)
+	{
+		ApplyPhysicsToBonePose();
+	}
+	else if (AnimInstance && GetSkeletalMesh())
 	{
         bUpdatingAnimation = true;
 		if (auto* Instance = Cast<UAnimSingleNodeInstance>(AnimInstance))
@@ -107,6 +137,10 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         bUpdatingAnimation = false;
 	}
 	Super::TickComponent(DeltaTime);
+	if (!bRagdoll)
+	{
+		UpdateKinematicBonesToAnim();
+	}
 	UpdateClothingSimulation(DeltaTime);
 }
 
@@ -240,6 +274,85 @@ void USkeletalMeshComponent::Serialize(FStructuredArchive::FRecord Record)
     }
 }
 
+bool USkeletalMeshComponent::CanBodiesCollide(const FBodyInstance& A, const FBodyInstance& B) const
+{
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();   // 바디가 있으면 이미 로드돼 있다 (지연 로드 안 일어남)
+	if (!PhysAsset)
+		return false;
+
+	const int32 IA = A.InstanceBodyIndex;
+	const int32 IB = B.InstanceBodyIndex;
+	const int32 Num = PhysAsset->BodySetup.Num();
+	if (IA < 0 || IB < 0 || IA >= Num || IB >= Num)
+		return false;
+
+	return PhysAsset->IsCollisionEnabled(PhysAsset->BodySetup[IA]->BoneName, PhysAsset->BodySetup[IB]->BoneName);
+}
+
+bool USkeletalMeshComponent::IsRagdollSimulating() const
+{
+	return BodyInstance.bSimulatePhysics && !Bodies.IsEmpty();
+}
+
+void USkeletalMeshComponent::SetSimulatePhysics(bool bSimulate)
+{
+	BodyInstance.bSimulatePhysics = bSimulate;
+
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (Body)
+		{
+			Body->SetSimulatePhysics(bSimulate);
+		}
+	}
+
+	if (!bSimulate)
+	{
+		bTeleportBodiesNextUpdate = true;
+	}
+}
+
+void USkeletalMeshComponent::DrawPhysicsDebug(FLineBatcher* LineBatcher) const
+{
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();
+	if (!LineBatcher || !PhysAsset || Bodies.IsEmpty())
+		return;
+
+	const FVector4 KinematicColor(0.3f, 0.7f, 1.0f, 1.0f);
+	const FVector4 SimulatingColor(1.0f, 0.55f, 0.1f, 1.0f);
+
+	for (const FBodyInstance* Body : Bodies)
+	{
+		if (!Body || !Body->IsValidBodyInstance())
+			continue;
+		const int32 Index = Body->InstanceBodyIndex;
+		if (Index < 0 || Index >= PhysAsset->BodySetup.Num() || !PhysAsset->BodySetup[Index])
+			continue;
+
+		// 본 행렬이 아니라 PhysX 액터의 실제 포즈로 그린다 → 바디와 메시가 어긋나면 바로 보인다.
+		// GetWorldTransform에 Scale3D가 들어 있어 형상 크기도 맞는다
+		const FMatrix BodyToWorld = Body->GetWorldTransform().GetLocalMatrix();
+		const FVector4& Color = Body->IsSimulatingPhysics() ? SimulatingColor : KinematicColor;
+		DrawAggGeomWire(*LineBatcher, BodyToWorld, PhysAsset->BodySetup[Index]->AggGeom, Color);
+	}
+
+	const FVector4 JointColor(1.0f, 1.0f, 0.2f, 1.0f);
+	const FVector4 StretchedColor(1.0f, 0.15f, 0.15f, 1.0f);
+	constexpr float StretchThreshold = 0.01f;   // m. 이보다 벌어지면 조인트가 늘어난 것으로 본다
+
+	for (const FConstraintInstance* CI : Constraints)
+	{
+		FVector ParentPos, ChildPos;
+		if (!CI || !CI->GetJointWorldPositions(ParentPos, ChildPos))
+			continue;
+
+		const bool bStretched = (ChildPos - ParentPos).Size() > StretchThreshold;
+		LineBatcher->AddSphere(ParentPos, 0.02f, bStretched ? StretchedColor : JointColor, 6);
+		if (bStretched)
+			LineBatcher->AddLine(ParentPos, ChildPos, StretchedColor);
+	}
+}
+
 void USkeletalMeshComponent::SerializeSingleAnimation(FStructuredArchive::FRecord& Record)
 {
 	// 디테일 패널에서 고른 단일 애니메이션(SingleNodeInstance의 에셋)은 AnimInstance 객체가 아니라
@@ -288,6 +401,25 @@ void USkeletalMeshComponent::OnSkeletalMeshChanged()
 	for (const FBoneInfo& Bone : GetBones())
 		BoneSpaceTransforms.Add(Bone.LocalBindPose);
 	CreateClothingSimulation();
+}
+bool USkeletalMeshComponent::ShouldCreatePhysicsState() const
+{
+	UWorld* World = GetWorld();
+	FPhysScene* Scene = World ? World->GetPhysicsScene() : nullptr;
+	if (BodyInstance.CollisionEnabled == ECollisionEnabled::NoCollision)
+		return false;
+	return Scene && Scene->IsValid() && GetPhysicsAsset() != nullptr;
+}
+void USkeletalMeshComponent::OnCreatePhysicsState()
+{
+	UActorComponent::OnCreatePhysicsState();
+	InstantiatePhysicsAssetBodies_Internal();
+}
+void USkeletalMeshComponent::OnDestroyPhysicsState()
+{
+	TermArticulated();
+	ClearComponentOverlaps();
+	UActorComponent::OnDestroyPhysicsState();
 }
 UAnimSingleNodeInstance* USkeletalMeshComponent::GetSingleNodeInstance() const
 {
@@ -452,12 +584,27 @@ void DrawSkeletalRootDebug(UWorld* World, FLineBatcher* LineBatcher)
 	}
 }
 
+void DrawPhysicsBodiesDebug(UWorld* World, FLineBatcher* LineBatcher)
+{
+	if (!World || !LineBatcher)
+		return;
+	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
+	{
+		USkeletalMeshComponent* Comp = *It;
+		if (!Comp || Comp->GetWorld() != World || !Comp->IsRegistered())
+			continue;
+		Comp->DrawPhysicsDebug(LineBatcher);
+	}
+}
+
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
+
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
+	TermArticulated();
 	DestroyClothingSimulation();
     if (ManagedAnimGraph)
     {
@@ -536,6 +683,27 @@ void USkeletalMeshComponent::RefreshClothingOnAllComponents(USkeletalMesh* Targe
 	}
 }
 
+UPhysicsAsset* USkeletalMeshComponent::GetPhysicsAsset() const
+{
+	USkeletalMesh* Mesh = GetSkeletalMesh();
+	return Mesh ? Mesh->GetPhysicsAsset() : nullptr;
+}
+
+int32 USkeletalMeshComponent::FindBodyIndexByBone(const FString& BoneName) const
+{
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();
+	if (!PhysAsset)
+		return -1;
+	const int32 Index = PhysAsset->FindBodyIndex(FName(BoneName));
+	return (Index >= 0 && Index < Bodies.Num() && Bodies[Index]) ? Index : -1;
+}
+
+FBodyInstance* USkeletalMeshComponent::GetBodyInstanceByBone(const FString& BoneName) const
+{
+	const int32 Index = FindBodyIndexByBone(BoneName);
+	return Index >= 0 ? Bodies[Index] : nullptr;
+}
+
 void USkeletalMeshComponent::UpdateClothingSimulation(float DeltaTime)
 {
 	FSkeletalMeshObject* MeshObj = GetMeshObject();
@@ -566,6 +734,185 @@ void USkeletalMeshComponent::UpdateClothingSimulation(float DeltaTime)
 	ClothingSimulation->Simulate(DeltaTime);
 	ClothingSimulation->GetSimulationData(ClothSimData);
 	MeshObj->UpdateClothData(&ClothSimData);
+}
+
+void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
+{
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollInit);
+	TermArticulated();
+
+	UPhysicsAsset* PhysAsset = GetPhysicsAsset();
+	USkeletalMesh* Mesh = GetSkeletalMesh();
+	FPhysScene* Scene = GetWorld()->GetPhysicsScene();
+	if (!PhysAsset || !Mesh || !Scene)
+		return;
+
+	// 바디를 지금 포즈 위치에 만들려면 본 행렬이 최신이어야 한다
+	UpdateBoneTransformsNow();
+
+	// 바디
+	Bodies.SetNum(PhysAsset->BodySetup.Num());
+	for (int32 i = 0; i < PhysAsset->BodySetup.Num(); ++i)
+	{
+		Bodies[i] = nullptr;
+		UBodySetup* Setup = PhysAsset->BodySetup[i];
+		if (!Setup)
+			continue;
+
+		// 에셋과 메시의 본 이름이 안 맞으면(다른 스켈레톤용 에셋) 건너뛴다
+		const int32 BoneIndex = Mesh->FindBoneIndex(Setup->BoneName.ToString());
+		if (BoneIndex < 0)
+		{
+			KRS_LOG(Warning, "[Physics] PhysicsAsset bone '{}' not found in mesh", Setup->BoneName.ToString());
+			continue;
+		}
+
+		FBodyInstance* Body = new FBodyInstance();
+		Body->CopyBodyInstancePropertiesFrom(BodyInstance);   // 컴포넌트의 BodyInstance = 템플릿
+		Body->InstanceBoneIndex = BoneIndex;
+		Body->InstanceBodyIndex = i;
+		Body->OwnerId = GetUUID();
+
+		Body->ObjectType = ECollisionCategory::PhysicsBody;
+		Body->CollidesWith = AllCategoriesMask & ~CategoryBit(ECollisionCategory::Pawn);
+
+		// 형상(캡슐)이 본 로컬 기준이므로 바디는 본의 월드 트랜스폼에 놓는다
+		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(BoneIndex));
+		if (!Body->InitBody(Setup, BoneWorld, this, Scene))
+		{
+			delete Body;
+			continue;
+		}
+
+		if (physx::PxRigidDynamic* Dynamic = Body->Actor->is<physx::PxRigidDynamic>())
+		{
+			SCOPED_SCENE_WRITE_LOCK(Scene->GetPxScene());
+			// 조인트 사슬은 반복이 적으면 늘어났다가 튕긴다 (기본 4, 1)
+			Dynamic->setSolverIterationCounts(8, 2);
+			// 겹친 바디를 밀어낼 때의 최대 속도(m/s). 기본값은 사실상 무한대라 겹치면 폭발한다
+			Dynamic->setMaxDepenetrationVelocity(1.0f);
+		}
+
+		Bodies[i] = Body;
+	}
+
+	// 조인트 (두 바디가 모두 있어야 하므로 바디를 전부 만든 뒤에)
+	Constraints.SetNum(PhysAsset->ConstraintSetup.Num());
+	for (int32 i = 0; i < PhysAsset->ConstraintSetup.Num(); ++i)
+	{
+		Constraints[i] = nullptr;
+		UPhysicsConstraintTemplate* Template = PhysAsset->ConstraintSetup[i];
+		if (!Template)
+			continue;
+
+		const FConstraintInstance& Def = Template->DefaultInstance;
+		const int32 ChildIdx = PhysAsset->FindBodyIndex(Def.ConstraintBone1);
+		const int32 ParentIdx = PhysAsset->FindBodyIndex(Def.ConstraintBone2);
+		FBodyInstance* Child = ChildIdx >= 0 ? Bodies[ChildIdx] : nullptr;
+		FBodyInstance* Parent = ParentIdx >= 0 ? Bodies[ParentIdx] : nullptr;
+		if (!Child || !Parent)
+			continue;
+
+		FConstraintInstance* CI = new FConstraintInstance();
+		CI->CopyConstraintParamsFrom(Def);
+		if (!CI->InitConstraint(Child, Parent))
+		{
+			delete CI;
+			continue;
+		}
+		Constraints[i] = CI;
+	}
+
+	bTeleportBodiesNextUpdate = true;
+}
+
+void USkeletalMeshComponent::TermArticulated()
+{
+	// 조인트 먼저: 액터가 먼저 사라지면 조인트가 해제된 액터를 가리킨다
+	for (FConstraintInstance* CI : Constraints)
+		delete CI;   // 소멸자가 TermConstraint
+	Constraints.Empty();
+
+	for (FBodyInstance* Body : Bodies)
+		delete Body; // 소멸자가 TermBody
+	Bodies.Empty();
+}
+
+void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
+{
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollKinematic);
+	if (Bodies.IsEmpty())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	const bool bTeleport = bTeleportBodiesNextUpdate || !(World && World->IsGameWorld());
+	bTeleportBodiesNextUpdate = false;
+
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (!Body || !Body->IsValidBodyInstance() || Body->IsSimulatingPhysics())
+		{
+			continue;
+		}
+
+		const FTransform BoneWorld = MatrixToTransform(GetBoneWorldMatrix(Body->InstanceBoneIndex));
+		Body->SetWorldTransform(BoneWorld, bTeleport);
+	}
+}
+
+void USkeletalMeshComponent::ApplyPhysicsToBonePose()
+{
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollBonePose);
+	const TArray<FBoneInfo>& Bones = GetBones();
+	if (Bodies.IsEmpty() || Bones.IsEmpty())
+		return;
+	if (BoneSpaceTransforms.Num() != Bones.Num())
+		OnSkeletalMeshChanged();
+
+	// 본 인덱스 → 시뮬레이트 중인 바디
+	TArray<FBodyInstance*> BoneBodies;
+	BoneBodies.Init(nullptr, Bones.Num());
+	for (FBodyInstance* Body : Bodies)
+	{
+		if (Body && Body->InstanceBoneIndex >= 0 && Body->InstanceBoneIndex < Bones.Num() && Body->IsSimulatingPhysics())
+			BoneBodies[Body->InstanceBoneIndex] = Body;
+	}
+
+	const FMatrix InvComponentWorld = GetWorldMatrix().Inverse();
+
+	// 1. 컴포넌트 공간 행렬을 다시 쌓는다. 부모가 먼저 오므로 앞에서부터 돌면 된다
+	TArray<FMatrix> NewCS;
+	NewCS.SetNum(Bones.Num());
+	for (int32 i = 0; i < Bones.Num(); ++i)
+	{
+		const int32 Parent = Bones[i].ParentIndex;
+		if (FBodyInstance* Body = BoneBodies[i])
+		{
+			// 바디가 있는 본: 물리 결과(월드) → 컴포넌트 공간. Scale3D가 붙어 있어 스케일도 유지된다
+			NewCS[i] = Body->GetWorldTransform().GetLocalMatrix() * InvComponentWorld;
+		}
+		else
+		{
+			// 바디가 없는 본: 기존 로컬 포즈 그대로 부모를 따라간다
+			const FMatrix Local = BoneSpaceTransforms[i].GetLocalMatrix();
+			NewCS[i] = Parent < 0 ? Local : Local * NewCS[Parent];
+		}
+	}
+
+	// 2. 바디가 있는 본만 부모 기준 로컬로 되돌린다 (없는 본은 로컬이 바뀌지 않았다)
+	for (int32 i = 0; i < Bones.Num(); ++i)
+	{
+		if (!BoneBodies[i])
+			continue;
+		const int32 Parent = Bones[i].ParentIndex;
+		const FMatrix Local = Parent < 0 ? NewCS[i] : NewCS[i] * NewCS[Parent].Inverse();
+		BoneSpaceTransforms[i] = MatrixToTransform(Local);
+	}
+
+	// 3. 다음 UpdateBoneTransformsNow에서 RefreshBoneTransforms가 같은 행렬을 다시 만들고 렌더로 보낸다
+	MarkBoneTransformsDirty();
 }
 
 const FString& USkeletalMeshComponent::GetAnimBlueprintPath() const

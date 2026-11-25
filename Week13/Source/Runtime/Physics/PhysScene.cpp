@@ -9,6 +9,8 @@
 #include "PhysicsLock.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Actor.h"
+#include "FPhysXSimulationFilterCallback.h"
+#include "PhysicsStats.h"
 
 namespace
 {
@@ -127,6 +129,8 @@ FPhysScene::FPhysScene(UWorld* InOwningWorld)
 				| physx::PxSceneFlag::eREQUIRE_RW_LOCK;
 	EventCallback = MakeUnique<FPhysXSimulationEventCallback>(*this);
 	Desc.simulationEventCallback = EventCallback.get();
+	FilterCallback = MakeUnique<FPhysXSimulationFilterCallback>();
+	Desc.filterCallback = FilterCallback.get();
 
 	if (!Desc.isValid())
 	{
@@ -184,19 +188,23 @@ void FPhysScene::Tick(float DeltaTime)
 	TimeAccumulator += DeltaTime;
 
 	int32 Steps = 0;
-	while (TimeAccumulator >= FixedTimeStep && Steps < MaxSubSteps)
 	{
-		// 동기 실행: simulate가 워커 스레드에 일을 나누고, fetchResults(true)가 끝날 때까지 기다린다.
-		// 이 둘 사이에는 씬을 건드리는 API(InitBody, setGlobalPose 등)를 부르면 안 된다.
-		// eREQUIRE_RW_LOCK 씬에서는 simulate·fetchResults도 쓰기 호출이라 쓰기 락이 필요하다.
-		// fetchResults 안에서 불리는 이벤트 콜백은 이 락 안에서 돌므로 콜백에서 락을 다시 잡지 않는다.
+		SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_PhysSimulate);
+		while (TimeAccumulator >= FixedTimeStep && Steps < MaxSubSteps)
 		{
-			SCOPED_SCENE_WRITE_LOCK(Scene);
-			Scene->simulate(FixedTimeStep);
-			Scene->fetchResults(true);
+			// 동기 실행: simulate가 워커 스레드에 일을 나누고, fetchResults(true)가 끝날 때까지 기다린다.
+			// 이 둘 사이에는 씬을 건드리는 API(InitBody, setGlobalPose 등)를 부르면 안 된다.
+			// eREQUIRE_RW_LOCK 씬에서는 simulate·fetchResults도 쓰기 호출이라 쓰기 락이 필요하다.
+			// fetchResults 안에서 불리는 이벤트 콜백은 이 락 안에서 돌므로 콜백에서 락을 다시 잡지 않는다.
+			{
+				SCOPED_SCENE_WRITE_LOCK(Scene);
+				Scene->simulate(FixedTimeStep);
+				Scene->fetchResults(true);
+			}
+			TimeAccumulator -= FixedTimeStep;
+			++Steps;
 		}
-		TimeAccumulator -= FixedTimeStep;
-		++Steps;
+
 	}
 
 	// 브레이크포인트 등으로 몇 초가 한꺼번에 들어오면 따라잡지 않고 버린다 (무한히 밀리는 것 방지).
@@ -205,8 +213,14 @@ void FPhysScene::Tick(float DeltaTime)
 
 	if (Steps > 0)
 	{
-		SyncActiveActors();
-		DispatchPendingNotifies();
+		{
+			SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_PhysSyncActors);
+			SyncActiveActors();
+		}
+		{
+			SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_PhysNotifies);
+			DispatchPendingNotifies();
+		}
 	}
 
 	// simulate 중 워커 스레드에서 쌓인 PhysX 로그를 메인 스레드에서 내보낸다.
@@ -236,6 +250,11 @@ void FPhysScene::SyncActiveActors()
 			FBodyInstance* Body = FBodyInstance::FromActor(RigidActor);
 			if (!Body || !Body->OwnerComponent || !Body->IsSimulatingPhysics())
 				continue;   // Kinematic은 컴포넌트가 주인이다. 물리 결과로 덮어쓰지 않는다
+
+			if (Body->InstanceBoneIndex >= 0)
+			{
+				continue;
+			}
 
 			Poses.Add(FPendingPose{ Body->OwnerComponent, RigidActor->getGlobalPose() });
 		}

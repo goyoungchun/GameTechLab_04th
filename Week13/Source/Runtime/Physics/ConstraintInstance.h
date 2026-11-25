@@ -67,4 +67,7 @@ struct FConstraintInstance
 	physx::PxD6Joint* ConstraintData = nullptr;
 
 	void CopyConstraintParamsFrom(const FConstraintInstance& From);
+
+	// 조인트의 부모 쪽·자식 쪽 앵커 월드 위치. 둘이 벌어져 있으면 조인트가 늘어난 것이다 (디버그용)
+	bool GetJointWorldPositions(FVector& OutParent, FVector& OutChild) const;
 };

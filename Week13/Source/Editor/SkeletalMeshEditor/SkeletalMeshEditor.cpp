@@ -14,6 +14,7 @@
 #include "Physics/PhysicsAssetFile.h"
 #include "Asset/AssetUtils.h"
 #include "Asset/AssetManager.h"
+#include "Physics/PhysicsDebugDraw.h"
 
 #include <cmath>
 #include <filesystem>
@@ -161,6 +162,7 @@ void FSkeletalMeshEditor::GeneratePhysicsAsset()
 
 	// 메시 파일 옆에 같은 이름으로 저장 (Character.fbx → Character.phys). 로드와 같은 경로 함수를 쓴다
 	const FString Path = MakePhysicsAssetPath(*Mesh);
+	Mesh->SetPhysicsAsset(PhysicsAsset);
 	if (!PhysicsAssetFile::Write(std::filesystem::path(Path), *PhysicsAsset, Error))
 		KRS_LOG(Warning, "[Physics] Save failed: {}", Error);
 	else
@@ -192,34 +194,8 @@ void FSkeletalMeshEditor::DrawPhysicsBodies(FLineBatcher& LineBatcher) const
 		if (Bone < 0)
 			continue;
 
-		// 본 로컬 → 컴포넌트 공간 (바인드 포즈). 프리뷰 컴포넌트가 원점에 있다고 가정
-		const FMatrix BoneToWorld = MeshComponent->GetBoneWorldMatrix(Bone);
-
-		for (const FKSphylElem& S : Setup->AggGeom.SphylElems)
-		{
-			const FVector Up = S.Rotation.RotateVector(FVector(0, 0, 1));
-			const FVector Side1 = S.Rotation.RotateVector(FVector(1, 0, 0));
-			const FVector Side2 = S.Rotation.RotateVector(FVector(0, 1, 0));
-			const FVector HalfAxis = Up * (S.Length * 0.5f);
-
-			auto ToWorld = [&](const FVector& Local) { return BoneToWorld.TransformPosition(Local); };
-
-			const FVector TopLocal = S.Center + HalfAxis;
-			const FVector BottomLocal = S.Center - HalfAxis;
-
-			// 반지름 길이의 벡터를 본 행렬로 변환한 뒤 길이를 잰다 → 행렬 스케일이 반영된 월드 반지름
-			const float WorldRadius = BoneToWorld.TransformVector(Side1 * S.Radius).Size();
-
-			LineBatcher.AddSphere(ToWorld(TopLocal), WorldRadius, Color, 12);
-			LineBatcher.AddSphere(ToWorld(BottomLocal), WorldRadius, Color, 12);
-
-			const FVector Offsets[4] = { Side1 * S.Radius, -Side1 * S.Radius, Side2 * S.Radius, -Side2 * S.Radius };
-			for (const FVector& O : Offsets)
-				LineBatcher.AddLine(ToWorld(TopLocal + O), ToWorld(BottomLocal + O), Color);
-		}
+		DrawAggGeomWire(LineBatcher, MeshComponent->GetBoneWorldMatrix(Bone), Setup->AggGeom, Color);
 	}
-
-
 }
 
 void FSkeletalMeshEditor::SyncBoneGizmo()

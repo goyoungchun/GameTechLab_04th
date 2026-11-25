@@ -11,6 +11,7 @@ namespace physx
 class UWorld;
 class UPrimitiveComponent;
 class FPhysXSimulationEventCallback;
+class FPhysXSimulationFilterCallback;
 
 // onContact에서 모은 충돌 한 건. 디스패치 때 양쪽에 DispatchHit을 보낸다.
 struct FCollisionNotifyInfo
@@ -74,4 +75,6 @@ private:
 	UWorld* OwningWorld = nullptr;
 	physx::PxScene* Scene = nullptr;
 	float TimeAccumulator = 0.0f;
+
+	TUniquePtr<FPhysXSimulationFilterCallback> FilterCallback;
 };
