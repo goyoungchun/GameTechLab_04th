@@ -14,9 +14,9 @@
     "ShadingModel": "DefaultLit",
     "Shininess": 32.0,
     "SpecularColor": {
-        "X": 0.019607843831181526,
-        "Y": 0.019607843831181526,
-        "Z": 0.019607843831181526
+        "X": 0.03921568766236305,
+        "Y": 0.03921568766236305,
+        "Z": 0.03921568766236305
     },
     "Textures": [
         "C:/Users/JUNGLE/Desktop/Jungle/JG_Week13/DefaultProject/Content/FBX/Coach2/Textures/Coach2_Diffuse.png",
