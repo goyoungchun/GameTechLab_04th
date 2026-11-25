@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/Misc/Paths.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -32,6 +33,7 @@ namespace
 	constexpr float WheelWidth = 1.052f;
 	constexpr float TruckMass = 3280.0f;
 	constexpr float DefaultTireGrip = 1.20f;
+	constexpr char StuntTrackMaterial[] = "Truck/Arena/LoopStuntSurface.pmat";
 	const FVector BedLocation(-1.10f, 0.0f, 0.30f);
 	const PxVec3 CenterOfMass(-0.16f, 0.0f, -0.15f);
 	const PxVec3 WheelCenters[WheelCount] = {
@@ -145,10 +147,68 @@ struct FMonsterTruckPhysics
 		return Pose;
 	}
 
+	void UpdateStuntFlip(PxScene& Scene, PxU32 GroundedWheels)
+	{
+		if (!StuntSurface) return;
+		const PxTransform Pose = Truck->getGlobalPose();
+		const PxVec3 Up = Pose.q.rotate(PxVec3(0, 0, 1));
+		const PxVec3 Right = Pose.q.rotate(PxVec3(0, 1, 0));
+		if (bStuntFlipInAir)
+		{
+			if (Up.z > 0.998f)
+			{
+				const PxVec3 Spin = Truck->getAngularVelocity();
+				Truck->setAngularVelocity(Spin - Right * Spin.dot(Right));
+				bStuntFlipInAir = false;
+			}
+			else if (GroundedWheels > 0)
+			{
+				bStuntFlipInAir = false;
+			}
+			return;
+		}
+		if (Up.z > -0.75f)
+		{
+			bStuntCrest = false;
+			return;
+		}
+		if (GroundedWheels > 0)
+		{
+			for (const PxWheelQueryResult& Wheel : WheelResults)
+			{
+				if (Wheel.tireSurfaceMaterial == StuntSurface)
+				{
+					bStuntCrest = true;
+					break;
+				}
+			}
+			return;
+		}
+		if (!bStuntCrest) return;
+		bStuntCrest = false;
+
+		// 반원 꼭대기에서 이탈하면 낙하 시간에 맞춰 남은 피치 회전을 이어 간다.
+		const PxVec3 Velocity = Truck->getLinearVelocity();
+		const PxVec3 LandingProbe = Pose.p + PxVec3(Velocity.x, Velocity.y, 0) * 2.0f;
+		PxRaycastBuffer Landing;
+		const PxReal Gravity = -Scene.getGravity().z;
+		if (Gravity <= 0 || !Scene.raycast(LandingProbe, PxVec3(0, 0, -1), 90.0f, Landing)) return;
+		const float Height = Landing.block.distance - 1.6f;
+		if (Height < 4.0f) return;
+		const float AirTime = (Velocity.z + std::sqrt(Velocity.z * Velocity.z + 2 * Gravity * Height)) / Gravity;
+		const PxVec3 Forward = Pose.q.rotate(PxVec3(1, 0, 0));
+		const float Pitch = std::atan2(Forward.z, Up.z);
+		const float Remaining = Pitch >= 0 ? PxTwoPi - Pitch : -Pitch;
+		const float SpinRate = Remaining / FMath::Max(0.35f, AirTime - 0.30f);
+		Truck->setAngularVelocity(-Right * FMath::Min(SpinRate, 4.0f));
+		bStuntFlipInAir = true;
+	}
+
 	PxRigidDynamic* Truck = nullptr;
 	PxVehicleNoDrive* Vehicle = nullptr;
 	PxBatchQuery* Batch = nullptr;
 	PxVehicleDrivableSurfaceToTireFrictionPairs* Friction = nullptr;
+	const PxMaterial* StuntSurface = nullptr;
 	PxSweepQueryResult SweepResults[WheelCount] = {};
 	PxSweepHit SweepHits[WheelCount * HitsPerWheel] = {};
 	PxWheelQueryResult WheelResults[WheelCount] = {};
@@ -158,6 +218,8 @@ struct FMonsterTruckPhysics
 	PxU32 VisualPoseTimestamp = 0;
 	float VisualPoseInterval = PhysicsStep;
 	float TimeSincePhysicsStep = 0.0f;
+	bool bStuntCrest = false;
+	bool bStuntFlipInAir = false;
 };
 
 UMonsterTruckDriveComponent::UMonsterTruckDriveComponent()
@@ -295,6 +357,12 @@ bool AMonsterTruckPawn::SetupVehicle()
 	SCOPED_SCENE_WRITE_LOCK(Scene);
 	auto State = MakeUnique<FMonsterTruckPhysics>();
 	State->Truck = ChassisBody.Actor->is<PxRigidDynamic>();
+	std::error_code AssetError;
+	if (std::filesystem::is_regular_file(FPaths::ProjectContentDir() / StuntTrackMaterial, AssetError))
+	{
+		if (UPhysicalMaterial* Material = UAssetManager::LoadPhysicalMaterial(StuntTrackMaterial))
+			State->StuntSurface = Material->GetPxMaterial();
+	}
 	PxConvexMesh* WheelMesh = CookWheel();
 	if (!WheelMesh) return false;
 	const PxShapeFlags WheelFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSIMULATION_SHAPE;
@@ -421,6 +489,8 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 	{
 		State.Truck->setGlobalPose(K2PTransform(SpawnPose));
 		State.Vehicle->setToRestState();
+		State.bStuntCrest = false;
+		State.bStuntFlipInAir = false;
 		Steering = 0.0f;
 		bResetCameraLag = true;
 	}
@@ -440,15 +510,24 @@ void AMonsterTruckPawn::UpdateVehicle(float DeltaTime)
 	if (bBoosting) SpeedLimit = 36.0f;
 	const float DriveTorque = bBoosting ? 5200.0f : 3100.0f;
 	const float TorqueFactor = FMath::Clamp((SpeedLimit - Speed) / 3.0f, 0.0f, 1.0f);
+	PxU32 GroundedWheels = 0;
 	for (PxU32 Index = 0; Index < WheelCount; ++Index)
 	{
-		const float Slip = std::abs(State.WheelResults[Index].longitudinalSlip);
-		const float GripControl = State.WheelResults[Index].isInAir ? 0.25f :
+		const PxWheelQueryResult& Contact = State.WheelResults[Index];
+		GroundedWheels += !Contact.isInAir;
+		const float Slip = std::abs(Contact.longitudinalSlip);
+		const float GripControl = Contact.isInAir ? 0.25f :
 			1.0f - 0.62f * FMath::Clamp((Slip - 0.18f) / 0.50f, 0.0f, 1.0f);
 		State.Vehicle->setDriveTorque(Index, bBraking ? 0.0f : Throttle * DriveTorque * TorqueFactor * GripControl);
 		State.Vehicle->setBrakeTorque(Index, bBraking ? 5800.0f : Throttle == 0.0f ? 190.0f : 0.0f);
 		State.Vehicle->setSteerAngle(Index, Index < 2 ? FrontSteer : RearSteer);
 	}
+	if (bBoosting && GroundedWheels >= 2 && TorqueFactor > 0.0f)
+	{
+		const PxVec3 Forward = State.Truck->getGlobalPose().q.rotate(PxVec3(1, 0, 0));
+		State.Truck->addForce(Forward * (2.15f * Throttle * TorqueFactor), PxForceMode::eACCELERATION);
+	}
+	State.UpdateStuntFlip(*Scene, GroundedWheels);
 
 	PxVehicleWheels* Vehicles[] = { State.Vehicle };
 	PxVehicleSuspensionSweeps(State.Batch, 1, Vehicles, WheelCount, State.SweepResults, HitsPerWheel, nullptr, 0.98f, 1.0f);
