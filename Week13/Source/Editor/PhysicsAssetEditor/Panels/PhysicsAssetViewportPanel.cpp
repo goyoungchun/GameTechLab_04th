@@ -238,6 +238,7 @@ void FPhysicsAssetViewportPanel::DrawContent()
 		ImGui::GetWindowDrawList()->AddImage(Target->GetSRV(), Origin, ImVec2(Origin.x + Size.x, Origin.y + Size.y));
 	}
 	Editor.DrawViewportLabels(ImGui::GetWindowDrawList(), Origin, Size);   // 질량 값
+	Editor.DrawGrabHandle(ImGui::GetWindowDrawList(), Origin, Size);       // 잡기 표시
 
 	const bool bHovered = ImGui::IsItemHovered();
 	if (bHovered && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
@@ -269,11 +270,16 @@ void FPhysicsAssetViewportPanel::DrawContent()
 		.bShiftDown = IO.KeyShift,
 		.bAltDown = IO.KeyAlt,
 		.bCtrlDown = IO.KeyCtrl,
+		.bRightMousePressed = bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right),
+		.bRightMouseDown = bCameraDragging,
 	};
+
+	// 시뮬레이션 중 Ctrl+우클릭은 잡기다. 잡는 동안(Ctrl을 떼도) 카메라는 돌리지 않는다
+	const bool bGrabInput = Editor.IsGrabbing() || (Editor.IsSimulating() && IO.KeyCtrl);
 
 	const FViewportCameraInput CameraInput
 	{
-		.bCaptured = bFocused && ImGui::IsItemActive() && bCameraDragging && !bMouseDown,
+		.bCaptured = bFocused && ImGui::IsItemActive() && bCameraDragging && !bMouseDown && !bGrabInput,
 		.bAllowWheel = bHovered && !bMouseDown,
 		.bForward = ImGui::IsKeyDown(ImGuiKey_W),
 		.bBackward = ImGui::IsKeyDown(ImGuiKey_S),

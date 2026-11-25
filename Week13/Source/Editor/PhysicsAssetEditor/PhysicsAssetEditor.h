@@ -9,6 +9,14 @@ class UPhysicsAsset;
 class UPhysicsConstraintTemplate;
 class FPhysicsAssetDebugRenderer;
 struct FConstraintInstance;
+struct FBodyInstance;
+struct FRay;
+
+namespace physx
+{
+	class PxRigidDynamic;
+	class PxD6Joint;
+}
 
 // 에디터에서 지금 고른 것. 트리·그래프·뷰포트·디테일이 모두 이 값 하나를 읽고 쓴다.
 enum class EPhysicsAssetSelectionType : uint8
@@ -174,6 +182,12 @@ public:
 	bool IsFloorCollisionEnabled() const { return bFloorCollision; }
 	void SetFloorCollisionEnabled(bool bEnabled);
 
+	// 시뮬레이션 중 Ctrl+우클릭 드래그로 바디를 잡아 끈다.
+	// 셰이프 없는 키네마틱 핸들 액터를 마우스 광선 위로 옮기고, D6 조인트의 선형 드라이브(스프링)가 잡은 지점을 끌어온다
+	bool IsGrabbing() const { return HandleJoint != nullptr; }
+	// 잡은 지점과 핸들 사이에 빨간 사각형을 찍는다. Origin·Size는 뷰포트 이미지의 화면 사각형
+	void DrawGrabHandle(struct ImDrawList* DrawList, const struct ImVec2& Origin, const struct ImVec2& Size) const;
+
 	// 저장
 	void MarkDirty() { bDirty = true; }
 	bool Save();
@@ -190,8 +204,8 @@ protected:
 
 	void TickBeforeWorld(float DeltaTime) override;  // 시뮬레이션 중이면 물리 씬을 진행한다
 	void TickAfterWorld(float DeltaTime) override;   // 기즈모가 입력을 안 쓰면 바디·조인트 피킹
-	bool IsViewportInteractionBusy() const override { return PhysicsGizmo.IsUsing(); }
-	void CancelViewportInteraction() override { PhysicsGizmo.EndDrag(); }
+	bool IsViewportInteractionBusy() const override { return PhysicsGizmo.IsUsing() || IsGrabbing(); }
+	void CancelViewportInteraction() override { PhysicsGizmo.EndDrag(); EndGrab(); }
 
 private:
 	void CreateConstraintToParentBody(int32 BoneIndex);
@@ -235,6 +249,19 @@ private:
 	void BeginGizmoDrag();
 	void ApplyGizmoDrag();
 	void RestoreGizmoDragStart();
+
+	// 잡기. 광선에 맞은 시뮬레이트 바디가 없으면 false
+	FRay GetMouseRay() const;
+	bool TryBeginGrab();
+	void UpdateGrab();
+	void EndGrab();   // 조인트 → 핸들 액터 순으로 해제한다. 바디를 지우기 전에 반드시 부른다
+
+	physx::PxRigidDynamic* HandleActor = nullptr;
+	physx::PxD6Joint* HandleJoint = nullptr;
+	FBodyInstance* GrabbedBody = nullptr;
+	FVector GrabLocalPos;          // 잡은 지점 (바디 액터 로컬)
+	FVector GrabTarget;            // 핸들 위치 (월드)
+	float GrabDistance = 0.0f;     // 카메라에서 잡은 지점까지. 드래그하는 동안 유지한다
 
 	TUniquePtr<FPhysicsAssetDebugRenderer> DebugRenderer;
 

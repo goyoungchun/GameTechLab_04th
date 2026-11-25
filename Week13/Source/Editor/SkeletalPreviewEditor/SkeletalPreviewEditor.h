@@ -39,6 +39,8 @@ struct FViewportPointerInput
 	bool bShiftDown = false;
 	bool bAltDown = false;
 	bool bCtrlDown = false;
+	bool bRightMousePressed = false;   // 우클릭이 시작된 프레임
+	bool bRightMouseDown = false;
 };
 
 class FSkeletalPreviewEditor : public FAssetEditor

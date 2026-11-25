@@ -9,6 +9,10 @@
 #include "Components/BoxComponent.h"
 #include "Engine/World.h"
 #include "Physics/PhysScene.h"
+#include "Physics/BodyInstance.h"
+#include "Physics/PhysicsCore.h"
+#include "Physics/PhysicsLock.h"
+#include "Physics/PhysXConversions.h"
 #include "Render/SkeletalMesh.h"
 #include "Render/SceneView.h"
 #include "Collision/Ray.h"
@@ -190,6 +194,7 @@ bool FPhysicsAssetEditor::InitializeResources()
 
 void FPhysicsAssetEditor::ShutdownResources()
 {
+	EndGrab();
 	PhysicsGizmo.EndDrag();
 	PhysicsGizmo.SetTarget(nullptr);
 	GizmoTarget = nullptr;
@@ -262,6 +267,7 @@ void FPhysicsAssetEditor::StartSimulation()
 
 void FPhysicsAssetEditor::StopSimulation()
 {
+	EndGrab();   // 바디를 다시 만들기 전에 조인트부터 푼다
 	bSimulating = false;
 	if (FPhysScene* Scene = GetPreviewPhysScene())
 		Scene->SetGravity(SavedGravity);
@@ -1385,14 +1391,172 @@ void FPhysicsAssetEditor::DrawViewportLabels(ImDrawList* DrawList, const ImVec2&
 	}
 }
 
+// ---------- 잡기 ----------
+
+namespace
+{
+	// 선형 가속도 드라이브. 질량과 상관없이 오차 1m당 GrabStiffness m/s²로 끈다. 감쇠는 임계 감쇠(2√k) 근처
+	constexpr float GrabStiffness = 1000.0f;
+	constexpr float GrabDamping = 60.0f;
+	constexpr float GrabRayLength = 1000.0f;
+}
+
+FRay FPhysicsAssetEditor::GetMouseRay() const
+{
+	const FVector2 MousePosition(PointerInput.MouseUV.X * ViewportClient->GetWidth(), PointerInput.MouseUV.Y * ViewportClient->GetHeight());
+	FRay Ray = ViewportClient->DeprojectScreenToWorld(MousePosition);
+	Ray.Direction = Ray.Direction.GetSafeNormal();
+	return Ray;
+}
+
+bool FPhysicsAssetEditor::TryBeginGrab()
+{
+	EndGrab();
+	if (!CanProcessViewportInput() || !PointerInput.bHovered || !MeshComponent)
+		return false;
+
+	FPhysScene* Scene = GetPreviewPhysScene();
+	physx::PxScene* PScene = Scene ? Scene->GetPxScene() : nullptr;
+	physx::PxPhysics* Physics = FPhysicsCore::Get().GetPhysics();
+	if (!PScene || !Physics)
+		return false;
+
+	const FRay Ray = GetMouseRay();
+	physx::PxRaycastBuffer Hit;
+	{
+		SCOPED_SCENE_READ_LOCK(PScene);
+		// 바닥(정적)은 건너뛰고 움직이는 액터만 본다
+		const physx::PxQueryFilterData Filter(physx::PxQueryFlag::eDYNAMIC);
+		if (!PScene->raycast(K2PVector(Ray.Origin), K2PVector(Ray.Direction), GrabRayLength, Hit, physx::PxHitFlag::eDEFAULT, Filter) || !Hit.hasBlock)
+			return false;
+	}
+
+	physx::PxRigidDynamic* Target = Hit.block.actor ? Hit.block.actor->is<physx::PxRigidDynamic>() : nullptr;
+	FBodyInstance* Body = FBodyInstance::FromActor(Target);
+	// 선택 시뮬레이트에서 고정된(키네마틱) 바디는 잡지 않는다
+	if (!Target || !Body || Body->OwnerComponent != MeshComponent || !Body->IsSimulatingPhysics())
+		return false;
+
+	SCOPED_SCENE_WRITE_LOCK(PScene);
+
+	const physx::PxVec3 HitPos = Hit.block.position;
+	HandleActor = Physics->createRigidDynamic(physx::PxTransform(HitPos));
+	if (!HandleActor)
+		return false;
+	HandleActor->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, true);
+	PScene->addActor(*HandleActor);
+
+	// 조인트 프레임: 핸들 쪽은 핸들 원점, 바디 쪽은 맞은 지점. 두 프레임 모두 월드 축에 맞춘다
+	const physx::PxTransform BodyFrame = Target->getGlobalPose().transformInv(physx::PxTransform(HitPos));
+	HandleJoint = physx::PxD6JointCreate(*Physics, HandleActor, physx::PxTransform(physx::PxIdentity), Target, BodyFrame);
+	if (!HandleJoint)
+	{
+		HandleActor->release();
+		HandleActor = nullptr;
+		return false;
+	}
+
+	// 6축 모두 풀고 선형 3축에만 드라이브를 건다. 잡은 지점을 축으로 자유롭게 돈다
+	for (physx::PxD6Axis::Enum Axis : { physx::PxD6Axis::eX, physx::PxD6Axis::eY, physx::PxD6Axis::eZ,
+		physx::PxD6Axis::eTWIST, physx::PxD6Axis::eSWING1, physx::PxD6Axis::eSWING2 })
+	{
+		HandleJoint->setMotion(Axis, physx::PxD6Motion::eFREE);
+	}
+	const physx::PxD6JointDrive Drive(GrabStiffness, GrabDamping, PX_MAX_F32, true);
+	HandleJoint->setDrive(physx::PxD6Drive::eX, Drive);
+	HandleJoint->setDrive(physx::PxD6Drive::eY, Drive);
+	HandleJoint->setDrive(physx::PxD6Drive::eZ, Drive);
+	HandleJoint->setDrivePosition(physx::PxTransform(physx::PxIdentity));
+	Target->wakeUp();
+
+	GrabbedBody = Body;
+	GrabLocalPos = P2KVector(BodyFrame.p);
+	GrabTarget = P2KVector(HitPos);
+	GrabDistance = Hit.block.distance;
+	return true;
+}
+
+void FPhysicsAssetEditor::UpdateGrab()
+{
+	if (!bSimulating || !ViewportClient || !PointerInput.bRightMouseDown || !PointerInput.bFocused || PointerInput.bCancel)
+	{
+		EndGrab();
+		return;
+	}
+
+	const FRay Ray = GetMouseRay();
+	GrabTarget = Ray.Origin + Ray.Direction * GrabDistance;
+
+	SCOPED_SCENE_WRITE_LOCK(HandleActor->getScene());
+	// setGlobalPose가 아니라 목표를 준다. 다음 스텝에서 속도를 가진 채 옮겨져 조인트가 부드럽게 끈다
+	HandleActor->setKinematicTarget(physx::PxTransform(K2PVector(GrabTarget)));
+	if (physx::PxRigidDynamic* Target = GrabbedBody && GrabbedBody->Actor ? GrabbedBody->Actor->is<physx::PxRigidDynamic>() : nullptr)
+		Target->wakeUp();
+}
+
+void FPhysicsAssetEditor::EndGrab()
+{
+	if (HandleActor)
+	{
+		SCOPED_SCENE_WRITE_LOCK(HandleActor->getScene());
+		if (HandleJoint)
+			HandleJoint->release();
+		HandleActor->release();   // 씬에서도 빠진다
+	}
+	else if (HandleJoint)
+	{
+		HandleJoint->release();
+	}
+	HandleJoint = nullptr;
+	HandleActor = nullptr;
+	GrabbedBody = nullptr;
+}
+
+void FPhysicsAssetEditor::DrawGrabHandle(ImDrawList* DrawList, const ImVec2& Origin, const ImVec2& Size) const
+{
+	if (!DrawList || !IsGrabbing() || !GrabbedBody || !GrabbedBody->Actor)
+		return;
+
+	FVector GrabPoint;
+	{
+		SCOPED_SCENE_READ_LOCK(GrabbedBody->Actor->getScene());
+		GrabPoint = P2KVector(GrabbedBody->Actor->getGlobalPose().transform(K2PVector(GrabLocalPos)));
+	}
+
+	float U0 = 0.0f, V0 = 0.0f, U1 = 0.0f, V1 = 0.0f;
+	if (!ProjectToViewportUV(GrabPoint, U0, V0) || !ProjectToViewportUV(GrabTarget, U1, V1))
+		return;
+
+	// 화면에서 잡은 지점 → 핸들 사이를 일정 간격으로 찍는다 (양 끝 포함)
+	const ImVec2 A(Origin.x + U0 * Size.x, Origin.y + V0 * Size.y);
+	const ImVec2 B(Origin.x + U1 * Size.x, Origin.y + V1 * Size.y);
+	constexpr float Spacing = 16.0f;
+	constexpr float HalfSize = 4.0f;
+	const float Length = sqrtf((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y));
+	const int32 Steps = FMath::Max(1, static_cast<int32>(Length / Spacing));
+	for (int32 i = 0; i <= Steps; ++i)
+	{
+		const float T = static_cast<float>(i) / static_cast<float>(Steps);
+		const ImVec2 P(A.x + (B.x - A.x) * T, A.y + (B.y - A.y) * T);
+		DrawList->AddRectFilled(ImVec2(P.x - HalfSize, P.y - HalfSize), ImVec2(P.x + HalfSize, P.y + HalfSize), IM_COL32(255, 0, 0, 255));
+	}
+}
+
 // ---------- 뷰포트 입력 ----------
 
 void FPhysicsAssetEditor::TickAfterWorld(float DeltaTime)
 {
-	// 시뮬레이션 중에는 기즈모를 숨기고 클릭 선택만 받는다
+	// 시뮬레이션 중에는 기즈모를 숨기고 잡기(Ctrl+우클릭)와 클릭 선택만 받는다
 	if (bSimulating)
 	{
 		PhysicsGizmo.SetTarget(nullptr);
+		if (IsGrabbing())
+		{
+			UpdateGrab();
+			return;
+		}
+		if (PointerInput.bRightMousePressed && PointerInput.bCtrlDown && TryBeginGrab())
+			return;
 		UpdateShapePicking();
 		return;
 	}
