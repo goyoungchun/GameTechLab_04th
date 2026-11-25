@@ -30,6 +30,7 @@
 #include "Engine/World.h"
 #include "Physics/PhysicsLock.h"
 #include "Physics/PhysicsDebugDraw.h"
+#include "Physics/PhysicsStats.h"
 
 namespace
 {
@@ -737,6 +738,7 @@ void USkeletalMeshComponent::UpdateClothingSimulation(float DeltaTime)
 
 void USkeletalMeshComponent::InstantiatePhysicsAssetBodies_Internal()
 {
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollInit);
 	TermArticulated();
 
 	UPhysicsAsset* PhysAsset = GetPhysicsAsset();
@@ -838,6 +840,7 @@ void USkeletalMeshComponent::TermArticulated()
 
 void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
 {
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollKinematic);
 	if (Bodies.IsEmpty())
 	{
 		return;
@@ -861,6 +864,7 @@ void USkeletalMeshComponent::UpdateKinematicBonesToAnim()
 
 void USkeletalMeshComponent::ApplyPhysicsToBonePose()
 {
+	SCOPE_CYCLE_COUNTER(PhysicsStats::STAT_RagdollBonePose);
 	const TArray<FBoneInfo>& Bones = GetBones();
 	if (Bodies.IsEmpty() || Bones.IsEmpty())
 		return;
