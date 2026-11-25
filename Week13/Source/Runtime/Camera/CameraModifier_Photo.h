@@ -31,7 +31,7 @@ struct FPhotoCameraState
 	float FocalLength = 35.0f;    // mm
 	bool bHalfFrame = false;      // 켜면 한 컷을 반으로 나눈 세로 프레임으로 찍는다
 	bool bAutoFocus = true;       // 켜면 화면 중앙 물체에 초점을 맞춘다
-	bool bAutoExposure = false;   // 켜면 셔터·ISO 대신 노출계가 밝기를 맞춘다. 조리개는 DOF에만 남는다
+	bool bAutoExposure = true;  // 켜면 셔터·ISO 대신 노출계가 밝기를 맞춘다. 조리개는 DOF에만 남는다
 
 	float GetFstop() const { return ApertureStops[ApertureIndex]; }
 	float GetShutterSeconds() const { return ShutterStops[ShutterIndex]; }
