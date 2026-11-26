@@ -46,7 +46,7 @@
 * **주요 구현:** CSM, PCF·PCSS 기반 그림자 렌더링과 다중 페이지 섀도 아틀라스, 그림자 캐싱을 구현
 * **담당 부분:** PCSS의 깊이 계산과 소프트 섀도 품질 개선. 광원별 그림자 설정과 최소 탐색 깊이 추가, Rect Light 광원 반경 처리 수정.
 
-### [Week09 — HitoriEngine](./Week09)
+### [Week09 — Hitori Engine](./Week09)
 
 
 
@@ -55,13 +55,13 @@
 * **담당 부분:** BVH 기반 형상 충돌 검사·충돌 응답·Hit/Overlap 이벤트·이동 Sweep 통합과 중력·가속도·마찰·반발 설정 구현. 시퀀스 데이터·재생기·시간 제어를 설계하고, Hit Stop·Slomo 및 카메라 효과의 시퀀서 연동·에디터 미리보기, 차량 Hit Squash와 주행 밸런스 개선.
 
 
-### [Week10 — HitoriEngine](./Week10)
+### [Week10 — Hitori Engine](./Week10)
 
 * **주요 구현:** FBX 스태틱·스켈레탈 메시 임포트와 CPU 스키닝, 본 편집을 지원하는 스켈레탈 메시 뷰어, Deferred Decal을 구현
 * **담당 부분:** 스켈레탈 메시 데이터·정점 구조 설계와 Skinned/Skeletal Mesh Component 구현. CPU 스키닝과 본 변환 갱신 최적화, 머티리얼·Scene Proxy 연동 및 UV 보정, 스켈레탈 메시의 에디터 배치·속성 편집·정밀 피킹 지원.
 
 
-### [Week11 — HitoriEngine](./Week11)
+### [Week11 — Hitori Engine](./Week11)
 
 * **주요 구현:** FBX 애니메이션 임포트·재생과 GPU 스키닝, Animation Viewer, AnimGraph 기반 상태 머신·BlendSpace1D, Anim Notify·Root Motion 구현
 * **담당 부분:** AnimGraph 노드 구조와 조건·우선순위 기반 상태 전이, Any State 인터럽트·포즈 블렌딩 구현. Sequence Player·TwoWayBlend·Cached Pose·Slot 노드 구성과 Lua 바인딩, 커비 Locomotion·점프/피격 및 State Transition·BlendSpace 비교 시연 씬 구성.
