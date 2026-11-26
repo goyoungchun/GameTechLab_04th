@@ -1,0 +1,35 @@
+{
+    "Bodies": [
+        {
+            "AggGeom": {
+                "Box": [],
+                "Convexes": [],
+                "Sphere": [],
+                "Spyls": [
+                    {
+                        "Center": {
+                            "X": 1.4590001106262207,
+                            "Y": 0.0,
+                            "Z": 0.6475008726119995
+                        },
+                        "Length": 1.032999038696289,
+                        "Radius": 0.9425008296966553,
+                        "Rotation": {
+                            "W": 0.70710688829422,
+                            "X": 0.0,
+                            "Y": 0.7071066498756409,
+                            "Z": 0.0
+                        }
+                    }
+                ]
+            },
+            "BoneName": "Armature",
+            "Properties": {
+                "PhysicsType": "Default"
+            }
+        }
+    ],
+    "Constraints": [],
+    "Properties": {},
+    "Version": 2
+}

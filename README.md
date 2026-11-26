@@ -70,3 +70,8 @@
 
 * **주요 구현:** Sprite·Mesh·Ribbon·Beam 파티클과 모듈 기반 생성·갱신, 충돌 이벤트, 파티클 에디터 및 LOD 시스템 구현. UE5 스타일 에디터 UI와 크래시 미니덤프·심볼 기반 디버깅 지원.
 * **담당 부분:** ParticleSystemComponent와 ParticleEmitter·ParticleEmitterInstance·ParticleLODLevel 구조 및 실행 로직 구현. 파티클 생성·갱신·수명 관리, 컴포넌트 활성화·종료 처리와 카메라 거리 기반 LOD 선택·전환 구현.
+
+### [Week13 - Kurisu Engine](./Week13)
+
+* **주요 구현:** 피사계 심도(DoF)·자동 노출·렌즈 플레어를 적용한 사진 모드, PhysX 기반 물리 에셋·래그돌, 몬스터 트럭 주행 데모 구현.
+* **담당 부분:** 피사계 심도 셰이더와 렌더링 패스를 구현. PhysX 기반 `MonsterTruckPawn`의 주행 동작, 타이어 먼지 파티클과 타이어 자국 데칼을 구현하고, 데모 씬에 노면별 물리 머티리얼을 적용.
